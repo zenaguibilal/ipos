@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   Calculator,
   Terminal,
-  Activity
+  Activity,
+  Zap
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -71,17 +72,32 @@ export function AppHeader() {
   
   const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
 
-  const roleConfig: Record<string, { label: string, color: string, icon: any }> = {
-    admin: { label: 'ADMINISTRATEUR', color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20', icon: ShieldCheck },
-    manager: { label: 'GÉRANT', color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20', icon: User },
-    cashier: { label: 'CASHIER', color: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20', icon: Activity }
+  const roleConfig: Record<string, { label: string, color: string, icon: any, desc: string }> = {
+    admin: { 
+        label: 'ADMINISTRATEUR', 
+        color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20', 
+        icon: ShieldCheck,
+        desc: 'Autorité Totale'
+    },
+    manager: { 
+        label: 'GÉRANT', 
+        color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20', 
+        icon: User,
+        desc: 'Gestion Opérationnelle'
+    },
+    cashier: { 
+        label: 'CASHIER', 
+        color: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20', 
+        icon: Activity,
+        desc: 'Exécution Ventes'
+    }
   };
 
   const currentRole = roleConfig[role] || roleConfig.cashier;
 
   return (
     <header className="flex h-16 items-center gap-4 bg-background/60 px-4 sm:px-8 print-hide sticky top-0 z-40 border-b border-white/5 backdrop-blur-2xl transition-all duration-500 shadow-sm">
-      {/* Brand Singularity */}
+      {/* Brand & Logo Section */}
       <div className="flex-1 flex justify-start">
          <div className="flex items-center gap-3">
               <Link
@@ -99,7 +115,7 @@ export function AppHeader() {
           </div>
       </div>
 
-        {/* Sovereign Navigation Center */}
+        {/* Central Navigation Center (Tooltips Enabled) */}
         <div className="flex-grow flex justify-center">
             <TooltipProvider>
                 <nav className="hidden xl:flex items-center gap-1 rounded-3xl border bg-black/5 dark:bg-black/20 p-1.5 luxury-glass border-white/5 shadow-inner">
@@ -115,13 +131,13 @@ export function AppHeader() {
                                     )}
                                 >
                                     <Link href={link.href}>
-                                        <link.icon className="h-4 w-4 mr-2.5" />
+                                        <Zap className="h-4 w-4 mr-2.5 animate-pulse text-yellow-400" />
                                         {link.label}
                                     </Link>
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="luxury-glass">
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Interface de Vente (F9)</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Interface de Vente Haute Rapidité (F9)</p>
                             </TooltipContent>
                         </Tooltip>
                     ))}
@@ -158,7 +174,7 @@ export function AppHeader() {
         </div>
 
 
-        {/* Command Center Controls */}
+        {/* Command Center Controls (Right Section) */}
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-3 sm:gap-5">
                 <div className="hidden lg:block border-r border-white/5 pr-5 py-1">
@@ -191,17 +207,20 @@ export function AppHeader() {
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Terminal Souverain</span>
                             </div>
                             <span className="text-xs font-bold text-foreground truncate">{profile?.email || 'Instance Cloud iPOS'}</span>
+                            <div className="mt-2 flex items-center gap-2">
+                                <Badge variant="outline" className="text-[8px] h-4 border-primary/30 text-primary uppercase font-black">{currentRole.desc}</Badge>
+                            </div>
                         </DropdownMenuLabel>
                         
                         <div className="px-1 space-y-1">
                             <DropdownMenuItem asChild>
                                 <Link href="/profile" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
                                     <User className="h-4 w-4 opacity-60" />
-                                    <span className="text-xs font-bold">Mon Centre de Commandement</span>
+                                    <span className="text-xs font-bold">Centre de Commandement</span>
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href="/profile?tab=settings" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
+                                <Link href="/profile" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
                                     <Settings className="h-4 w-4 opacity-60" />
                                     <span className="text-xs font-bold">Paramètres Système</span>
                                 </Link>
@@ -211,8 +230,8 @@ export function AppHeader() {
                         <DropdownMenuSeparator className="bg-white/5 my-2" />
                         
                         <div className="px-4 py-2 flex items-center gap-3 text-[9px] font-black uppercase text-muted-foreground opacity-40">
-                            <Activity className="h-3 w-3" />
-                            Session: Active (AES-256)
+                            <ShieldCheck className="h-3 w-3" />
+                            Session: Sécurisée (AES-256)
                         </div>
                         
                         <DropdownMenuSeparator className="bg-white/5 my-2" />
@@ -222,7 +241,7 @@ export function AppHeader() {
                             className="text-destructive focus:text-destructive focus:bg-destructive/10 flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer mx-1"
                         >
                             <LogOut className="h-4 w-4" />
-                            <span className="text-xs font-black uppercase tracking-widest">Mettre fin à la session</span>
+                            <span className="text-xs font-black uppercase tracking-widest">Fin de session</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
