@@ -218,3 +218,63 @@ export interface SupplierPayment {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface Cart {
+    id: string;
+    name: string;
+    items: CartItem[];
+    customerUuid: string | null;
+    discount: {
+        type: 'fixed' | 'percentage';
+        value: number;
+    };
+}
+
+export interface CartItem extends Product {
+    cartQuantity: number;
+    flash?: boolean;
+}
+
+export interface SavedZakatCalculation {
+    uuid: string;
+    zakatBase: number;
+    zakatAmount: number;
+    createdAt: string;
+}
+
+export interface ImportAnalysis {
+    customersToAdd: any[];
+    customersToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
+export interface ProductImportAnalysis {
+    productsToAdd: any[];
+    productsToUpdate: any[];
+    skippedRows: any[];
+    errorRows: any[];
+    totalRows: number;
+}
+
+export interface Recipe {
+    uuid: string;
+    user_id: string;
+    name: string;
+    description?: string;
+    yieldQuantity: number;
+    targetMargin: number;
+    ingredients: Ingredient[];
+    unitCost: number;
+    suggestedPrice: number;
+    updatedAt?: string;
+}
+
+export interface Ingredient {
+    id: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    unitCost: number;
+}

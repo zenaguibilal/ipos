@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +9,7 @@ import { toast } from 'sonner';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 
-export function CustomerStats({ onRefresh }: { onRefresh?: () => void }) {
+export function CustomerStats() {
   const [stats, setStats] = useState<any>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
 

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { calculateCartTotals, formatCurrency, cn } from '@/lib/utils';
+import { calculateCartTotals, formatCurrency } from '@/lib/utils';
 import { ShoppingCart, User, Tag, Minus, HandCoins } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import type { Cart, Customer } from '@/lib/types';
