@@ -1,9 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
-import type { CompanyProfile } from "@/lib/types";
+import type { CompanyProfile, AppRole } from "@/lib/types";
 
 /**
  * @fileOverview Company Repository (Absolute Server Authority)
- * PHASE 2 & 11: Final deterministic profile authority.
+ * PHASE 2, 11 & 13: Deterministic profile & role discovery logic.
+ * يدير عملية التعرف على هوية المستخدم وتحديد مستوى سلطته (مالك أم موظف).
  */
 export class CompanyRepository {
     private supabase = createClient();
@@ -12,20 +13,36 @@ export class CompanyRepository {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) return null;
 
-        const { data, error } = await this.supabase
+        // 1. محاولة جلب ملف المنشأة (للمالك/الأدمن)
+        const { data: profile, error: profileError } = await this.supabase
             .from('company_profile')
             .select('*')
             .eq('user_id', user.id)
             .maybeSingle();
 
-        if (error) throw new Error(`PROFILE_FETCH_FAILED: ${error.message}`);
+        if (profileError) throw new Error(`PROFILE_FETCH_FAILED: ${profileError.message}`);
         
-        // Auto-initialize if somehow missing but user exists
-        if (!data) {
-            return this.initializeDefault(user.id);
+        if (profile) {
+            return this.mapFromDb(profile, profile.role || 'admin');
         }
 
-        return this.mapFromDb(data);
+        // 2. إذا لم يكن مالكاً، نبحث في سجل الموظفين بناءً على البريد الإلكتروني
+        const { data: staff, error: staffError } = await this.supabase
+            .from('staff_profiles')
+            .select('*')
+            .eq('email', user.email)
+            .maybeSingle();
+
+        if (staffError) throw new Error(`STAFF_CHECK_FAILED: ${staffError.message}`);
+
+        if (staff) {
+            // جلب بيانات المنشأة الأساسية (أول سجل متاح لهذا الحساب المرتبط)
+            const { data: comp } = await this.supabase.from('company_profile').select('*').limit(1).maybeSingle();
+            return this.mapFromDb(comp || { company_name: "iPOS Terminal" }, staff.role);
+        }
+
+        // 3. حالة طارئة: مستخدم مسجل ولكن ليس له سجل منشأة أو موظف
+        return this.initializeDefault(user.id);
     }
 
     private async initializeDefault(userId: string): Promise<CompanyProfile> {
@@ -40,7 +57,7 @@ export class CompanyRepository {
             .single();
         
         if (error) throw new Error("PROFILE_AUTO_INIT_FAILED");
-        return this.mapFromDb(data);
+        return this.mapFromDb(data, 'admin');
     }
 
     async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
@@ -55,13 +72,13 @@ export class CompanyRepository {
             .single();
 
         if (error) throw new Error(`PROFILE_UPDATE_FAILED: ${error.message}`);
-        return this.mapFromDb(updated);
+        return this.mapFromDb(updated, updated.role);
     }
 
-    private mapFromDb(p: any): CompanyProfile {
+    private mapFromDb(p: any, role: AppRole): CompanyProfile {
         return {
-            uuid: p.uuid,
-            user_id: p.user_id,
+            uuid: p.uuid || '',
+            user_id: p.user_id || '',
             companyName: p.company_name,
             address: p.address || '',
             city: p.city || '',
@@ -75,8 +92,8 @@ export class CompanyRepository {
             artImposition: p.art_imposition || '',
             goldPricePerGram: p.gold_price_per_gram || 0,
             prix_pain: p.prix_pain || 0,
-            role: p.role,
-            updatedAt: p.updated_at,
+            role: role,
+            updatedAt: p.updated_at || new Date().toISOString(),
         };
     }
 
