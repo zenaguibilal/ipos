@@ -5,7 +5,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, History, FileUp, Filter, TrendingUp, Receipt as ReceiptIcon, ShoppingBag, LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, DollarSign, X } from 'lucide-react';
+import { Search, History, FileUp, Filter, TrendingUp, ShoppingBag, LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, DollarSign, X } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { SalesHistoryCard } from '@/components/sales/SalesHistoryCard';
@@ -36,18 +36,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * @fileOverview Sales History Page
- * Purged: unused icon imports (Calendar, PieChart, SortAsc).
+ * @fileOverview Sales History Page (Dead Code Purged)
  */
 
 type PaymentFilter = 'all' | 'paid' | 'partial' | 'unpaid';
-
-const sortOptions: { [key: string]: string } = {
-    'createdAt_desc': 'Plus récentes',
-    'createdAt_asc': 'Plus anciennes',
-    'total_desc': 'Montant (Élevé)',
-    'total_asc': 'Montant (Bas)',
-};
 
 const ITEMS_PER_PAGE = 15;
 
