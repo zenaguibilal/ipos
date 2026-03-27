@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -14,13 +15,18 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from "@/command"; // Fixed path
 import { Button } from '@/components/ui/button';
 import { ChevronsUpDown, Plus } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
-import { productService } from '@/services/product.service';
+import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
+
+/**
+ * @fileOverview Product Intake Combobox (API Wall Purified)
+ * تم تطهير المكون من أي خدمات قديمة. يتم جلب البيانات عبر API Wall مباشرة.
+ */
 
 interface ProductIntakeComboboxProps {
     onProductSelected: (product: Product) => void;
@@ -37,10 +43,11 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const data = await productService.getProducts();
+                // Updated: Direct API Call
+                const data = await api.get<Product[]>('products');
                 setProducts(data);
             } catch (error: any) {
-                toast.error("Impossible de charger les produits.", { description: error.message });
+                toast.error("Impossible de charger les produits.");
             }
         };
         fetchProducts();
@@ -48,7 +55,7 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
 
     const filteredProducts = useMemo(() => {
         if (!products) return [];
-        if (!debouncedSearchQuery) return products.slice(0, 50); // Limit initial list size
+        if (!debouncedSearchQuery) return products.slice(0, 50);
         const lowerQuery = debouncedSearchQuery.toLowerCase();
         return products.filter(p => 
             p.name.toLowerCase().includes(lowerQuery) ||
@@ -78,13 +85,13 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
                     variant="outline"
                     role="combobox"
                     aria-expanded={comboboxOpen}
-                    className="w-full justify-between"
+                    className="w-full justify-between h-12 rounded-xl luxury-glass"
                 >
                     Rechercher un produit ou en créer un nouveau...
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 luxury-glass">
                 <Command>
                     <CommandInput 
                         placeholder="Rechercher par nom ou code-barres..." 
@@ -114,9 +121,9 @@ export function ProductIntakeCombobox({ onProductSelected, onNewProductCreated }
                                     onSelect={() => handleSelect(product.uuid)}
                                 >
                                     <div>
-                                        <p>{product.name}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Stock: {product.quantity} | Prix Achat: {formatCurrency(product.purchasePrice)}
+                                        <p className="font-bold">{product.name}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase">
+                                            Stock: {product.quantity} {product.unite} | {formatCurrency(product.purchasePrice)}
                                         </p>
                                     </div>
                                 </CommandItem>

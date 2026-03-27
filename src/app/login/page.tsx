@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Eye, EyeOff, AlertCircle, LogIn, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { authService } from '@/services/auth.service';
+import { api } from '@/lib/api-client';
 import { useAppActions, useAppStore } from '@/stores/appStore';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import Image from 'next/image';
 
 /**
- * @fileOverview THE AUTH GATEWAY (API Wall Compliant)
+ * @fileOverview THE AUTH GATEWAY (API Wall Purified)
+ * تم تطهير الصفحة من أي خدمات عميل. الدخول يتم عبر جدار الحماية مباشرة.
  */
 
 export default function LoginPage() {
@@ -45,11 +46,12 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const newSession = await authService.signIn(email, password);
-            setSession(newSession);
-            toast.success("Synchronisation...");
+            // Updated: Direct API Wall Call
+            const sessionData = await api.post<any>('auth/login', { email, password });
+            setSession(sessionData);
+            toast.success("Authentification réussie. Synchronisation...");
         } catch (authError: any) {
-            setError(authError.message === 'Invalid login credentials' ? "Email ou mot de passe incorrect." : authError.message);
+            setError(authError.message === 'CREDENTIALS_REQUIRED' ? "Identifiants requis." : "Email ou mot de passe incorrect.");
             setIsLoading(false);
         }
     };
@@ -62,21 +64,21 @@ export default function LoginPage() {
                         <Image src="/icon.svg" alt="logo" width={56} height={56} priority />
                     </div>
                     <h1 className="text-4xl font-black text-primary tracking-tighter uppercase italic">iPOS</h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Hard API Wall Enforced</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60">Absolute Cloud Edition</p>
                 </div>
 
                 {loginSuccess ? (
                     <Card className="luxury-glass border-primary/20 text-center p-8 space-y-4 shadow-2xl">
                         <CheckCircle2 className="h-12 w-12 text-primary animate-bounce mx-auto" />
                         <h2 className="text-xl font-bold uppercase">Accès Accordé</h2>
-                        <p className="text-xs text-muted-foreground">Initializing Secure Session...</p>
+                        <p className="text-xs text-muted-foreground">Initialisation de la session sécurisée...</p>
                         <Loader2 className="h-5 w-5 animate-spin mx-auto text-primary/50" />
                     </Card>
                 ) : (
                     <Card className="luxury-glass border-white/5 shadow-2xl overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5 pb-6">
                             <CardTitle className="text-2xl font-black uppercase tracking-tight">Identification</CardTitle>
-                            <CardDescription className="text-xs font-medium">Terminal POS Intelligent</CardDescription>
+                            <CardDescription className="text-xs font-medium">Terminal POS Solaire • Autorité Sèche</CardDescription>
                         </CardHeader>
                         <form onSubmit={handleSignIn}>
                             <CardContent className="space-y-5 pt-8">

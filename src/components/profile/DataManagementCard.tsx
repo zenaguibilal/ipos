@@ -1,16 +1,22 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { backupService } from "@/services/backup.service";
 import type { FileObject } from '@supabase/storage-js';
-import { Loader2, Download, Upload, Trash2, AlertTriangle, FileClock, Eye, Database } from 'lucide-react';
+import { Loader2, Download, Upload, Trash2, FileClock, Eye, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ConfirmAlertDialog } from '../ui/ConfirmAlertDialog';
 import { BackupPreview } from './BackupPreview';
+import { api } from '@/lib/api-client';
+
+/**
+ * @fileOverview Data Management Card (API Wall Purified)
+ * تم استئصال backupService. كافة العمليات تتم عبر الجدار مباشرة.
+ */
 
 export function DataManagementCard() {
     const [backups, setBackups] = useState<FileObject[]>([]);
@@ -30,10 +36,10 @@ export function DataManagementCard() {
     const fetchBackups = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await backupService.listBackups();
+            const data = await api.get<any[]>('backup');
             setBackups(data);
         } catch (error: any) {
-            toast.error("Impossible de charger la liste des sauvegardes.");
+            toast.error("Impossible de charger les sauvegardes.");
         } finally {
             setIsLoading(false);
         }
@@ -46,11 +52,11 @@ export function DataManagementCard() {
     const handleCreateBackup = async () => {
         setIsCreating(true);
         try {
-            await backupService.createBackup();
+            await api.post('backup', {});
             toast.success("Sauvegarde créée avec succès.");
             fetchBackups();
         } catch (error: any) {
-            toast.error("Erreur lors de la création de la sauvegarde.");
+            toast.error("Erreur lors de la création.");
         } finally {
             setIsCreating(false);
         }
@@ -59,11 +65,11 @@ export function DataManagementCard() {
     const handlePreviewClick = async (name: string) => {
         setIsPreviewing(name);
         try {
-            const data = await backupService.getBackupData(name);
+            const data = await api.get(`backup/details?name=${name}`);
             setPreviewData(data);
             setIsPreviewOpen(true);
         } catch (error: any) {
-            toast.error("Échec de la lecture de la sauvegarde.");
+            toast.error("Échec de la lecture.");
         } finally {
             setIsPreviewing(null);
         }
@@ -77,22 +83,16 @@ export function DataManagementCard() {
     const handleConfirmRestore = async () => {
         if (!selectedBackupPath) return;
         setIsRestoring(selectedBackupPath);
-        const promise = backupService.restoreBackup(selectedBackupPath);
-        toast.promise(promise, {
-            loading: 'Restauration en cours... Veuillez ne pas fermer cette page.',
-            success: () => {
-                setIsRestoring(null);
-                return 'Restauration terminée avec succès. L\'application va se recharger.';
-            },
-            error: (err) => {
-                setIsRestoring(null);
-                return `Échec de la restauration: ${err.message}`;
-            },
-        });
         
-        promise.then(() => {
+        try {
+            toast.loading('Restauration en cours... Veuillez ne pas fermer cette page.');
+            await api.post('backup/restore', { name: selectedBackupPath });
+            toast.success('Restauration terminée. Redémarrage...');
             setTimeout(() => window.location.reload(), 2000);
-        });
+        } catch (err: any) {
+            toast.error(`Échec: ${err.message}`);
+            setIsRestoring(null);
+        }
     };
     
     const handleDeleteClick = (path: string) => {
@@ -104,9 +104,9 @@ export function DataManagementCard() {
         if (!selectedBackupPath) return;
         setIsDeleting(selectedBackupPath);
         try {
-            await backupService.deleteBackup(selectedBackupPath);
+            await api.delete(`backup?name=${selectedBackupPath}`);
             toast.success("Sauvegarde supprimée.");
-            setBackups(backups.filter(b => b.name !== selectedBackupPath?.split('/').pop()));
+            fetchBackups();
         } catch (error: any) {
              toast.error("Échec de la suppression.");
         } finally {
@@ -218,8 +218,8 @@ export function DataManagementCard() {
             <ConfirmAlertDialog
                 isOpen={isRestoreConfirmOpen}
                 onOpenChange={setIsRestoreConfirmOpen}
-                title="RESTAURATION"
-                description="Cette action va écraser vos données actuelles. Assurez-vous d'avoir une sauvegarde récente."
+                title="RESTAURATION SÉCURISÉE"
+                description="Cette action va écraser vos données actuelles. Assurez-vous d'avoir une sauvegarde récente avant de procéder."
                 onConfirm={handleConfirmRestore}
                 confirmText="Restaurer et redémarrer"
             />
@@ -228,7 +228,7 @@ export function DataManagementCard() {
                 isOpen={isDeleteConfirmOpen}
                 onOpenChange={setIsDeleteConfirmOpen}
                 title="Supprimer la sauvegarde ?"
-                description="Ce fichier sera supprimé définitivement du Cloud."
+                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action est irréversible."
                 onConfirm={handleConfirmDelete}
                 confirmText="Supprimer"
             />
