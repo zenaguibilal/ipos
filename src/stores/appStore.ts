@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import type { Session, User } from '@supabase/supabase-js';
-import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale } from '@/lib/types';
+import type { Cart, Customer, CompanyProfile, Product, CartItem, Sale, StockIntake, ProductReturn } from '@/lib/types';
 import { toast } from 'sonner';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
@@ -109,7 +109,7 @@ export const useAppStore = create<AppState>()(
                 },
                 signOut: async () => {
                     await authService.signOut();
-                    set({ session: null, user: null, profile: null });
+                    set({ session: null, user: null, profile: null, carts: [initialCart], activeCartId: defaultCartId });
                 },
                 fetchProfile: async () => {
                     try {
@@ -117,7 +117,7 @@ export const useAppStore = create<AppState>()(
                         const profile = await profileService.getProfile();
                         set({ profile });
                     } catch (error: any) {
-                        toast.error("Profil non trouvé.");
+                        toast.error("Échec du chargement du profil.");
                     } finally {
                         set({ isSettingsLoading: false });
                     }
@@ -130,22 +130,20 @@ export const useAppStore = create<AppState>()(
                     const cart = state.carts.find(c => c.id === state.activeCartId);
                     if (!cart) return;
                     
-                    const existing = cart.items.find(i => i.uuid === product.uuid);
-                    const currentInCart = existing ? existing.cartQuantity : 0;
-                    
-                    // ENTERPRISE STOCK VALIDATION (accounts for all carts)
-                    const totalInAllCaniers = state.carts.reduce((acc, c) => {
+                    // Stock Validation across ALL open carts
+                    const totalInAllCarts = state.carts.reduce((acc, c) => {
                         const item = c.items.find(i => i.uuid === product.uuid);
                         return acc + (item ? item.cartQuantity : 0);
                     }, 0);
 
                     if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
-                        if ((totalInAllCaniers + quantity) > product.quantity) {
-                            toast.error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity - totalInAllCaniers}`);
+                        if ((totalInAllCarts + quantity) > product.quantity) {
+                            toast.error(`Stock insuffisant pour ${product.name}. Max: ${product.quantity - totalInAllCarts}`);
                             return;
                         }
                     }
                     
+                    const existing = cart.items.find(i => i.uuid === product.uuid);
                     if (existing) {
                         existing.cartQuantity += quantity;
                         existing.flash = true;
@@ -160,17 +158,16 @@ export const useAppStore = create<AppState>()(
                     if (item) {
                         if (qty <= 0) {
                             cart.items = cart.items.filter(i => i.uuid !== uuid);
-                        } else if (!item.uuid.startsWith('custom-') && item.uuid !== 'BREAD_PRODUCT') {
-                            const otherCartsQty = state.carts.filter(c => c.id !== state.activeCartId)
+                        } else {
+                            const otherCartsQty = state.carts
+                                .filter(c => c.id !== state.activeCartId)
                                 .reduce((acc, c) => acc + (c.items.find(i => i.uuid === uuid)?.cartQuantity || 0), 0);
                             
-                            if ((qty + otherCartsQty) > item.quantity) {
-                                toast.error(`Stock insuffisant. Maximum: ${item.quantity - otherCartsQty}`);
+                            if (!item.uuid.startsWith('custom-') && item.uuid !== 'BREAD_PRODUCT' && (qty + otherCartsQty) > item.quantity) {
+                                toast.error(`Max stock atteint: ${item.quantity - otherCartsQty}`);
                             } else {
                                 item.cartQuantity = qty;
                             }
-                        } else {
-                            item.cartQuantity = qty;
                         }
                     }
                 })),
@@ -238,6 +235,7 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
+                        // Atomically adjust stock
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
@@ -249,10 +247,10 @@ export const useAppStore = create<AppState>()(
                         }
                         
                         state.actions.clearCart();
-                        toast.success("Vente finalisée avec succès !");
+                        toast.success("Vente finalisée !");
                         return true;
                     } catch (e: any) {
-                        toast.error(e.message || "Erreur lors de la finalisation.");
+                        toast.error(e.message || "Erreur critique lors de la vente.");
                         return false;
                     }
                 },
@@ -265,15 +263,10 @@ export const useAppStore = create<AppState>()(
                                 await inventoryService.adjustStock(i.productUuid, i.quantity, 'return', ret.uuid);
                             }
                         }
-                        if (ret.customerUuid) {
-                            await customerService.recalculateCustomerStatus(ret.customerUuid);
-                        }
-                        toast.success("Retour enregistré avec succès.");
+                        if (ret.customerUuid) await customerService.recalculateCustomerStatus(ret.customerUuid);
+                        toast.success("Retour enregistré.");
                         return true;
-                    } catch (e: any) { 
-                        toast.error(e.message); 
-                        return false; 
-                    }
+                    } catch (e: any) { toast.error(e.message); return false; }
                 },
                 processStockIntake: async (data) => {
                     try {
@@ -295,32 +288,21 @@ export const useAppStore = create<AppState>()(
                                 const qty = i.quantity - i.quantityDamaged;
                                 if (qty > 0) await inventoryService.adjustStock(uuid, qty, 'stock_intake');
                                 finalItems.push({ 
-                                    productUuid: uuid, 
-                                    productName: i.name, 
-                                    quantityReceived: i.quantity, 
-                                    quantityDamaged: i.quantityDamaged, 
-                                    purchasePrice: i.purchasePrice, 
-                                    costPrice: cost 
+                                    productUuid: uuid, productName: i.name, quantityReceived: i.quantity, 
+                                    quantityDamaged: i.quantityDamaged, purchasePrice: i.purchasePrice, costPrice: cost 
                                 });
                             }
                         }
                         
                         await stockService.addStockIntake({ 
-                            supplierUuid: sup.uuid, 
-                            invoiceNumber: data.invoiceNumber, 
-                            invoiceDate: data.invoiceDate, 
-                            items: finalItems, 
-                            totalValue: data.totalValue, 
-                            transportFees: data.transportFees 
+                            supplierUuid: sup.uuid, invoiceNumber: data.invoiceNumber, invoiceDate: data.invoiceDate, 
+                            items: finalItems, totalValue: data.totalValue, transportFees: data.transportFees 
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Réception de stock enregistrée.");
+                        toast.success("Stock mis à jour.");
                         return true;
-                    } catch (e: any) { 
-                        toast.error(e.message); 
-                        return false; 
-                    }
+                    } catch (e: any) { toast.error(e.message); return false; }
                 },
                 setProductViewMode: (m) => set({ productViewMode: m }),
                 setStockViewMode: (m) => set({ stockViewMode: m }),
@@ -332,17 +314,13 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-enterprise-v1',
+            name: 'ipos-enterprise-storage',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
-                carts: s.carts, 
-                activeCartId: s.activeCartId, 
-                productViewMode: s.productViewMode, 
-                stockViewMode: s.stockViewMode, 
-                customerViewMode: s.customerViewMode, 
-                supplierViewMode: s.supplierViewMode, 
-                salesHistoryViewMode: s.salesHistoryViewMode, 
-                returnViewMode: s.returnViewMode, 
+                carts: s.carts, activeCartId: s.activeCartId, 
+                productViewMode: s.productViewMode, stockViewMode: s.stockViewMode, 
+                customerViewMode: s.customerViewMode, supplierViewMode: s.supplierViewMode, 
+                salesHistoryViewMode: s.salesHistoryViewMode, returnViewMode: s.returnViewMode, 
                 expenseViewMode: s.expenseViewMode 
             }),
             onRehydrateStorage: () => (s) => { if (s) s.sessionLoading = false; }
