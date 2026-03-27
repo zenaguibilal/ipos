@@ -25,35 +25,39 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         
         // 2. Comprehensive Continuous Purification Protocol (MERCILESS)
         const executeTotalPurge = () => {
-            // Storage Wipe
-            localStorage.clear();
-            sessionStorage.clear();
-            
-            // Database Wipe (IndexedDB)
-            if (window.indexedDB && window.indexedDB.databases) {
-                window.indexedDB.databases().then(dbs => {
-                    dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
-                });
-            }
+            try {
+                // Storage Wipe
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Database Wipe (IndexedDB)
+                if (window.indexedDB && window.indexedDB.databases) {
+                    window.indexedDB.databases().then(dbs => {
+                        dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
+                    });
+                }
 
-            // Cache API Wipe (Total Network Memory Erasure)
-            if ('caches' in window) {
-                caches.keys().then((names) => {
-                    for (const name of names) caches.delete(name);
-                });
-            }
+                // Cache API Wipe (Total Network Memory Erasure)
+                if ('caches' in window) {
+                    caches.keys().then((names) => {
+                        for (const name of names) caches.delete(name);
+                    });
+                }
 
-            // Cookie Wipe (Eradicate Session Persistence)
-            const cookies = document.cookie.split(";");
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i];
-                const eqPos = cookie.indexOf("=");
-                const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
-                document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                // Cookie Wipe (Eradicate Session Persistence)
+                const cookies = document.cookie.split(";");
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i];
+                    const eqPos = cookie.indexOf("=");
+                    const name = eqPos > -1 ? cookie.substring(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                }
+            } catch (e) {
+                // Fail silently but ensure execution continues
             }
         };
 
-        // Execute immediately and monitor every 2 seconds for any violation of the Cloud-Only principle
+        // Execute immediately and monitor every 2 seconds
         executeTotalPurge();
         const purgeInterval = setInterval(executeTotalPurge, 2000);
 
