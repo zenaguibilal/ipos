@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { backupService } from "@/services/backup.service";
 import type { FileObject } from '@supabase/storage-js';
-import { Loader2, Download, Upload, Trash2, AlertTriangle, FileClock, Eye, DatabaseBackup } from 'lucide-react';
+import { Loader2, Download, Upload, Trash2, AlertTriangle, FileClock, Eye, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { ConfirmAlertDialog } from '../ui/ConfirmAlertDialog';
@@ -121,7 +120,7 @@ export function DataManagementCard() {
             <Card className="luxury-glass border-white/5 overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-white/5">
                     <CardTitle className="flex items-center gap-2 font-black uppercase tracking-tight">
-                        <DatabaseBackup className="h-5 w-5 text-primary" />
+                        <Database className="h-5 w-5 text-primary" />
                         Coffre-fort des Données
                     </CardTitle>
                     <CardDescription>
@@ -240,7 +239,7 @@ export function DataManagementCard() {
                 isOpen={isDeleteConfirmOpen}
                 onOpenChange={setIsDeleteConfirmOpen}
                 title="Supprimer la sauvegarde ?"
-                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action n'affecte pas vos données en cours d'utilisation."
+                description="Ce fichier sera supprimé définitivement du Cloud iPOS. Cette action n'affectه pas vos données en cours d'utilisation."
                 onConfirm={handleConfirmDelete}
                 confirmText="Supprimer définitivement"
             />

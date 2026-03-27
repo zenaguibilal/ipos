@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -9,9 +8,8 @@ import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { useAppStore, useIsManagerOrAdmin } from "@/stores/appStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, CloudCheck, ShieldAlert, Wifi, Monitor, Cpu, Fingerprint, Globe } from "lucide-react";
+import { User, Building2, Database, Settings2, LogOut, ShieldCheck, Mail, BadgeCheck, LayoutDashboard, Activity, Cloud, ShieldAlert, Wifi, Monitor, Cpu, Fingerprint, Globe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -21,7 +19,6 @@ export default function ProfilePage() {
     const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...' });
 
     useEffect(() => {
-        // Safe access to window/navigator after hydration
         const ua = window.navigator.userAgent;
         let os = "Inconnu";
         if (ua.indexOf("Win") !== -1) os = "Windows";
@@ -91,7 +88,6 @@ export default function ProfilePage() {
                     </TabsTrigger>
                 </TabsList>
 
-                {/* Tab: Account Info */}
                 <TabsContent value="account" className="mt-6 space-y-6 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
                     <Card className="luxury-glass border-white/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5 pb-6">
@@ -130,7 +126,7 @@ export default function ProfilePage() {
                                         <p className="text-sm font-bold">Session active</p>
                                     </div>
                                     <div className="p-4 rounded-2xl bg-muted/20 border border-white/5 flex flex-col items-center text-center group hover:border-primary/30 transition-all">
-                                        <CloudCheck className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
+                                        <Cloud className="h-6 w-6 text-primary mb-2 opacity-50 group-hover:opacity-100 transition-opacity" />
                                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1">Synchronisation</p>
                                         <p className="text-sm font-bold">Temps réel Cloud activé</p>
                                     </div>
@@ -188,7 +184,6 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
 
-                {/* Tab: Company Info */}
                 <TabsContent value="company" className="mt-6 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
                     <Card className="luxury-glass border-white/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5">
@@ -204,7 +199,6 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
 
-                {/* Tab: App Settings */}
                 <TabsContent value="settings" className="mt-6 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
                     <Card className="luxury-glass border-white/5 overflow-hidden">
                         <CardHeader className="bg-primary/5 border-b border-white/5">
@@ -220,7 +214,6 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
 
-                {/* Tab: Data Management */}
                 <TabsContent value="data" className="mt-6 animate-in fade-in-50 duration-500 slide-in-from-bottom-2">
                     {isManagerOrAdmin ? (
                         <DataManagementCard />

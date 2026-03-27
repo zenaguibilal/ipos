@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Edit, UserPlus, Phone, MapPin, Tag, Wheat } from 'lucide-react';
+import { Edit, UserPlus, Phone, MapPin, Tag, Wheat, Sparkles } from 'lucide-react';
 import { BreadClientForm } from './BreadClientForm';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -114,7 +113,7 @@ export function BreadClientList({ onListChange }: BreadClientListProps) {
                                     <Tag className="h-12 w-12 mx-auto mb-4 opacity-20" />
                                     <p className="font-semibold text-lg">Aucun abonné configuré</p>
                                     <p className="text-sm max-w-xs mx-auto mt-2 opacity-70">
-                                        Allez dans la gestion des clients et activez l'option "Client Pain" pour commencer.
+                                        Allez dans la gestion des clients et activeز l'option "Client Pain" pour commencer.
                                     </p>
                                 </div>
                             )}
