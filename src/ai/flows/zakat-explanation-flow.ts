@@ -1,3 +1,7 @@
 
-// AI Module Obliterated
-export const explainZakat = async () => { throw new Error("AI_DISABLED"); };
+/**
+ * @fileOverview Zakat Explanation Flow - DEACTIVATED
+ */
+export const explainZakat = async () => { 
+    throw new Error("AI_MODULE_PERMANENTLY_REMOVED"); 
+};

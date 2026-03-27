@@ -1,1 +1,5 @@
-export const AIStockAnalysisDialog = () => null; // OBLITERATED
+
+/**
+ * @fileOverview AI Dialog - OBLITERATED
+ */
+export const AIStockAnalysisDialog = () => null;
