@@ -31,9 +31,9 @@ const StatCard = ({ title, value, icon: Icon, colorClass }: { title: string, val
 
 export default function CostingPage() {
     const [recipes, setRecipes] = useState<Recipe[] | undefined>(undefined);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
     const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
 
     const fetchRecipes = useCallback(async () => {
@@ -52,7 +52,8 @@ export default function CostingPage() {
 
     const stats = useMemo(() => {
         if (!recipes || recipes.length === 0) return null;
-        const mostProfitable = [...recipes].sort((a, b) => (b.suggestedPrice - b.unitCost) - (a.suggestedPrice - a.unitCost))[0];
+        const sorted = [...recipes].sort((a, b) => (b.suggestedPrice - b.unitCost) - (a.suggestedPrice - a.unitCost));
+        const mostProfitable = sorted[0];
         const avgUnitCost = recipes.reduce((sum, r) => sum + r.unitCost, 0) / recipes.length;
         const lowMarginRecipes = recipes.filter(r => r.targetMargin < 20).length;
 
@@ -61,12 +62,12 @@ export default function CostingPage() {
 
     const handleEdit = (recipe: Recipe) => {
         setSelectedRecipe(recipe);
-        setIsDialogOpen(true);
+        setIsFormDialogOpen(true);
     };
 
     const handleDeleteClick = (recipe: Recipe) => {
         setRecipeToDelete(recipe);
-        setIsDeleteDialogOpen(true);
+        setIsDeleteConfirmOpen(true);
     };
 
     const confirmDelete = async () => {
@@ -88,7 +89,7 @@ export default function CostingPage() {
                 title="Ingénierie des Coûts" 
                 description="Maîtrisez vos marges en calculant le prix de revient exact de vos produits transformés."
             >
-                <Button onClick={() => { setSelectedRecipe(null); setIsDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+                <Button onClick={() => { setSelectedRecipe(null); setIsFormDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
                     <Plus className="mr-2 h-4 w-4" /> Nouvelle Recette
                 </Button>
             </PageHeader>
@@ -126,7 +127,7 @@ export default function CostingPage() {
                     title="Aucune fiche technique" 
                     description="Commencez par créer une fiche technique pour calculer le coût réel de vos produits fabriqués."
                 >
-                    <Button onClick={() => setIsDialogOpen(true)}>Créer ma première fiche</Button>
+                    <Button onClick={() => setIsFormDialogOpen(true)}>Créer ma première fiche</Button>
                 </EmptyState>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -186,15 +187,15 @@ export default function CostingPage() {
             )}
 
             <RecipeDialog 
-                isOpen={isDialogOpen} 
-                onOpenChange={setIsDialogOpen} 
+                isOpen={isFormDialogOpen} 
+                onOpenChange={setIsFormDialogOpen} 
                 recipe={selectedRecipe}
                 onSuccess={fetchRecipes}
             />
 
             <ConfirmAlertDialog 
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
+                isOpen={isDeleteConfirmOpen}
+                onOpenChange={setIsDeleteConfirmOpen}
                 title="Supprimer la fiche technique ?"
                 description={`Voulez-vous vraiment supprimer la recette "${recipeToDelete?.name}" ? Cette action est irréversible.`}
                 onConfirm={confirmDelete}

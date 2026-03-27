@@ -1,9 +1,8 @@
-
 'use client';
 
 /**
  * @fileOverview Application State Manager (Enterprise Reconstruction)
- * Hardened for Stock Integrity, Cross-Cart Validation, and Type Safety.
+ * Optimized for Stock Integrity, Cross-Cart Validation, and Serialized Size Efficiency.
  */
 
 import { create } from 'zustand';
@@ -396,22 +395,33 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-enterprise-storage-v2',
+            name: 'ipos-enterprise-storage-v3',
             storage: createJSONStorage(() => localStorage),
-            partialize: (s) => ({ 
-                carts: s.carts, 
-                activeCartId: s.activeCartId, 
-                productViewMode: s.productViewMode, 
-                stockViewMode: s.stockViewMode, 
-                customerViewMode: s.customerViewMode, 
-                supplierViewMode: s.supplierViewMode, 
-                salesHistoryViewMode: s.salesHistoryViewMode, 
-                returnViewMode: s.returnViewMode, 
-                expenseViewMode: s.expenseViewMode 
+            // ONLY persist non-volumetric data to prevent "big strings" webpack/cache warnings
+            // Volatile items in carts are stripped of heavy object fields
+            partialize: (state) => ({ 
+                activeCartId: state.activeCartId,
+                productViewMode: state.productViewMode,
+                stockViewMode: state.stockViewMode,
+                customerViewMode: state.customerViewMode,
+                supplierViewMode: state.supplierViewMode,
+                salesHistoryViewMode: state.salesHistoryViewMode,
+                returnViewMode: state.returnViewMode,
+                expenseViewMode: state.expenseViewMode,
+                carts: state.carts.map(c => ({
+                    ...c,
+                    items: c.items.map(i => ({
+                        uuid: i.uuid,
+                        name: i.name,
+                        price: i.price,
+                        cartQuantity: i.cartQuantity,
+                        category: i.category,
+                        purchasePrice: i.purchasePrice
+                    }))
+                }))
             }),
             onRehydrateStorage: () => (state) => {
-                // Guaranteed toggle of loading state regardless of rehydration content
-                useAppStore.setState({ sessionLoading: false });
+                if (state) state.sessionLoading = false;
             }
         }
     )

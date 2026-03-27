@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Professional Zakat Financial Assessment Tool
- * Optimized for professional printing and precise calculation.
+ * Optimized for performance and strictly typed calculation logic.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -25,7 +25,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ResponsiveContainer, PieChart as RePieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip } from 'recharts';
 import type { SavedZakatCalculation } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -271,7 +271,7 @@ export default function ZakatPage() {
                                     </p>
                                     <div className="h-48 w-full">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <RePieChart>
+                                            <PieChart>
                                                 <Pie 
                                                     data={chartData} 
                                                     innerRadius={60} 
@@ -283,7 +283,7 @@ export default function ZakatPage() {
                                                     {chartData.map((e, i) => <Cell key={i} fill={e.color} />)}
                                                 </Pie>
                                                 <ReTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                                            </RePieChart>
+                                            </PieChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </CardContent>
