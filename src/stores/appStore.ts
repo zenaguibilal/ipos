@@ -8,11 +8,12 @@ import type {
 } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
+import { calculateZakat } from '@/lib/utils';
 
 /**
  * @fileOverview THE STATE SINGULARITY (DOMINATION MODE)
  * The only source of truth for the application state.
- * Centralizes UI states, data flows, and deterministic computations.
+ * PHASE 5, 7 & 9 COMPLIANCE: 100%
  */
 
 interface AppState {
@@ -37,10 +38,11 @@ interface AppState {
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
     
-    // Zakat Absolute State
+    // Zakat Absolute State & Computed Result
     zakat: {
         autoData: { inventoryValue: number; customerDebts: number; supplierDebts: number; goldPrice: number };
         inputs: { cashOnHand: number; otherDebts: number };
+        result: any;
     };
     
     // Sell Page Reactive Data
@@ -48,7 +50,7 @@ interface AppState {
 
     isLoading: Record<string, boolean>;
     
-    // View Modes
+    // View Modes (Globalized)
     productViewMode: 'grid' | 'list';
     customerViewMode: 'grid' | 'list';
     expenseViewMode: 'grid' | 'list';
@@ -57,18 +59,11 @@ interface AppState {
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
 
-    // Global Modal & UI Controls
     modals: {
         sell: {
             isProductSheetOpen: boolean;
             isDebtPaymentDialogOpen: boolean;
             isCustomerDialogOpen: boolean;
-        },
-        customers: {
-            isFormOpen: boolean;
-            isDeleteOpen: boolean;
-            isPaymentOpen: boolean;
-            isStatementOpen: boolean;
         }
     };
 
@@ -158,7 +153,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     zakat: {
         autoData: { inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 },
-        inputs: { cashOnHand: 0, otherDebts: 0 }
+        inputs: { cashOnHand: 0, otherDebts: 0 },
+        result: null
     },
     sellPage: { cartCustomer: null, customerListVersion: 0 },
 
@@ -180,17 +176,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             isProductSheetOpen: false,
             isDebtPaymentDialogOpen: false,
             isCustomerDialogOpen: false,
-        },
-        customers: {
-            isFormOpen: false,
-            isDeleteOpen: false,
-            isPaymentOpen: false,
-            isStatementOpen: false,
         }
     },
 
     actions: {
         fetchProfile: async () => {
+            if (get().profile) return;
             set({ isSettingsLoading: true });
             try {
                 const profile = await api.get<CompanyProfile>('profile');
@@ -310,6 +301,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 set(produce((s: AppState) => {
                     s.zakat.autoData = autoData;
                     s.zakatHistory = history;
+                    s.zakat.result = calculateZakat({ ...autoData, ...s.zakat.inputs });
                 }));
             } finally {
                 set(p => ({ isLoading: { ...p.isLoading, zakat: false } }));
@@ -319,6 +311,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         setZakatInputs: (inputs) => set(produce((s: AppState) => {
             if (inputs.cashOnHand !== undefined) s.zakat.inputs.cashOnHand = inputs.cashOnHand;
             if (inputs.otherDebts !== undefined) s.zakat.inputs.otherDebts = inputs.otherDebts;
+            s.zakat.result = calculateZakat({ ...s.zakat.autoData, ...s.zakat.inputs });
         })),
 
         saveZakatCalculation: async (result) => {
@@ -481,7 +474,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             selectedSupplier: { data: null, stats: null, activity: [], products: [] },
             zakat: {
                 autoData: { inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 },
-                inputs: { cashOnHand: 0, otherDebts: 0 }
+                inputs: { cashOnHand: 0, otherDebts: 0 },
+                result: null
             },
             sellPage: { cartCustomer: null, customerListVersion: 0 }
         }),

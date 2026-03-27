@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, cn, calculateZakat } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { Printer, RefreshCw, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,15 +15,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
  * @fileOverview Zakat Calculator Page (Deterministic Singularity)
- * Phase 5 & 7 Compliance: No local calculation or data storage.
+ * Phase 7 & 11 Compliance: Components are for RENDERING ONLY.
+ * Computation is derived from the Store.
  */
 
 export default function ZakatPage() {
-    const { history, isLoading, zakatData, zakatInputs } = useAppStore(state => ({
+    const { history, isLoading, zakatData, zakatInputs, result } = useAppStore(state => ({
         history: state.zakatHistory,
         isLoading: state.isLoading.zakat,
         zakatData: state.zakat.autoData,
-        zakatInputs: state.zakat.inputs
+        zakatInputs: state.zakat.inputs,
+        result: state.zakat.result
     }));
     const { refreshZakatData, setZakatInputs, saveZakatCalculation } = useAppActions();
 
@@ -31,19 +33,17 @@ export default function ZakatPage() {
 
     useEffect(() => { refreshZakatData(); }, [refreshZakatData]);
 
-    const result = useMemo(() => calculateZakat({ 
-        ...zakatData, 
-        cashOnHand: zakatInputs.cashOnHand, 
-        otherDebts: zakatInputs.otherDebts 
-    }), [zakatData, zakatInputs]);
-
     const handleSave = async () => {
+        if (!result) return;
         setIsSaving(true);
         try {
             await saveZakatCalculation(result);
             toast.success("Point de calcul archivé.");
-        } catch (error) { toast.error("Échec de l'archivage."); }
-        finally { setIsSaving(false); }
+        } catch (error) { 
+            toast.error("Échec de l'archivage."); 
+        } finally { 
+            setIsSaving(false); 
+        }
     };
 
     if (isLoading && history.length === 0) return <div className="p-6"><Skeleton className="h-12 w-1/3 mb-6"/><div className="grid grid-cols-3 gap-6"><Skeleton className="h-64"/><Skeleton className="h-64"/><Skeleton className="h-64"/></div></div>;
@@ -103,30 +103,32 @@ export default function ZakatPage() {
                             </CardContent>
                         </Card>
 
-                        <Card className={cn("luxury-glass border-2 overflow-hidden transition-all duration-700", result.isNisabReached ? "border-chart-quaternary bg-chart-quaternary/5" : "border-white/5 bg-muted/10")}>
-                            <CardHeader className="text-center bg-white/5 pb-6">
-                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Résultat de l'Évaluation</CardTitle>
-                                <p className="text-4xl font-black tracking-tighter">{formatCurrency(result.zakatBase)}</p>
-                                <p className="text-[10px] mt-2 font-bold uppercase opacity-60">Base Imposable Nette</p>
-                            </CardHeader>
-                            <CardContent className="text-center pt-8 space-y-4">
-                                <div>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Nisab Actuel (85g)</p>
-                                    <p className="text-lg font-bold">{formatCurrency(result.nisab)}</p>
-                                </div>
-                                <div className="h-px bg-white/5 w-1/2 mx-auto" />
-                                <div>
-                                    <p className="text-xs font-black text-chart-quaternary uppercase tracking-widest mb-1">Montant à Verser (2.5%)</p>
-                                    <p className="text-4xl font-black text-chart-quaternary">{formatCurrency(result.zakatAmount)}</p>
-                                </div>
-                            </CardContent>
-                            <CardFooter className="p-6 border-t border-white/5">
-                                <Button onClick={handleSave} disabled={isSaving || !result.isNisabReached} className="w-full h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest gap-2 bg-chart-quaternary hover:bg-chart-quaternary/90 shadow-lg shadow-chart-quaternary/20">
-                                    {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : <Save className="h-4 w-4"/>} 
-                                    Archiver le Point
-                                </Button>
-                            </CardFooter>
-                        </Card>
+                        {result && (
+                            <Card className={cn("luxury-glass border-2 overflow-hidden transition-all duration-700", result.isNisabReached ? "border-chart-quaternary bg-chart-quaternary/5" : "border-white/5 bg-muted/10")}>
+                                <CardHeader className="text-center bg-white/5 pb-6">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">Résultat de l'Évaluation</CardTitle>
+                                    <p className="text-4xl font-black tracking-tighter">{formatCurrency(result.zakatBase)}</p>
+                                    <p className="text-[10px] mt-2 font-bold uppercase opacity-60">Base Imposable Nette</p>
+                                </CardHeader>
+                                <CardContent className="text-center pt-8 space-y-4">
+                                    <div>
+                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Nisab Actuel (85g)</p>
+                                        <p className="text-lg font-bold">{formatCurrency(result.nisab)}</p>
+                                    </div>
+                                    <div className="h-px bg-white/5 w-1/2 mx-auto" />
+                                    <div>
+                                        <p className="text-xs font-black text-chart-quaternary uppercase tracking-widest mb-1">Montant à Verser (2.5%)</p>
+                                        <p className="text-4xl font-black text-chart-quaternary">{formatCurrency(result.zakatAmount)}</p>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="p-6 border-t border-white/5">
+                                    <Button onClick={handleSave} disabled={isSaving || !result.isNisabReached} className="w-full h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest gap-2 bg-chart-quaternary hover:bg-chart-quaternary/90 shadow-lg shadow-chart-quaternary/20">
+                                        {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : <Save className="h-4 w-4"/>} 
+                                        Archiver le Point
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        )}
                     </div>
                 </TabsContent>
 
