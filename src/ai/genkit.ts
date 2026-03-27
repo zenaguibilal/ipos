@@ -1,14 +1,5 @@
-import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
-
 /**
- * @fileOverview THE AI ENGINE (Absolute Sovereign Instance)
+ * @fileOverview THE AI ENGINE (OBLITERATED)
+ * AI Functionality has been permanently removed as per user request.
  */
-
-export const ai = genkit({
-  plugins: [
-    googleAI({
-      apiKey: process.env.GOOGLE_GENAI_API_KEY,
-    }),
-  ],
-});
+export const ai = null;

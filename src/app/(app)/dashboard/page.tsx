@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import type { DashboardData } from '@/lib/types';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Users, CreditCard, Archive, RefreshCw, Sparkles, BrainCircuit, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, CreditCard, Archive, RefreshCw } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -16,7 +16,6 @@ import Link from 'next/link';
 import { ResponsiveContainer, AreaChart, XAxis, YAxis, Tooltip, Area, CartesianGrid } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveIsGood = true }: { title: string, value: string, icon: React.ElementType, change?: number, isLoading: boolean, href?: string, positiveIsGood?: boolean }) => {
     const cardContent = (
@@ -56,10 +55,6 @@ export default function DashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
-    // AI State
-    const [aiPrediction, setAiPrediction] = useState<any>(null);
-    const [isAiLoading, setIsAiLoading] = useState(false);
-    
     const fetchData = useCallback(async (from: Date, to: Date) => {
         setIsLoading(true);
         try {
@@ -72,19 +67,6 @@ export default function DashboardPage() {
             setIsLoading(false);
         }
     }, []);
-
-    const fetchAiPrediction = async () => {
-        setIsAiLoading(true);
-        try {
-            const result = await api.post<any>('ai/predict-stock', {});
-            setAiPrediction(result);
-            toast.success("Analyse IA terminée.");
-        } catch (e) {
-            toast.error("Impossible de générer l'analyse IA.");
-        } finally {
-            setIsAiLoading(false);
-        }
-    };
 
     useEffect(() => {
         if (isMounted && dateRange?.from && dateRange?.to) {
@@ -142,54 +124,6 @@ export default function DashboardPage() {
                                         <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" fill="url(#colorRev)" />
                                     </AreaChart>
                                 </ResponsiveContainer>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    <Card className="luxury-glass border-primary/20 bg-primary/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-6 opacity-10">
-                            <BrainCircuit className="h-24 w-24 text-primary" />
-                        </div>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                    <Sparkles className="h-5 w-5 text-primary" />
-                                    Souveraineté Prédictive (IA)
-                                </CardTitle>
-                                <Button onClick={fetchAiPrediction} disabled={isAiLoading} size="sm" className="bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30">
-                                    {isAiLoading ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <BrainCircuit className="h-4 w-4 mr-2" />}
-                                    Générer Analyse
-                                </Button>
-                            </div>
-                            <CardDescription>Anticipation des ruptures de stock basée على l'historique des ventes.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {!aiPrediction ? (
-                                <div className="text-center py-12 text-muted-foreground italic border-2 border-dashed rounded-2xl border-white/5">
-                                    Cliquez sur "Générer Analyse" pour activer l'intelligence prédictive.
-                                </div>
-                            ) : (
-                                <div className="space-y-6 animate-in fade-in duration-700">
-                                    <p className="text-sm font-medium leading-relaxed bg-background/40 p-4 rounded-xl border border-white/5">
-                                        {aiPrediction.summary}
-                                    </p>
-                                    <div className="grid sm:grid-cols-2 gap-4">
-                                        {aiPrediction.alerts.map((alert: any, i: number) => (
-                                            <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
-                                                <AlertTriangle className={cn("h-5 w-5 mt-0.5", alert.riskLevel === 'CRITICAL' ? 'text-destructive' : 'text-orange-400')} />
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <p className="font-bold text-sm">{alert.productName}</p>
-                                                        <Badge variant="outline" className="text-[8px] h-4 uppercase">
-                                                            {alert.predictedDepletionDays} j restants
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-[11px] text-muted-foreground leading-snug">{alert.advice}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
                             )}
                         </CardContent>
                     </Card>

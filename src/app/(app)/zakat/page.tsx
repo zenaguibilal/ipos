@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api-client';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Coins, Printer, RefreshCw, HandHelping, Save, Loader2, Sparkles, BrainCircuit, CheckCircle2 } from 'lucide-react';
+import { Printer, RefreshCw, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, useAppActions } from '@/stores/appStore';
@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ZakatCalculation } from '@/lib/types';
 
 /**
- * @fileOverview Zakat Calculator Page (State Singularity Enforcement)
+ * @fileOverview Zakat Calculator Page (Pure Deterministic - No AI)
  */
 
 const calculateZakat = (data: any): ZakatCalculation => {
@@ -37,9 +37,6 @@ export default function ZakatPage() {
 
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    
-    const [aiExplanation, setAiExplanation] = useState<any>(null);
-    const [isAiLoading, setIsAiLoading] = useState(false);
     
     const [cashOnHand, setCashOnHand] = useState<number>(0);
     const [otherDebts, setOtherDebts] = useState<number>(0);
@@ -63,30 +60,6 @@ export default function ZakatPage() {
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const result = useMemo(() => calculateZakat({ ...autoData, cashOnHand, otherDebts }), [autoData, cashOnHand, otherDebts]);
-
-    const fetchAiExplanation = async () => {
-        setIsAiLoading(true);
-        try {
-            const data = {
-                zakatBase: result.zakatBase,
-                zakatAmount: result.zakatAmount,
-                nisab: result.nisab,
-                details: {
-                    inventoryValue: autoData.inventoryValue,
-                    cashOnHand,
-                    customerDebts: autoData.customerDebts,
-                    supplierDebts: autoData.supplierDebts
-                }
-            };
-            const explanation = await api.post<any>('ai/explain-zakat', data);
-            setAiExplanation(explanation);
-            toast.success("Consultation IA générée.");
-        } catch (e) {
-            toast.error("Impossible de générer l'explication IA.");
-        } finally {
-            setIsAiLoading(false);
-        }
-    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -162,62 +135,14 @@ export default function ZakatPage() {
                                     <p className="text-4xl font-black text-chart-quaternary">{formatCurrency(result.zakatAmount)}</p>
                                 </div>
                             </CardContent>
-                            <CardFooter className="flex flex-col gap-2 p-6 border-t border-white/5">
+                            <CardFooter className="p-6 border-t border-white/5">
                                 <Button onClick={handleSave} disabled={isSaving || !result.isNisabReached} className="w-full h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest gap-2">
                                     {isSaving ? <Loader2 className="animate-spin h-4 w-4"/> : <Save className="h-4 w-4"/>} 
                                     Archiver le Point
                                 </Button>
-                                <Button variant="outline" onClick={fetchAiExplanation} disabled={isAiLoading || !result.isNisabReached} className="w-full h-12 rounded-xl font-bold uppercase text-[10px] tracking-widest gap-2 luxury-glass border-primary/20 text-primary">
-                                    {isAiLoading ? <Loader2 className="animate-spin h-4 w-4"/> : <Sparkles className="h-4 w-4"/>} 
-                                    Conseil IA Souverain
-                                </Button>
                             </CardFooter>
                         </Card>
                     </div>
-
-                    {aiExplanation && (
-                        <Card className="luxury-glass border-primary/30 bg-primary/5 animate-in slide-in-from-bottom-4 duration-700">
-                            <CardHeader className="flex flex-row items-center gap-4">
-                                <div className="p-3 rounded-2xl bg-primary/20">
-                                    <BrainCircuit className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-lg font-black uppercase tracking-tight">Analyse et Conseils du Consultant IA</CardTitle>
-                                    <CardDescription>Exploration détaillée de votre situation fiscale et religieuse.</CardDescription>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="grid md:grid-cols-2 gap-8 pt-4">
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                        <CheckCircle2 className="h-3 w-3" /> Synthèse iPOS Intelligence
-                                    </h4>
-                                    <p className="text-sm leading-relaxed font-medium bg-background/40 p-5 rounded-2xl border border-primary/10 italic">
-                                        "{aiExplanation.summary}"
-                                    </p>
-                                    <div className="space-y-2">
-                                        {aiExplanation.breakdown.map((item: string, i: number) => (
-                                            <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                                                <p>{item}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-4">
-                                    <h4 className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary flex items-center gap-2">
-                                        <HandHelping className="h-3 w-3" /> Conseils de Distribution
-                                    </h4>
-                                    <div className="grid gap-3">
-                                        {aiExplanation.advice.map((item: string, i: number) => (
-                                            <div key={i} className="p-4 rounded-xl bg-chart-quaternary/10 border border-chart-quaternary/20 text-xs font-bold leading-relaxed">
-                                                {item}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
                 </TabsContent>
 
                 <TabsContent value="history">
