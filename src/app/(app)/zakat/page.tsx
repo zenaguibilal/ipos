@@ -72,7 +72,7 @@ export default function ZakatPage() {
             setAutoData(data);
             setHistory(hist);
         } catch (error) {
-            toast.error("Impossible de charger les بيانات.");
+            toast.error("Impossible de charger les données.");
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
@@ -118,7 +118,7 @@ export default function ZakatPage() {
         setIsSaving(true);
         try {
             await zakatService.saveCalculation(result);
-            toast.success("Calcul de Zakat sauvegardé.");
+            toast.success("Calcul sauvegardé.");
             await fetchData(true);
         } catch (error) {
             toast.error("Échec de la sauvegarde.");
@@ -158,11 +158,11 @@ export default function ZakatPage() {
                 description="Évaluez vos actifs nets et déterminez le montant de votre Zakat annuelle."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing} className="flex-1 sm:none luxury-glass border-primary/20">
+                    <Button variant="outline" onClick={() => fetchData(true)} disabled={isRefreshing} className="luxury-glass border-primary/20">
                         <RefreshCw className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")} />
                         Actualiser
                     </Button>
-                    <Button onClick={handlePrint} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl flex-1 sm:none">
+                    <Button onClick={handlePrint} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl">
                         <Printer className="h-4 w-4 mr-2" />
                         Imprimer Rapport A4
                     </Button>
@@ -185,7 +185,7 @@ export default function ZakatPage() {
                             <AlertTriangle className="h-5 w-5 shrink-0" />
                             <p className="text-sm font-bold">
                                 Attention : Le سعر الذهب (Prix de l'or) n'est pas configuré. 
-                                Metteز-le à jour dans votre <a href="/profile" className="underline font-black">Profil</a>.
+                                Mettez-le à jour dans votre <a href="/profile" className="underline font-black">Profil</a>.
                             </p>
                         </div>
                     )}
@@ -401,7 +401,7 @@ export default function ZakatPage() {
                                 <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
                                     <div className="flex justify-between items-center">
                                         <CardTitle className="text-sm font-bold font-mono">
-                                            {format(record.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                                            {format(new Date(record.createdAt), 'dd MMMM yyyy', { locale: fr })}
                                         </CardTitle>
                                         <Button 
                                             variant="ghost" 

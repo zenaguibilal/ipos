@@ -131,9 +131,12 @@ export const useAppStore = create<AppState>()(
                     const existing = cart.items.find(i => i.uuid === product.uuid);
                     const currentInCart = existing ? existing.cartQuantity : 0;
                     
-                    // Strict Stock Validation: Must account for items already in cart
-                    if (!product.uuid.startsWith('custom-') && (currentInCart + quantity) > product.quantity) {
-                        throw new Error(`Stock insuffisant pour ${product.name}. Disponible: ${product.quantity}. Déjà en panier: ${currentInCart}`);
+                    // STRICT STOCK VALIDATION
+                    if (!product.uuid.startsWith('custom-') && product.uuid !== 'BREAD_PRODUCT') {
+                        if ((currentInCart + quantity) > product.quantity) {
+                            toast.error(`Stock insuffisant pour ${product.name}`);
+                            return;
+                        }
                     }
                     
                     if (existing) {
@@ -150,8 +153,8 @@ export const useAppStore = create<AppState>()(
                     if (item) {
                         if (qty <= 0) {
                             cart.items = cart.items.filter(i => i.uuid !== uuid);
-                        } else if (!item.uuid.startsWith('custom-') && qty > item.quantity) {
-                            throw new Error(`Stock insuffisant. Maximum disponible: ${item.quantity}`);
+                        } else if (!item.uuid.startsWith('custom-') && item.uuid !== 'BREAD_PRODUCT' && qty > item.quantity) {
+                            toast.error(`Stock insuffisant. Maximum: ${item.quantity}`);
                         } else {
                             item.cartQuantity = qty;
                         }
@@ -221,14 +224,12 @@ export const useAppStore = create<AppState>()(
                         const customer = cart.customerUuid ? await customerService.getCustomerByUuid(cart.customerUuid) : null;
                         set({ lastCompletedSale: { sale, customer: customer || null } });
                         
-                        // Deduct stock
                         for (const item of sale.items) {
                             if (item.productUuid) {
                                 await inventoryService.adjustStock(item.productUuid, -item.quantity, 'sale', sale.uuid);
                             }
                         }
                         
-                        // Update customer totals
                         if (sale.customerUuid) {
                             await customerService.recalculateCustomerStatus(sale.customerUuid);
                         }
@@ -253,7 +254,7 @@ export const useAppStore = create<AppState>()(
                         if (ret.customerUuid) {
                             await customerService.recalculateCustomerStatus(ret.customerUuid);
                         }
-                        toast.success("Retour enregistré avec succès.");
+                        toast.success("Retour enregistré.");
                         return true;
                     } catch (e: any) { 
                         toast.error(e.message); 
@@ -273,7 +274,7 @@ export const useAppStore = create<AppState>()(
                                 const p = await productService.addProduct({ ...i, purchasePrice: cost, supplierUuid: sup.uuid, quantity: 0 });
                                 uuid = p.uuid;
                             } else {
-                                await productService.updateProduct(uuid!, { purchase_price: cost, date_maj_prix: new Date() } as any);
+                                await productService.updateProduct(uuid!, { purchasePrice: cost, dateMajPrix: new Date() });
                             }
                             
                             if (uuid) {
@@ -300,7 +301,7 @@ export const useAppStore = create<AppState>()(
                         });
                         
                         await supplierService.updateSupplierBalance(sup.uuid, data.totalValue + data.transportFees);
-                        toast.success("Stock mis à jour avec succès.");
+                        toast.success("Stock mis à jour.");
                         return true;
                     } catch (e: any) { 
                         toast.error(e.message); 
@@ -317,7 +318,7 @@ export const useAppStore = create<AppState>()(
             }
         }),
         {
-            name: 'ipos-v4-strict-storage',
+            name: 'ipos-enterprise-v1',
             storage: createJSONStorage(() => localStorage),
             partialize: (s) => ({ 
                 carts: s.carts, 
