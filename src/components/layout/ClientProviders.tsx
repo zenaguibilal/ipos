@@ -8,12 +8,12 @@ import { useEffect } from 'react';
 /**
  * @fileOverview THE SYSTEM PURIFIER
  * PHASE 5: STATE SINGULARITY ENFORCEMENT.
- * يضمن تطهير الذاكرة المحلية تماماً لفرض سيادة الذاكرة العشوائية (RAM) والسحاب فقط.
+ * يضمن تطهير كافة أشكال التخزين المحلي لفرض سيادة الذاكرة العشوائية (RAM) والسحاب فقط.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
-        // 1. تدمير فوري لكافة الـ Service Workers المسجلين
+        // 1. تدمير فوري لكافة الـ Service Workers المسجلين لقتل أي ميكانيكية Offline
         if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then((registrations) => {
                 for (const registration of registrations) {
@@ -24,37 +24,41 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         }
         
         // 2. تطهير شامل للتخزين المحلي (Persistent Storage Purge)
-        // نقتل أي محاولة للتخزين الدائم خارج نطاق الجلسة الحية.
+        // نقتل أي محاولة للتخزين الدائم خارج نطاق الجلسة الحية لضمان حتمية الذاكرة.
         const criticalPurgeKeys = [
             'dexie', 'offline', 'persist:', 'workbox', 
-            'supabase.auth.token', 'zustand', 'ipos-state'
+            'supabase.auth.token', 'zustand', 'ipos-state', 'sb-'
         ];
         
-        if (typeof localStorage !== 'undefined') {
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && criticalPurgeKeys.some(p => key.includes(p))) {
-                    keysToRemove.push(key);
+        const purgeStorage = () => {
+            if (typeof localStorage !== 'undefined') {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && criticalPurgeKeys.some(p => key.includes(p))) {
+                        keysToRemove.push(key);
+                    }
                 }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
             }
-            keysToRemove.forEach(k => {
-                localStorage.removeItem(k);
-                console.warn(`PURIFICATION: Persistent Key [${k}] Erased`);
-            });
-        }
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.clear();
+            }
+        };
+
+        purgeStorage();
+        console.warn('PURIFICATION: Memory-only mode enforced.');
 
         // 3. مسح الـ Caches بالكامل
         if (typeof caches !== 'undefined') {
             caches.keys().then((names) => {
                 for (const name of names) {
                     caches.delete(name);
-                    console.warn(`PURIFICATION: Cache [${name}] Flushed`);
                 }
             });
         }
 
-        // 4. تعطيل الـ Context Menu لمنع التلاعب بالبيانات الحية (اختياري لتعزيز الهيمنة)
+        // 4. تعطيل الـ Context Menu لمنع التلاعب بالبيانات الحية في الإنتاج
         const handleContext = (e: MouseEvent) => {
             if (process.env.NODE_ENV === 'production') e.preventDefault();
         };

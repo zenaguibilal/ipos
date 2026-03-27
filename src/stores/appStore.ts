@@ -97,6 +97,11 @@ export const useAppStore = create<AppState>((set, get) => ({
             try {
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile });
+            } catch (e) {
+                // If profile fails, it might be an auth issue, trigger reset
+                if ((e as Error).message.includes('401')) {
+                    get().actions.resetStore();
+                }
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -110,7 +115,12 @@ export const useAppStore = create<AppState>((set, get) => ({
                 await api.post('auth/signout', {});
             } finally {
                 get().actions.resetStore();
-                window.location.href = '/login';
+                // Kill any remaining traces
+                if (typeof window !== 'undefined') {
+                    window.localStorage.clear();
+                    window.sessionStorage.clear();
+                    window.location.href = '/login';
+                }
             }
         },
         resetStore: () => set({
