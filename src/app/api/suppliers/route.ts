@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { CustomerRepository } from '@/repositories/customer.repository';
+import { SupplierRepository } from '@/repositories/supplier.repository';
 
 /**
- * @fileOverview API WALL: Customers
+ * @fileOverview API WALL: Suppliers
  */
 
-export async function GET(req: Request) {
+export async function GET() {
     try {
-        const repo = new CustomerRepository();
+        const repo = new SupplierRepository();
         const data = await repo.getAll();
         return NextResponse.json({ data });
     } catch (e: any) {
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const repo = new CustomerRepository();
+        const repo = new SupplierRepository();
         const data = await repo.create(body);
         return NextResponse.json({ data });
     } catch (e: any) {
