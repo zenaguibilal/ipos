@@ -1,10 +1,9 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import type { BreadOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Package, Truck, HandCoins, ShoppingBag, TrendingUp } from 'lucide-react';
+import { Package, Truck, ShoppingBag, TrendingUp } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
 import { formatCurrency } from '@/lib/utils';

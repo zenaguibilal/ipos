@@ -1,9 +1,7 @@
-
 'use client';
 
 import { useAppStore } from "@/stores/appStore";
 import { useEffect, useRef } from "react";
-import { api } from "@/lib/api-client";
 
 /**
  * @fileOverview Application Bootstrapper (Phase 11 Consolidated)

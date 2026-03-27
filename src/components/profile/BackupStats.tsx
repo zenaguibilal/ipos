@@ -1,8 +1,6 @@
-
 'use client';
 
-import { Card } from '@/components/ui/card';
-import { Package, Users, ShoppingCart, TrendingUp, History, UserCheck } from 'lucide-react';
+import { Package, History, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BackupStatsProps {
