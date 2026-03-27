@@ -51,6 +51,16 @@ class CustomerService {
             throw error;
         }
     }
+
+    async getStats(): Promise<{ total: number; overdue: number; overLimit: number; totalDebt: number }> {
+        const customers = await customerRepository.getAll();
+        return {
+            total: customers.length,
+            overdue: customers.filter(c => c.debtStatus === 'overdue').length,
+            overLimit: customers.filter(c => c.isOverLimit).length,
+            totalDebt: customers.reduce((sum, c) => sum + c.outstandingBalance, 0)
+        };
+    }
     
     async addCustomer(customerData: Partial<Omit<Customer, 'uuid' | 'user_id' | 'totalSpent' | 'outstandingBalance'>>): Promise<Customer> {
         try {
