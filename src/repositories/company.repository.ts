@@ -92,6 +92,8 @@ export class CompanyRepository {
             artImposition: p.art_imposition || '',
             goldPricePerGram: p.gold_price_per_gram || 0,
             prix_pain: p.prix_pain || 0,
+            currencySymbol: p.currency_symbol || 'DA',
+            decimalPlaces: p.decimal_places ?? 1,
             role: role,
             updatedAt: p.updated_at || new Date().toISOString(),
         };
@@ -112,6 +114,8 @@ export class CompanyRepository {
             art_imposition: p.artImposition,
             gold_price_per_gram: p.goldPricePerGram,
             prix_pain: p.prix_pain,
+            currency_symbol: p.currencySymbol,
+            decimal_places: p.decimalPlaces,
         };
     }
 }

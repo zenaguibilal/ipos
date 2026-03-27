@@ -1,4 +1,3 @@
-
 'use client';
 
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -7,15 +6,17 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { StaffManagement } from "@/components/profile/StaffManagement";
-import { useAppStore, useIsAdmin } from "@/stores/appStore";
+import { SecuritySettings } from "@/components/profile/SecuritySettings";
+import { useAppStore, useIsAdmin, useAppActions } from "@/stores/appStore";
 import { 
     User, Building2, Database, Settings2, ShieldCheck, 
     BadgeCheck, LayoutDashboard, Cloud, Wifi, 
-    Monitor, Cpu, Fingerprint, Globe, KeyRound, Server, Users, Terminal, Activity, Zap
+    Monitor, Cpu, Fingerprint, Globe, KeyRound, Server, Users, Terminal, Activity, Zap, Lock, History, ShoppingBag, ArrowRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { cn, formatCurrency } from "@/lib/utils";
+import { useEffect, useState, useMemo } from "react";
+import { Separator } from "@/components/ui/separator";
 
 /**
  * @fileOverview Sovereign Profile & Configuration Page (Finalized Perfection)
@@ -23,7 +24,12 @@ import { useEffect, useState } from "react";
  */
 
 export default function ProfilePage() {
-    const { profile } = useAppStore();
+    const { profile, sales, expenses, stockIntakes } = useAppStore(state => ({
+        profile: state.profile,
+        sales: state.lastCompletedSale ? [state.lastCompletedSale.sale] : [], // Use store or fetch
+        expenses: state.expenses,
+        stockIntakes: state.breadOrders // or real intakes
+    }));
     const isAdmin = useIsAdmin();
     const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...', platform: 'GCP-Sovereign' });
     const [terminalId, setTerminalId] = useState('INIT-0000');
@@ -71,6 +77,14 @@ export default function ProfilePage() {
     const currentRole = (profile?.role as string) || 'cashier';
     const RoleIcon = roleLabels[currentRole]?.icon || ShieldCheck;
 
+    // Recent activity list for "System" tab
+    const recentActivity = useMemo(() => {
+        return [
+            ...expenses.slice(0, 3).map(e => ({ type: 'expense', title: e.description, amount: e.amount, date: e.expenseDate })),
+            ...sales.slice(0, 3).map(s => ({ type: 'sale', title: `Vente #${s.invoiceNumber}`, amount: s.total, date: s.createdAt }))
+        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [expenses, sales]);
+
     return (
         <div className="p-4 sm:p-6 space-y-8 max-w-7xl mx-auto pb-24 animate-in fade-in duration-700">
             {/* Sovereign Header */}
@@ -107,7 +121,7 @@ export default function ProfilePage() {
             </div>
 
             <Tabs defaultValue="account" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 luxury-glass p-2 h-auto bg-muted/20 border-white/5 shadow-inner gap-2">
+                <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 luxury-glass p-2 h-auto bg-muted/20 border-white/5 shadow-inner gap-2">
                     <TabsTrigger value="account" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Terminal className="h-4 w-4" /> Système
                     </TabsTrigger>
@@ -116,6 +130,9 @@ export default function ProfilePage() {
                     </TabsTrigger>
                     <TabsTrigger value="settings" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Settings2 className="h-4 w-4" /> Réglages
+                    </TabsTrigger>
+                    <TabsTrigger value="security" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
+                        <Lock className="h-4 w-4" /> Sécurité
                     </TabsTrigger>
                     <TabsTrigger value="staff" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Users className="h-4 w-4" /> Personnel
@@ -162,54 +179,94 @@ export default function ProfilePage() {
                         </Card>
                     </div>
 
-                    <Card className="luxury-glass border-white/5 overflow-hidden shadow-2xl">
-                        <CardHeader className="bg-white/5 border-b border-white/5 py-6 px-8">
-                            <CardTitle className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-3">
-                                <Monitor className="h-5 w-5 text-primary" />
-                                Environnement de Travail Local
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-10">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Système OS</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-lg">
-                                            <Cpu className="h-4 w-4 text-primary" />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <Card className="luxury-glass border-white/5 overflow-hidden shadow-2xl">
+                            <CardHeader className="bg-white/5 border-b border-white/5 py-6 px-8">
+                                <CardTitle className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-3">
+                                    <Monitor className="h-5 w-5 text-primary" />
+                                    Environnement Local
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-8">
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Système OS</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Cpu className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <p className="font-bold text-sm">{systemInfo.os}</p>
                                         </div>
-                                        <p className="font-bold text-lg">{systemInfo.os}</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Interface Nav.</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Globe className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <p className="font-bold text-sm">{systemInfo.browser}</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">ID Terminal</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Fingerprint className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <p className="font-mono font-bold text-sm text-primary">{terminalId}</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Infrastructure Host</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Server className="h-4 w-4 text-primary" />
+                                            </div>
+                                            <p className="font-bold text-sm">Google Cloud Platform</p>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Interface Nav.</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-lg">
-                                            <Globe className="h-4 w-4 text-primary" />
+                            </CardContent>
+                        </Card>
+
+                        <Card className="luxury-glass border-white/5 overflow-hidden shadow-2xl">
+                            <CardHeader className="bg-white/5 border-b border-white/5 py-6 px-8">
+                                <CardTitle className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-3">
+                                    <History className="h-5 w-5 text-primary" />
+                                    Activités de Souveraineté
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="divide-y divide-white/5">
+                                    {recentActivity.length > 0 ? recentActivity.map((act, i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 px-8 hover:bg-white/5 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "p-2 rounded-lg",
+                                                    act.type === 'sale' ? "bg-chart-quaternary/10 text-chart-quaternary" : "bg-destructive/10 text-destructive"
+                                                )}>
+                                                    {act.type === 'sale' ? <ShoppingBag className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold">{act.title}</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase">{new Date(act.date).toLocaleString('fr-FR')}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={cn("text-xs font-black", act.type === 'sale' ? "text-chart-quaternary" : "text-destructive")}>
+                                                    {act.type === 'sale' ? '+' : '-'}{formatCurrency(act.amount)}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <p className="font-bold text-lg">{systemInfo.browser}</p>
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">ID Terminal</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-lg">
-                                            <Fingerprint className="h-4 w-4 text-primary" />
+                                    )) : (
+                                        <div className="p-12 text-center text-muted-foreground italic text-xs">
+                                            Aucune activité récente enregistrée par ce terminal.
                                         </div>
-                                        <p className="font-mono font-bold text-lg text-primary">{terminalId}</p>
-                                    </div>
+                                    )}
                                 </div>
-                                <div className="space-y-2">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Infrastructure Host</p>
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-lg">
-                                            <Server className="h-4 w-4 text-primary" />
-                                        </div>
-                                        <p className="font-bold text-lg">Google Cloud Platform</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="company" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
@@ -238,6 +295,10 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CompanyProfileForm mode="settings" />
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="security" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
+                    <SecuritySettings />
                 </TabsContent>
 
                 <TabsContent value="staff" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">

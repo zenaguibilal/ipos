@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { Skeleton } from '../ui/skeleton';
 import { 
     Loader2, Save, Globe, Phone, Mail, MapPin, Hash, 
     ShoppingBag, Coins, Scale, FileText, LogOut, 
-    Briefcase, Building, Map, Landmark, ShieldCheck, Wheat, Star
+    Briefcase, Building, Map, Landmark, ShieldCheck, Wheat, Star, DollarSign, Binary
 } from 'lucide-react';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Separator } from '../ui/separator';
@@ -68,6 +67,8 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                 artImposition: formState.artImposition || undefined,
                 goldPricePerGram: formState.goldPricePerGram ? Number(formState.goldPricePerGram) : undefined,
                 prix_pain: formState.prix_pain ? Number(formState.prix_pain) : undefined,
+                currencySymbol: formState.currencySymbol || undefined,
+                decimalPlaces: formState.decimalPlaces !== undefined ? Number(formState.decimalPlaces) : undefined,
             });
             toast.success('Informations souveraines mises à jour avec succès.');
         } catch (err) {
@@ -177,68 +178,104 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                        {/* Reference: Bread Price */}
-                        <div className="p-8 rounded-[3rem] bg-gradient-to-br from-primary/10 via-transparent to-transparent border border-primary/10 relative overflow-hidden group shadow-2xl">
-                            <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:rotate-12 transition-all duration-700">
-                                <Wheat className="h-48 w-48 text-primary" />
-                            </div>
-                            <div className="relative z-10 space-y-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 bg-primary/20 rounded-2xl shadow-inner">
-                                        <Wheat className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Référence Boulangerie</h4>
-                                        <p className="text-[9px] text-muted-foreground uppercase font-bold">Prix unitaire du Pain (DA)</p>
-                                    </div>
+                    <div className="space-y-12">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            {/* Reference: Bread Price */}
+                            <div className="p-8 rounded-[3rem] bg-gradient-to-br from-primary/10 via-transparent to-transparent border border-primary/10 relative overflow-hidden group shadow-2xl">
+                                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:rotate-12 transition-all duration-700">
+                                    <Wheat className="h-48 w-48 text-primary" />
                                 </div>
-                                <Input 
-                                    id="prix_pain" 
-                                    type="number" 
-                                    step="0.1" 
-                                    value={formState.prix_pain || ''} 
-                                    onChange={handleInputChange} 
-                                    disabled={isSaving || !isManagerOrAdmin} 
-                                    className="h-24 text-6xl font-black rounded-[2rem] bg-background/60 border-primary/20 focus:border-primary text-center tracking-tighter"
-                                />
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                    <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                                        "Ce paramètre définit la valeur monétaire حتمية de chaque unité de pain produite et facturée par le système."
-                                    </p>
+                                <div className="relative z-10 space-y-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-primary/20 rounded-2xl shadow-inner">
+                                            <Wheat className="h-6 w-6 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Référence Boulangerie</h4>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Prix unitaire du Pain (DA)</p>
+                                        </div>
+                                    </div>
+                                    <Input 
+                                        id="prix_pain" 
+                                        type="number" 
+                                        step="0.1" 
+                                        value={formState.prix_pain || ''} 
+                                        onChange={handleInputChange} 
+                                        disabled={isSaving || !isManagerOrAdmin} 
+                                        className="h-24 text-6xl font-black rounded-[2rem] bg-background/60 border-primary/20 focus:border-primary text-center tracking-tighter"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Reference: Gold Price */}
+                            <div className="p-8 rounded-[3rem] bg-gradient-to-br from-orange-500/10 via-transparent to-transparent border border-orange-500/10 relative overflow-hidden group shadow-2xl">
+                                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:-rotate-12 transition-all duration-700">
+                                    <Coins className="h-48 w-48 text-orange-400" />
+                                </div>
+                                <div className="relative z-10 space-y-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-orange-500/20 rounded-2xl shadow-inner">
+                                            <Coins className="h-6 w-6 text-orange-400" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400">Référence Marché (Or)</h4>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Valeur du Gramme 24k (DA)</p>
+                                        </div>
+                                    </div>
+                                    <Input 
+                                        id="goldPricePerGram" 
+                                        type="number" 
+                                        step="0.01" 
+                                        value={formState.goldPricePerGram || ''} 
+                                        onChange={handleInputChange} 
+                                        disabled={isSaving || !isManagerOrAdmin} 
+                                        className="h-24 text-6xl font-black rounded-[2rem] bg-background/60 border-orange-500/20 focus:border-orange-500 text-center tracking-tighter"
+                                    />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Reference: Gold Price */}
-                        <div className="p-8 rounded-[3rem] bg-gradient-to-br from-orange-500/10 via-transparent to-transparent border border-orange-500/10 relative overflow-hidden group shadow-2xl">
-                            <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:-rotate-12 transition-all duration-700">
-                                <Coins className="h-48 w-48 text-orange-400" />
-                            </div>
-                            <div className="relative z-10 space-y-6">
+                        <Separator className="bg-white/5" />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                            {/* Regional & Financial Preferences */}
+                            <div className="space-y-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-3 bg-orange-500/20 rounded-2xl shadow-inner">
-                                        <Coins className="h-6 w-6 text-orange-400" />
+                                    <div className="h-10 w-10 rounded-2xl bg-chart-quaternary/10 flex items-center justify-center">
+                                        <DollarSign className="h-5 w-5 text-chart-quaternary" />
                                     </div>
-                                    <div>
-                                        <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400">Référence Marché (Or)</h4>
-                                        <p className="text-[9px] text-muted-foreground uppercase font-bold">Valeur du Gramme 24k (DA)</p>
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-chart-quaternary">Paramètres Régionaux & Financiers</h4>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="currencySymbol" className="text-[10px] font-black uppercase opacity-60 ml-1">Symbole de la monnaie</Label>
+                                        <div className="relative group">
+                                            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-chart-quaternary/30 group-focus-within:text-chart-quaternary transition-colors" />
+                                            <Input id="currencySymbol" value={formState.currencySymbol || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-chart-quaternary/40 font-bold" placeholder="Ex: DA, $, €" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="decimalPlaces" className="text-[10px] font-black uppercase opacity-60 ml-1">Nombre de chiffres après la virgule</Label>
+                                        <div className="relative group">
+                                            <Binary className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-chart-quaternary/30 group-focus-within:text-chart-quaternary transition-colors" />
+                                            <Input id="decimalPlaces" type="number" min="0" max="3" value={formState.decimalPlaces ?? 1} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-chart-quaternary/40 font-bold" />
+                                        </div>
                                     </div>
                                 </div>
-                                <Input 
-                                    id="goldPricePerGram" 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={formState.goldPricePerGram || ''} 
-                                    onChange={handleInputChange} 
-                                    disabled={isSaving || !isManagerOrAdmin} 
-                                    className="h-24 text-6xl font-black rounded-[2rem] bg-background/60 border-orange-500/20 focus:border-orange-500 text-center tracking-tighter"
-                                />
-                                <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                                    <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                                        "Base imposable حتمية pour le calcul du Nisab et l'évaluation des actifs de la Zakat."
+                            </div>
+
+                            <div className="p-8 rounded-[3rem] bg-muted/10 border border-white/5 flex flex-col justify-center text-center">
+                                <div className="p-4 bg-chart-quaternary/5 rounded-2xl border border-chart-quaternary/10 mb-4">
+                                    <p className="text-[10px] font-black uppercase text-chart-quaternary mb-2">Exemple d'affichage financier</p>
+                                    <p className="text-4xl font-black tracking-tighter">
+                                        {(1250.50).toLocaleString('fr-FR', { minimumFractionDigits: formState.decimalPlaces ?? 1, maximumFractionDigits: formState.decimalPlaces ?? 1 })} {formState.currencySymbol || 'DA'}
                                     </p>
                                 </div>
+                                <p className="text-[10px] text-muted-foreground italic leading-relaxed">
+                                    "Ces réglages s'appliquent dynamiquement à l'ensemble des rapports, factures et tableaux de bord du terminal iPOS."
+                                </p>
                             </div>
                         </div>
                     </div>

@@ -145,6 +145,8 @@ export const ProfileSchema = z.object({
     artImposition: z.string().optional(),
     goldPricePerGram: z.number().nonnegative().optional(),
     prix_pain: z.number().nonnegative().optional(),
+    currencySymbol: z.string().optional(),
+    decimalPlaces: z.number().int().min(0).max(3).optional(),
 });
 
 export const RecipeSchema = z.object({

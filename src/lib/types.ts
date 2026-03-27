@@ -192,6 +192,8 @@ export interface CompanyProfile {
     artImposition?: string;
     goldPricePerGram?: number;
     prix_pain?: number;
+    currencySymbol?: string;
+    decimalPlaces?: number;
     role: AppRole;
     updatedAt: string;
 }

@@ -1,7 +1,7 @@
-
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import placeholderImages from '@/lib/placeholder-images.json';
+import { useAppStore } from "@/stores/appStore";
  
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -21,9 +21,25 @@ export function formatDateToYYYYMMDD(date: Date): string {
     return date.toISOString().split('T')[0];
 }
 
-export function formatCurrency(value: number, currency = 'DA') {
+export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
-  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${currency}`;
+  
+  // Attempt to get currency and decimals from store (only works in Client Components)
+  // For SSR or cases where store is unavailable, use fallbacks
+  let currency = fallbackCurrency;
+  let decimals = 1;
+
+  try {
+    const profile = useAppStore.getState().profile;
+    if (profile) {
+        currency = profile.currencySymbol || fallbackCurrency;
+        decimals = profile.decimalPlaces ?? 1;
+    }
+  } catch (e) {
+    // Store access failed (e.g. Server Component), keep defaults
+  }
+
+  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
 }
 
 export function calculateCartTotals(cart: { items: any[], discount: { type: string, value: number } }) {

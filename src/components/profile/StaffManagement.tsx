@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,7 +15,7 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { 
-    Loader2, UserPlus, ShieldCheck, Mail, Trash2, Edit, CheckCircle2, XCircle, Lock, Users, ShieldAlert, BadgeCheck, Info, HelpCircle, Activity
+    Loader2, UserPlus, ShieldCheck, Mail, Trash2, Edit, CheckCircle2, XCircle, Lock, Users, ShieldAlert, BadgeCheck, Info, HelpCircle, Activity, Power, PowerOff
 } from "lucide-react";
 import { useAppStore, useAppActions, useIsAdmin, useIsManagerOrAdmin } from "@/stores/appStore";
 import { toast } from "sonner";
@@ -47,6 +46,7 @@ export function StaffManagement() {
     const [email, setEmail] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [role, setRole] = useState<any>('cashier');
+    const [isActive, setIsActive] = useState(true);
 
     useEffect(() => {
         if (isManagerOrAdmin) refreshStaff();
@@ -62,10 +62,12 @@ export function StaffManagement() {
             setEmail(member.email);
             setDisplayName(member.displayName);
             setRole(member.role);
+            setIsActive(member.isActive);
         } else {
             setEmail('');
             setDisplayName('');
             setRole('cashier');
+            setIsActive(true);
         }
         setIsDialogOpen(true);
     };
@@ -75,7 +77,7 @@ export function StaffManagement() {
         if (!isAdmin) return;
         setIsMutating(true);
         try {
-            const data = { email, displayName, role };
+            const data = { email, displayName, role, isActive };
             if (selectedMember) {
                 await api.put(`staff/${selectedMember.uuid}`, data);
                 toast.success("Droits d'accès mis à jour.");
@@ -89,6 +91,17 @@ export function StaffManagement() {
             toast.error("Échec de l'opération souveraine.");
         } finally {
             setIsMutating(false);
+        }
+    };
+
+    const handleToggleStatus = async (member: any) => {
+        if (!isAdmin) return;
+        try {
+            await api.put(`staff/${member.uuid}`, { ...member, isActive: !member.isActive });
+            toast.success(member.isActive ? "Accès suspendu" : "Accès réactivé");
+            refreshStaff();
+        } catch (error) {
+            toast.error("Erreur de modification du statut.");
         }
     };
 
@@ -116,7 +129,7 @@ export function StaffManagement() {
                 <ShieldAlert className="h-20 w-20 text-destructive mx-auto mb-8 opacity-40 animate-pulse" />
                 <h3 className="text-2xl font-black uppercase tracking-widest text-destructive italic">Accès Souverain Requis</h3>
                 <p className="text-sm text-muted-foreground mt-4 max-w-sm mx-auto leading-relaxed">
-                    Le registre du personnel est une archive confidentielle. Seول un gestionnaire authentifié peut consulter la liste des autorités du terminal.
+                    Le registre du personnel est une archive confidentielle. Seul un gestionnaire authentifié peut consulter la liste des autorités du terminal.
                 </p>
             </Card>
         );
@@ -156,7 +169,7 @@ export function StaffManagement() {
                                 ) : staff.length === 0 ? (
                                     <TableRow><TableCell colSpan={isAdmin ? 4 : 3} className="h-64 text-center text-muted-foreground italic font-medium uppercase text-[11px] tracking-widest opacity-40">Aucun registre personnel trouvé dans le nuage.</TableCell></TableRow>
                                 ) : staff.map((member) => (
-                                    <TableRow key={member.uuid} className="border-white/5 hover:bg-white/5 transition-colors group">
+                                    <TableRow key={member.uuid} className={cn("border-white/5 hover:bg-white/5 transition-colors group", !member.isActive && "opacity-50")}>
                                         <TableCell className="font-black px-8 py-6">
                                             <div className="flex items-center gap-4">
                                                 <div className="h-12 w-12 rounded-2xl bg-background border border-white/10 flex items-center justify-center font-black text-lg text-primary shadow-inner">
@@ -189,10 +202,13 @@ export function StaffManagement() {
                                         {isAdmin && (
                                             <TableCell className="text-right px-8">
                                                 <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20" onClick={() => handleOpenDialog(member)}>
+                                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-white/10" onClick={() => handleToggleStatus(member)} title={member.isActive ? "Suspendre" : "Activer"}>
+                                                        {member.isActive ? <PowerOff className="h-4.5 w-4.5 text-orange-500" /> : <Power className="h-4.5 w-4.5 text-green-500" />}
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-primary/10 hover:text-primary" onClick={() => handleOpenDialog(member)}>
                                                         <Edit className="h-4.5 w-4.5" />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20" onClick={() => handleDelete(member.uuid)}>
+                                                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-destructive/10 text-destructive" onClick={() => handleDelete(member.uuid)}>
                                                         <Trash2 className="h-4.5 w-4.5" />
                                                     </Button>
                                                 </div>
@@ -227,9 +243,9 @@ export function StaffManagement() {
                         <div className="p-5 bg-primary/5 rounded-2xl border border-primary/10 flex items-start gap-4">
                             <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                             <div>
-                                <p className="text-[10px] font-black uppercase text-primary mb-1">Règle de Sécurité</p>
+                                <p className="text-[10px] font-black uppercase text-primary mb-1">Sécurité</p>
                                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                    Les mots de passe ne sont pas gérés par l'administrateur. Les collaborateurs reçoivent une invitation pour configurer leur propre clé souveraine.
+                                    Un accès suspendu empêche toute connexion immédiate mais conserve l'historique des actions de l'utilisateur.
                                 </p>
                             </div>
                         </div>
@@ -288,7 +304,7 @@ export function StaffManagement() {
                                     </SelectTrigger>
                                     <SelectContent className="luxury-glass border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                                         <SelectItem value="admin" className="font-bold py-4 hover:bg-primary/5 transition-colors">Administrateur Système</SelectItem>
-                                        <SelectItem value="manager" className="font-bold py-4 hover:bg-primary/5 transition-colors">Gérant d'Établissement</SelectItem>
+                                        <SelectItem value="manager" className="font-bold py-4 hover:bg-primary/5 transition-colors">Gérant d'Étabلisement</SelectItem>
                                         <SelectItem value="cashier" className="font-bold py-4 hover:bg-primary/5 transition-colors">Opérateur de Caisse</SelectItem>
                                     </SelectContent>
                                 </Select>
