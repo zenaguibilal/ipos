@@ -51,6 +51,17 @@ export interface Customer {
     bread_jours_semaine?: Record<string, { actif: boolean; quantite: number }>;
 }
 
+export interface Payment {
+    uuid: string;
+    user_id: string;
+    customerUuid: string;
+    amount: number;
+    paymentDate: Date;
+    notes?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
 export interface CustomerTopProduct {
     productUuid: string;
     name: string;
