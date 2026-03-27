@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAppActions } from '@/stores/appStore';
+import { useAppActions, useAppStore } from '@/stores/appStore';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,6 +24,7 @@ import { authService } from '@/services/auth.service';
 
 export default function LoginPage() {
     const { signIn, signUp } = useAppActions();
+    const session = useAppStore(state => state.session);
     const router = useRouter();
 
     const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +46,12 @@ export default function LoginPage() {
     const [isForgotPassLoading, setIsForgotPassLoading] = useState(false);
     const [forgotPassMessage, setForgotPassMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
+    // Redirect if already logged in or after successful login
+    useEffect(() => {
+        if (session) {
+            router.push('/dashboard');
+        }
+    }, [session, router]);
 
     const handleSignIn = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,7 +65,9 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signIn(signInEmail, signInPassword);
-            router.replace('/dashboard');
+            // Refresh to sync cookies with middleware before navigation
+            router.refresh();
+            router.push('/dashboard');
         } catch (error: any) {
             setError(error.message || "La connexion a échoué.");
         } finally {
@@ -76,7 +85,8 @@ export default function LoginPage() {
         setIsLoading(true);
         try {
             await signUp(signUpEmail, signUpPassword);
-            router.replace('/dashboard');
+            router.refresh();
+            router.push('/dashboard');
             toast.success("Compte créé avec succès ! Bienvenue.");
         } catch (error: any) {
             setError(error.message || "L'inscription a échoué.");
@@ -150,7 +160,7 @@ export default function LoginPage() {
                                                         <DialogHeader>
                                                             <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
                                                             <DialogDescription>
-                                                                Entrez votre adresse e-mail ci-dessous et nous vous enverrons des instructions pour réinitialiser votre mot de passe.
+                                                                Entrez votre adresse e-mail ci-dessous et nous vous enverرسons des instructions pour réinitialiser votre mot de passe.
                                                             </DialogDescription>
                                                         </DialogHeader>
                                                         <div className="py-4 space-y-4">

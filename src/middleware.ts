@@ -1,4 +1,3 @@
-
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -45,18 +44,21 @@ export async function middleware(request: NextRequest) {
               headers: request.headers,
             },
           })
-          response.cookies.delete(name, options)
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
         },
       },
     }
   )
 
-  // Use getSession for faster middleware checks
+  // Use getUser() instead of getSession() for reliable auth check in middleware
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const user = session?.user;
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
 
   // If user is not signed in and trying to access a protected route
@@ -80,8 +82,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - manifest.json (PWA manifest)
-     * - *.svg, *.png, *.jpg, *.jpeg, *.gif, *.webp (images)
      * - sw.js (service worker)
+     * - icons and common images
      */
     '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
