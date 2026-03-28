@@ -29,8 +29,8 @@ import { fr } from 'date-fns/locale';
 import { CsvImporter } from '@/lib/csv-utils';
 
 /**
- * @fileOverview Zakat Command Center (Refined Sovereign Edition)
- * المركز السيادي لتقييم الأصول النقدية وتقدير فريضة الزكاة بدقة حتمية مع تتبع حول الحول.
+ * @fileOverview Zakat Command Center (Completed Sovereign Edition)
+ * المركز السيادي لتقييم الأصول النقدية وتقدير فريضة الزكاة بدقة حتمية مع تتبع حول الحول والتحليل البصري.
  */
 
 export default function ZakatPage() {
@@ -121,6 +121,11 @@ export default function ZakatPage() {
             { name: 'Créances', value: result.customerDebts, color: '#10b981' },
             { name: 'Liquidités', value: result.cashOnHand, color: '#3b82f6' },
         ].filter(item => item.value > 0);
+    }, [result]);
+
+    const nisabGap = useMemo(() => {
+        if (!result || result.isNisabReached) return 0;
+        return result.nisab - result.zakatBase;
     }, [result]);
 
     if (!profile || !isManagerOrAdmin) {
@@ -276,6 +281,15 @@ export default function ZakatPage() {
                                             <p className="text-xl font-black text-emerald-500">{formatCurrency(result.zakatAmount)}</p>
                                         </div>
                                     </div>
+                                    
+                                    {!result.isNisabReached && nisabGap > 0 && (
+                                        <div className="p-5 rounded-2xl bg-destructive/5 border border-destructive/10 text-center animate-in zoom-in-95 duration-500">
+                                            <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-1">Fajwa Al-Nisab (فجوة النصاب)</p>
+                                            <p className="text-lg font-black text-destructive">-{formatCurrency(nisabGap)}</p>
+                                            <p className="text-[8px] text-muted-foreground italic mt-1 uppercase">Manque à gagner pour atteindre le seuil de وجوب</p>
+                                        </div>
+                                    )}
+
                                     <div className={cn(
                                         "p-6 rounded-[1.5rem] border-2 flex items-center gap-5 transition-all duration-700 shadow-xl",
                                         result.isNisabReached ? "bg-green-500/10 border-green-500/20 text-green-500" : "bg-muted/30 border-white/10 text-muted-foreground"
@@ -334,30 +348,48 @@ export default function ZakatPage() {
                             <span className="text-[10px] font-black uppercase tracking-widest">{zakatHistory.length} Points de calcul archivés</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={handleExport} disabled={zakatHistory.length === 0} className="h-10 rounded-xl border-white/5 font-black uppercase text-[10px] tracking-widest gap-2"><FileUp className="h-4 w-4" /> Exporter CSV</Button>
-                            <div className="flex items-center gap-1 rounded-xl bg-background/40 p-1 border border-white/10">
-                                <Button variant={historyViewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-lg" onClick={() => setHistoryViewMode('grid')}><LayoutGrid className="h-4 w-4" /></Button>
-                                <Button variant={historyViewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-lg" onClick={() => setHistoryViewMode('list')}><List className="h-4 w-4" /></Button>
+                            <Button variant="outline" onClick={handleExport} disabled={zakatHistory.length === 0} className="h-10 rounded-xl border-white/5 font-black uppercase text-[10px] tracking-widest gap-2">
+                                <FileUp className="h-4 w-4" /> 
+                                Exporter CSV
+                            </Button>
+                            <div className="flex items-center gap-1 rounded-xl bg-background/40 p-1 border border-white/10 shadow-inner">
+                                <Button variant={historyViewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-lg" onClick={() => setHistoryViewMode('grid')}>
+                                    <LayoutGrid className="h-4 w-4" />
+                                </Button>
+                                <Button variant={historyViewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 rounded-lg" onClick={() => setHistoryViewMode('list')}>
+                                    <List className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     </div>
 
                     {zakatHistory.length === 0 ? (
                         <div className="py-40 text-center opacity-30 grayscale border-2 border-dashed rounded-[3rem] border-white/5 bg-white/5 space-y-6">
-                            <div className="h-24 w-24 rounded-full border-4 border-dashed border-primary/20 flex items-center justify-center mx-auto"><History className="h-12 w-12 text-primary" /></div>
+                            <div className="h-24 w-24 rounded-full border-4 border-dashed border-primary/20 flex items-center justify-center mx-auto">
+                                <History className="h-12 w-12 text-primary" />
+                            </div>
                             <p className="text-2xl font-black uppercase tracking-widest">Archives Vierges</p>
                         </div>
                     ) : historyViewMode === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
                             {zakatHistory.map(h => (
                                 <Card key={h.uuid} className="luxury-glass p-8 border-white/5 bg-muted/10 hover:border-emerald-500/30 transition-all group relative overflow-hidden flex flex-col justify-between h-64 cursor-pointer shadow-xl" onClick={() => handleViewHistory(h)}>
-                                    <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none"><Scale className="h-24 w-24 rotate-12" /></div>
+                                    <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+                                        <Scale className="h-24 w-24 rotate-12" />
+                                    </div>
                                     <div className="space-y-2 relative z-10">
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4 flex items-center gap-2"><History className="h-3 w-3 text-emerald-500" />{new Date(h.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4 flex items-center gap-2">
+                                            <History className="h-3 w-3 text-emerald-500" />
+                                            {new Date(h.createdAt).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                        </p>
                                         <p className="text-3xl font-black text-emerald-500 tracking-tighter">{formatCurrency(h.zakatAmount)}</p>
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tracking-widest">Base: {formatCurrency(h.zakatBase)}</p>
                                     </div>
-                                    <div className="relative z-10 pt-6 border-t border-white/5 mt-4"><Button variant="ghost" className="w-full rounded-xl h-10 text-[9px] font-black uppercase tracking-widest gap-2 hover:bg-emerald-500/10">Audit Détails <ArrowRight className="h-3 w-3" /></Button></div>
+                                    <div className="relative z-10 pt-6 border-t border-white/5 mt-4">
+                                        <Button variant="ghost" className="w-full rounded-xl h-10 text-[9px] font-black uppercase tracking-widest gap-2 hover:bg-emerald-500/10">
+                                            Audit Détails <ArrowRight className="h-3 w-3" />
+                                        </Button>
+                                    </div>
                                 </Card>
                             ))}
                         </div>

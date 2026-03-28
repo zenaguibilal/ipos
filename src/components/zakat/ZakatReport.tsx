@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -13,10 +12,12 @@ interface ZakatReportProps {
 }
 
 /**
- * @fileOverview Official Zakat Assessment Certificate (A4 Optimized)
+ * @fileOverview Official Zakat Assessment Certificate (A4 Optimized - Sovereign Edition)
  * وثيقة رسمية تحمل الطابع السيادي والمهني لتقييم الزكاة للمنشأة.
  */
 export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({ calculation, profile }, ref) => {
+    const details = calculation.details || calculation;
+
     return (
         <div ref={ref} className="p-16 bg-white text-black font-sans min-h-[297mm] w-full relative overflow-hidden">
             {/* Elegant Decoration */}
@@ -29,25 +30,26 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-emerald-900">{profile?.companyName || 'Mon Magasin'}</h1>
                     <p className="text-[10px] mt-1 uppercase font-black text-gray-500 tracking-[0.3em]">iPOS Cloud Authority Instance</p>
                     <div className="mt-6 space-y-1 text-xs font-bold text-gray-600">
-                        <p>{profile?.address}</p>
-                        <p>{profile?.city}, {profile?.country}</p>
-                        <p>Tél: {profile?.phone}</p>
+                        {profile?.address && <p>{profile.address}</p>}
+                        {profile?.city && <p>{profile.city}, {profile.country || 'Algérie'}</p>}
+                        {profile?.phone && <p>Tél: {profile.phone}</p>}
+                        {profile?.vatNumber && <p>NIF: {profile.vatNumber}</p>}
                     </div>
                 </div>
                 <div className="text-right">
                     <div className="px-8 py-4 bg-emerald-900 text-white text-xl font-black uppercase tracking-[0.3em] mb-4 shadow-xl">
-                        Rapport de Zakat
+                        Certificat de Zakat
                     </div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-emerald-900">Document Certifié • {new Date().getFullYear()}</p>
-                    <p className="text-xs font-bold mt-1">Date d'émission: {format(new Date(), 'dd MMMM yyyy', { locale: fr })}</p>
+                    <p className="text-xs font-bold mt-1">Émis le: {format(new Date(), 'dd MMMM yyyy', { locale: fr })}</p>
                 </div>
             </header>
 
             {/* Assessment Certificate Title */}
             <div className="text-center mb-16">
-                <h2 className="text-4xl font-black uppercase tracking-[0.4em] border-b-4 border-emerald-900 inline-block pb-4 mb-8 italic">Certificat d'Évaluation</h2>
+                <h2 className="text-4xl font-black uppercase tracking-[0.4em] border-b-4 border-emerald-900 inline-block pb-4 mb-8 italic">Evaluation du Patrimoine</h2>
                 <p className="text-sm italic text-gray-600 max-w-2xl mx-auto leading-relaxed font-medium">
-                    Attestation déterministe de calcul de l'assiette zakátique établie sur la base des actifs circulants و des passifs exigibles identifiés par le terminal souverain iPOS.
+                    Attestation déterministe de calcul de l'assiette zakátique établie sur la base des actifs circulants و des passifs exigibles identifiés par le terminal souverain iPOS Cloud.
                 </p>
             </div>
 
@@ -74,27 +76,27 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                         {/* Actifs */}
                         <tr className="bg-emerald-50"><td colSpan={2} className="p-4 font-black text-[10px] uppercase tracking-widest border-y border-emerald-900/10 text-emerald-900">ACTIFS CIRCULANTS (VALEURS POSITIVES)</td></tr>
                         <tr className="border-b border-gray-100">
-                            <td className="p-5 font-bold text-gray-700">Valeur vénale des stocks (Prix d'achat)</td>
-                            <td className="p-5 text-right font-black text-lg">{formatCurrency(calculation.inventoryValue || calculation.details?.inventoryValue || 0)}</td>
+                            <td className="p-5 font-bold text-gray-700">Valeur vénale des stocks (Snapshot iPOS)</td>
+                            <td className="p-5 text-right font-black text-lg">{formatCurrency(details.inventoryValue || 0)}</td>
                         </tr>
                         <tr className="border-b border-gray-100">
                             <td className="p-5 font-bold text-gray-700">Liquidités disponibles (Caisse و Banque)</td>
-                            <td className="p-5 text-right font-black text-lg">{formatCurrency(calculation.cashOnHand || calculation.details?.cashOnHand || 0)}</td>
+                            <td className="p-5 text-right font-black text-lg">{formatCurrency(details.cashOnHand || 0)}</td>
                         </tr>
                         <tr className="border-b border-gray-100">
                             <td className="p-5 font-bold text-gray-700">Créances clients recouvrables</td>
-                            <td className="p-5 text-right font-black text-lg text-emerald-600">{formatCurrency(calculation.customerDebts || calculation.details?.customerDebts || 0)}</td>
+                            <td className="p-5 text-right font-black text-lg text-emerald-600">{formatCurrency(details.customerDebts || 0)}</td>
                         </tr>
                         
                         {/* Passifs */}
                         <tr className="bg-gray-50"><td colSpan={2} className="p-4 font-black text-[10px] uppercase tracking-widest border-y border-emerald-900/10 mt-6 text-red-900">PASSIFS EXIGIBLES (DÉDUCTIONS LÉGALES)</td></tr>
                         <tr className="border-b border-gray-100">
                             <td className="p-5 font-bold text-gray-700">Dettes fournisseurs échues</td>
-                            <td className="p-5 text-right font-black text-lg text-red-600">-{formatCurrency(calculation.supplierDebts || calculation.details?.supplierDebts || 0)}</td>
+                            <td className="p-5 text-right font-black text-lg text-red-600">-{formatCurrency(details.supplierDebts || 0)}</td>
                         </tr>
                         <tr className="border-b border-gray-100">
                             <td className="p-5 font-bold text-gray-700">Autres charges و dettes de fonctionnement</td>
-                            <td className="p-5 text-right font-black text-lg text-red-600">-{formatCurrency(calculation.otherDebts || calculation.details?.otherDebts || 0)}</td>
+                            <td className="p-5 text-right font-black text-lg text-red-600">-{formatCurrency(details.otherDebts || 0)}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -104,7 +106,7 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
             <section className="p-8 border-4 border-double border-emerald-900 rounded-[2.5rem] bg-emerald-50/30 flex justify-between items-center mb-20">
                 <div>
                     <p className="text-[10px] font-black uppercase text-emerald-800 mb-2 tracking-[0.3em]">PARAMÈTRE DE RÉFÉRENCE MARCHÉ</p>
-                    <p className="text-xl font-black">Valeur Or (24k) : <span className="underline decoration-2 text-emerald-900">{formatCurrency(calculation.goldPrice || calculation.details?.goldPrice || 0)} /g</span></p>
+                    <p className="text-xl font-black">Valeur Or (24k) : <span className="underline decoration-2 text-emerald-900">{formatCurrency(details.goldPrice || 0)} /g</span></p>
                 </div>
                 <div className="text-right">
                     <p className="text-[10px] font-black uppercase text-emerald-800 mb-2 tracking-[0.3em]">NISAB CALCULÉ (85g)</p>
@@ -126,7 +128,7 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
 
             {/* Footer */}
             <footer className="absolute bottom-12 left-16 right-16 text-center text-[8px] text-emerald-900/40 italic border-t border-gray-100 pt-6 uppercase font-black tracking-[0.5em]">
-                <p>iPOS Cloud Authority Core • Ce document est généré par un نظام حتمي • © {new Date().getFullYear()} All Rights Reserved.</p>
+                <p>iPOS Cloud Authority Core • نظام حتمي للرقابة المالية • © {new Date().getFullYear()} All Rights Reserved.</p>
             </footer>
         </div>
     );

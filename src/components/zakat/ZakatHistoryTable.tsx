@@ -11,10 +11,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { History, ArrowRight, Scale, Coins } from 'lucide-react';
+import { History, ArrowRight, Scale, Coins, CheckCircle2, TrendingUp } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Badge } from '../ui/badge';
 
 interface ZakatHistoryTableProps {
   history: SavedZakatCalculation[];
@@ -29,7 +30,7 @@ export function ZakatHistoryTable({ history, onViewDetails }: ZakatHistoryTableP
           <TableRow className="hover:bg-transparent border-white/5">
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground py-6 px-10">Instantané Temporel</TableHead>
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Assiette Nette</TableHead>
-            <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Réf. Or Lot</TableHead>
+            <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Réf. Or Marché</TableHead>
             <TableHead className="text-right font-black uppercase tracking-widest text-[10px] text-muted-foreground pr-10">Zakat Due (2.5%)</TableHead>
             <TableHead className="w-[100px] text-right font-black uppercase tracking-widest text-[10px] text-muted-foreground px-8"></TableHead>
           </TableRow>
@@ -43,31 +44,40 @@ export function ZakatHistoryTable({ history, onViewDetails }: ZakatHistoryTableP
             >
               <TableCell className="px-10">
                 <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform shadow-inner">
                         <History className="h-5 w-5" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-black text-sm uppercase">{format(new Date(h.createdAt), 'dd MMMM yyyy', { locale: fr })}</span>
-                        <span className="text-[9px] font-mono text-muted-foreground opacity-40">{format(new Date(h.createdAt), 'HH:mm')}</span>
+                        <span className="font-black text-sm uppercase tracking-tight">{format(new Date(h.createdAt), 'dd MMMM yyyy', { locale: fr })}</span>
+                        <span className="text-[9px] font-mono text-muted-foreground opacity-40 uppercase tracking-widest">Audit Terminal à {format(new Date(h.createdAt), 'HH:mm')}</span>
                     </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-3">
+                    <div className="p-1.5 rounded-lg bg-white/5 border border-white/5">
+                        <Scale className="h-3.5 w-3.5 text-muted-foreground opacity-40" />
+                    </div>
+                    <span className="font-bold text-sm tracking-tighter">{formatCurrency(h.zakatBase)}</span>
                 </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
-                    <Scale className="h-3.5 w-3.5 text-muted-foreground opacity-40" />
-                    <span className="font-bold text-sm">{formatCurrency(h.zakatBase)}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-muted-foreground">
-                    <Coins className="h-3 w-3 opacity-40" />
-                    {formatCurrency(h.details?.goldPrice || 0)}/g
+                    <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest border-emerald-500/20 text-emerald-500/60 bg-emerald-500/5 px-2.5 h-6">
+                        <Coins className="h-3 w-3 mr-1.5 opacity-40" />
+                        {formatCurrency(h.details?.goldPrice || 0)}/g
+                    </Badge>
                 </div>
               </TableCell>
               <TableCell className="text-right pr-10">
-                <span className="text-xl font-black text-emerald-500 tracking-tighter">
-                    {formatCurrency(h.zakatAmount)}
-                </span>
+                <div className="flex flex-col items-end">
+                    <span className="text-xl font-black text-emerald-500 tracking-tighter">
+                        {formatCurrency(h.zakatAmount)}
+                    </span>
+                    <span className="text-[8px] font-black uppercase text-emerald-500/40 tracking-[0.2em] flex items-center gap-1">
+                        <CheckCircle2 className="h-2 w-2" /> Certifié iPOS
+                    </span>
+                </div>
               </TableCell>
               <TableCell className="text-right px-8">
                 <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl hover:bg-emerald-500/10 hover:text-emerald-500 transition-all group-hover:translate-x-1">
