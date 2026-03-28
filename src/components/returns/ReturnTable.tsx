@@ -26,9 +26,10 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { Checkbox } from '@/components/ui/checkbox';
 
 /**
- * @fileOverview Return Table (Luxury Sovereign Style)
+ * @fileOverview Return Table (Luxury Sovereign Style with Selection)
  */
 
 interface ReturnTableProps {
@@ -37,6 +38,9 @@ interface ReturnTableProps {
   onViewDetails: (pr: ProductReturn) => void;
   onCancelReturn: (pr: ProductReturn) => void;
   onPrint: (pr: ProductReturn, format: 'thermal' | 'a4') => void;
+  selectedReturns?: Set<string>;
+  onToggleSelection?: (uuid: string) => void;
+  onToggleAll?: () => void;
 }
 
 export function ReturnTable({
@@ -45,6 +49,9 @@ export function ReturnTable({
   onViewDetails,
   onCancelReturn,
   onPrint,
+  selectedReturns = new Set(),
+  onToggleSelection,
+  onToggleAll,
 }: ReturnTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
 
@@ -53,6 +60,14 @@ export function ReturnTable({
       <Table>
         <TableHeader className="bg-white/5">
           <TableRow className="hover:bg-transparent border-white/5">
+            {onToggleAll && (
+                <TableHead className="w-12 px-6 py-5">
+                    <Checkbox 
+                        checked={returns.length > 0 && selectedReturns.size === returns.length} 
+                        onCheckedChange={onToggleAll} 
+                    />
+                </TableHead>
+            )}
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground py-6 px-8">Origine Sale</TableHead>
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Horodatage</TableHead>
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Entité Cliente</TableHead>
@@ -68,13 +83,22 @@ export function ReturnTable({
             const customer = pr.customerUuid ? customerMap.get(pr.customerUuid) : null;
             const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
             const impactDebt = Math.max(0, pr.totalReturnValue - pr.amountRefunded);
+            const isSelected = selectedReturns.has(pr.uuid);
 
             return (
               <TableRow 
                 key={pr.uuid} 
-                className="hover:bg-destructive/5 transition-colors border-white/5 cursor-pointer group" 
-                onClick={() => onViewDetails(pr)}
+                className={cn(
+                    "hover:bg-destructive/5 transition-colors border-white/5 cursor-pointer group",
+                    isSelected && "bg-destructive/10"
+                )} 
+                onClick={() => onToggleSelection?.(pr.uuid)}
               >
+                {onToggleSelection && (
+                    <TableCell className="px-6" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelection(pr.uuid)} />
+                    </TableCell>
+                )}
                 <TableCell className="px-8 py-5">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center font-mono font-black text-xs text-destructive shadow-inner group-hover:scale-110 transition-transform">

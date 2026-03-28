@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -6,8 +7,7 @@ import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
-    TrendingDown, Wallet, HandCoins, Archive, 
-    History, ArrowRight, RotateCcw, Filter, LayoutGrid, List, X, Clock, Receipt
+    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -16,6 +16,7 @@ import { ReturnTable } from '@/components/returns/ReturnTable';
 import { ReturnHistoryCard } from '@/components/returns/ReturnHistoryCard';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
+import { DeleteMultipleReturnsDialog } from '@/components/returns/DeleteMultipleReturnsDialog';
 import { ReturnReceipt } from '@/components/returns/ReturnReceipt';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -23,14 +24,14 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
-import { useAppStore, useAppActions } from '@/stores/appStore';
+import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Returns Sovereign Ledger (Finalized Perfection)
+ * @fileOverview Returns Sovereign Ledger (Finalized Excellence)
  * المركز السيادي لتعقب حركات الإرجاع وتصحيح الأرصدة والمخزون.
  */
 
@@ -53,6 +54,7 @@ const StatCard = ({ title, value, icon: Icon, colorClass, desc }: { title: strin
 );
 
 export default function ReturnsPage() {
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const { profile, viewMode } = useAppStore(state => ({
         profile: state.profile,
         viewMode: state.returnViewMode
@@ -66,10 +68,12 @@ export default function ReturnsPage() {
     const [selectedReturn, setSelectedReturn] = useState<ProductReturn | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
     const [allReturns, setAllReturns] = useState<ProductReturn[] | undefined>(undefined);
     const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
+    const [selectedReturnsUuids, setSelectedReturnsUuids] = useState<Set<string>>(new Set());
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const receiptRef = useRef<HTMLDivElement>(null);
@@ -92,6 +96,7 @@ export default function ReturnsPage() {
             setAllReturns(returnsData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
             setVisibleCount(ITEMS_PER_PAGE);
+            setSelectedReturnsUuids(new Set()); // Reset selection on refresh
         } catch (error: any) {
             toast.error("Impossible de charger les retours.");
             setAllReturns([]);
@@ -119,6 +124,24 @@ export default function ReturnsPage() {
         if (!allReturns) return [];
         return allReturns.slice(0, visibleCount);
     }, [allReturns, visibleCount]);
+
+    const handleToggleSelection = (uuid: string) => {
+        setSelectedReturnsUuids(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(uuid)) newSet.delete(uuid);
+            else newSet.add(uuid);
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (!allReturns) return;
+        if (selectedReturnsUuids.size === visibleReturns.length) {
+            setSelectedReturnsUuids(new Set());
+        } else {
+            setSelectedReturnsUuids(new Set(visibleReturns.map(r => r.uuid)));
+        }
+    };
 
     const handleViewDetails = (pr: ProductReturn) => {
         setSelectedReturn(pr);
@@ -156,6 +179,7 @@ export default function ReturnsPage() {
 
     const handleReset = () => {
         setSearchQuery('');
+        setSelectedReturnsUuids(new Set());
         toast.info("Filtres réinitialisés.");
     };
 
@@ -181,8 +205,8 @@ export default function ReturnsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Valeur Retours" value={formatCurrency(stats.totalValue)} icon={Undo2} colorClass="text-destructive" desc="Pertes de revenus bruts" />
-                <StatCard title="Remboursements" value={formatCurrency(stats.totalRefunded)} icon={Wallet} colorClass="text-chart-quaternary" desc="Sorties de caisse réelles" />
-                <StatCard title="Correction Dettes" value={formatCurrency(stats.impactDebt)} icon={HandCoins} colorClass="text-primary" desc="Crédit sur comptes clients" />
+                <StatCard title="Remboursements" value={formatCurrency(stats.totalRefunded)} icon={Archive} colorClass="text-chart-quaternary" desc="Sorties de caisse réelles" />
+                <StatCard title="Correction Dettes" value={formatCurrency(stats.impactDebt)} icon={Archive} colorClass="text-primary" desc="Crédit sur comptes clients" />
                 <StatCard title="Volume Flux" value={`${allReturns?.length || 0} Bons`} icon={Archive} colorClass="text-muted-foreground" desc="Opérations enregistrées" />
             </div>
 
@@ -224,6 +248,28 @@ export default function ReturnsPage() {
                     </Button>
                 </div>
             </div>
+
+            {selectedReturnsUuids.size > 0 && (
+                <div className="flex justify-between items-center bg-destructive/10 border border-destructive/20 rounded-[1.5rem] p-4 animate-in slide-in-from-top-4 duration-500 shadow-lg">
+                    <div className="flex items-center gap-4">
+                        <Badge variant="destructive" className="px-4 py-1.5 rounded-xl font-black text-xs">
+                            {selectedReturnsUuids.size} retour(s) sélectionné(s)
+                        </Badge>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-destructive opacity-60">Actions de masse sur les flux</p>
+                    </div>
+                    {isManagerOrAdmin && (
+                        <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            onClick={() => setIsBulkDeleteOpen(true)} 
+                            className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6 shadow-lg shadow-destructive/20"
+                        >
+                            <Trash2 className="h-4 w-4" /> 
+                            Annuler la Sélection
+                        </Button>
+                    )}
+                </div>
+            )}
             
             <div className="min-h-[500px]">
                 {allReturns === undefined ? (
@@ -258,6 +304,8 @@ export default function ReturnsPage() {
                                             onViewDetails={handleViewDetails}
                                             onCancelReturn={handleCancelReturn}
                                             onPrint={handlePrint}
+                                            isSelected={selectedReturnsUuids.has(pr.uuid)}
+                                            onToggleSelection={() => handleToggleSelection(pr.uuid)}
                                         />
                                     );
                                 })}
@@ -269,6 +317,9 @@ export default function ReturnsPage() {
                                 onViewDetails={handleViewDetails} 
                                 onCancelReturn={handleCancelReturn} 
                                 onPrint={handlePrint} 
+                                selectedReturns={selectedReturnsUuids}
+                                onToggleSelection={handleToggleSelection}
+                                onToggleAll={handleSelectAll}
                             />
                         )}
                         
@@ -291,6 +342,14 @@ export default function ReturnsPage() {
 
             <ReturnDetailsDialog isOpen={isDetailsOpen} onOpenChange={setIsDetailsOpen} productReturn={selectedReturn} />
             <CancelReturnDialog isOpen={isCancelOpen} onOpenChange={setIsCancelOpen} productReturn={selectedReturn} onSuccess={() => fetchReturnsAndCustomers(true)} />
+            {isManagerOrAdmin && (
+                <DeleteMultipleReturnsDialog 
+                    isOpen={isBulkDeleteOpen} 
+                    onOpenChange={setIsBulkDeleteOpen} 
+                    returnUuids={Array.from(selectedReturnsUuids)} 
+                    onSuccess={() => { setSelectedReturnsUuids(new Set()); fetchReturnsAndCustomers(true); }} 
+                />
+            )}
             <div className="hidden">{selectedReturn && <ReturnReceipt ref={receiptRef} productReturn={selectedReturn} profile={profile} />}</div>
         </div>
     );

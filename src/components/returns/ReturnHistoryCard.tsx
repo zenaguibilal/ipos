@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ReturnCardProps {
     productReturn: ProductReturn;
@@ -19,6 +20,8 @@ interface ReturnCardProps {
     onViewDetails: (pr: ProductReturn) => void;
     onCancelReturn: (pr: ProductReturn) => void;
     onPrint: (pr: ProductReturn, format: 'thermal' | 'a4') => void;
+    isSelected: boolean;
+    onToggleSelection: () => void;
 }
 
 export const ReturnHistoryCard = React.memo<ReturnCardProps>(({ 
@@ -26,20 +29,39 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
     customerName, 
     onViewDetails, 
     onCancelReturn, 
-    onPrint 
+    onPrint,
+    isSelected,
+    onToggleSelection
 }) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const impactDebt = Math.max(0, productReturn.totalReturnValue - productReturn.amountRefunded);
 
     return (
-        <Card className="flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 relative group luxury-glass border-destructive/10 bg-muted/10 overflow-hidden">
+        <Card 
+            className={cn(
+                "flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 relative group luxury-glass border-destructive/10 bg-muted/10 overflow-hidden",
+                isSelected && "ring-2 ring-destructive/50 bg-destructive/[0.02] shadow-destructive/10"
+            )}
+            onClick={onToggleSelection}
+        >
+            <div className={cn(
+                "absolute top-3 left-3 z-10 transition-opacity",
+                isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}>
+                <Checkbox 
+                    checked={isSelected} 
+                    onCheckedChange={onToggleSelection} 
+                    className="h-5 w-5 bg-background shadow-lg border-destructive/30 data-[state=checked]:bg-destructive" 
+                />
+            </div>
+
             <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
                 <Undo2 className="h-32 w-32 rotate-12" />
             </div>
 
             <CardHeader className="pb-3 border-b border-white/5 bg-white/5 px-6 pt-6">
                 <div className="flex justify-between items-start">
-                    <div className="space-y-1">
+                    <div className="space-y-1 ml-6">
                         <div className="flex items-center gap-2">
                             <Receipt className="h-3.5 w-3.5 text-destructive opacity-60" />
                             <CardTitle className="text-sm font-mono font-black text-destructive tracking-tighter">#{productReturn.originalInvoiceNumber}</CardTitle>
@@ -51,7 +73,7 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                                 <MoreHorizontal className="h-5 w-5" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -101,7 +123,7 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                 </div>
             </CardContent>
 
-            <CardFooter className="bg-destructive/5 p-5 border-t border-destructive/10 mt-auto relative z-10">
+            <CardFooter className="bg-destructive/5 p-5 border-t border-destructive/10 mt-auto relative z-10" onClick={e => { e.stopPropagation(); onViewDetails(productReturn); }} style={{ cursor: 'pointer' }}>
                 <div className="flex justify-between items-center w-full">
                     <span className="text-[10px] font-black uppercase tracking-widest text-destructive/70">Valeur Nette Retour</span>
                     <span className="text-2xl font-black text-destructive tracking-tighter">-{formatCurrency(productReturn.totalReturnValue)}</span>
