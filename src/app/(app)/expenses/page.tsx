@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -39,7 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 
 /**
- * @fileOverview Expense Ledger (Sovereign Authority - Protected)
+ * @fileOverview Registre des Charges (Autorité Souveraine - Protégé)
  */
 
 export default function ExpensesPage() {
@@ -145,7 +146,7 @@ export default function ExpensesPage() {
         <div className="p-4 sm:p-6 space-y-10 animate-in fade-in duration-1000 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader 
                 title="Souveraineté des Charges" 
-                description="Audit chronologique des flux sortants, classification و maîtrise des dépenses."
+                description="Audit chronologique des flux sortants, classification et maîtrise des dépenses."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <PrintExpenseListDialog expenses={filteredExpenses} />
@@ -171,7 +172,7 @@ export default function ExpensesPage() {
                     <div className="absolute inset-0 bg-destructive/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-destructive opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
-                        placeholder="Rechercher par description أو تصنيف المصروف..."
+                        placeholder="Rechercher par description ou catégorie de dépense..."
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-destructive/40 focus:ring-0 font-bold text-sm relative z-10 shadow-inner"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
@@ -305,7 +306,7 @@ export default function ExpensesPage() {
                     <div className="space-y-1">
                         <p className="text-sm font-black uppercase tracking-tight italic">Optimisation des Flux</p>
                         <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministe حتمي.
+                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministe.
                         </p>
                     </div>
                 </div>

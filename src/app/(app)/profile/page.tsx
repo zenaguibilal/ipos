@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,8 +16,8 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { useEffect, useState, useMemo } from "react";
 
 /**
- * @fileOverview Sovereign User Profile Page
- * المركز التعريفي للهوية والنشاط - حيث تلتقي الهوية بالسيادة الرقمية.
+ * @fileOverview Profil Utilisateur Souverain
+ * Centre d'identification de l'identité et de l'activité - Là où l'identité rencontre la souveraineté numérique.
  */
 
 export default function ProfilePage() {
@@ -52,19 +53,19 @@ export default function ProfilePage() {
         admin: { 
             label: 'Administrateur Système', 
             color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20',
-            desc: 'Souveraineté totale : Gestion des données و personnel.',
+            desc: 'Souveraineté totale : Gestion des données et du personnel.',
             icon: ShieldCheck
         },
         manager: { 
             label: 'Gérant d\'Établissement', 
             color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20',
-            desc: 'Gestion opérationnelle : Stocks, fournisseurs و rapports.',
+            desc: 'Gestion opérationnelle : Stocks, fournisseurs et rapports.',
             icon: BadgeCheck
         },
         cashier: {
             label: 'Opérateur de Caisse',
             color: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20',
-            desc: 'Exécution commerciale : Ventes و suivi clients.',
+            desc: 'Exécution commerciale : Ventes et suivi clients.',
             icon: Zap
         }
     };
@@ -99,7 +100,7 @@ export default function ProfilePage() {
                             <h1 className="text-5xl font-black uppercase tracking-tighter italic leading-none">Espace <span className="text-primary">Individuel</span></h1>
                             <p className="text-[11px] font-black uppercase tracking-[0.5em] text-muted-foreground opacity-60 mt-3 flex items-center gap-2">
                                 <Activity className="h-3 w-3 text-primary animate-pulse" />
-                                iPOS Cloud Profile • Terminal Active
+                                iPOS Cloud Profile • Terminal Actif
                             </p>
                         </div>
                     </div>

@@ -1,23 +1,23 @@
 
-# إعداد قاعدة بيانات iPOS على Supabase (تحديث المزامنة الشاملة)
+# Configuration de la base de données iPOS sur Supabase (Mise à jour Synchro Globale)
 
-تم توفير ملفات تهجئة (Migrations) شاملة لإعداد تطبيقك وضمان تفعيل كافة الميزات (الأدوار، المخبزة، الزكاة، الموظفين).
+Des fichiers de migration complets ont été fournis pour configurer votre application et garantir l'activation de toutes les fonctionnalités (Rôles, Boulangerie, Zakat, Personnel).
 
-## خطوات التنفيذ لضمان السيادة الكاملة:
+## Étapes d'exécution pour garantir la pleine souveraineté :
 
-1. اذهب إلى **Supabase Dashboard**.
-2. اختر مشروعك، ثم اذهب إلى قسم **SQL Editor**.
-3. افتح استعلاماً جديداً (New Query).
-4. انسخ محتويات الملف `supabase/migrations/20240328000000_comprehensive_schema.sql` والصقه هناك.
-5. اضغط على **Run**.
+1. Allez sur le **Supabase Dashboard**.
+2. Choisissez votre projet, puis allez dans la section **SQL Editor**.
+3. Ouvrez une nouvelle requête (New Query).
+4. Copiez le contenu du fichier `supabase/migrations/20240328000000_comprehensive_schema.sql` et collez-le ici.
+5. Cliquez sur **Run**.
 
-## ماذا سيفعل هذا السكربت؟
-*   **إصلاح الجداول المفقودة**: إنشاء جداول `staff_profiles`, `recipes`, `bread_orders`, و `zakat_logs`.
-*   **تحصين الحماية (RLS)**: تفعيل سياسات الوصول بناءً على الأدوار (Admin/Manager/Cashier).
-*   **تفعيل الربط**: ربط الموظفين والطلبيات بهوية المستخدم المسجل.
+## Que fera ce script ?
+*   **Correction des tables manquantes** : Création des tables `staff_profiles`, `recipes`, `bread_orders` et `zakat_logs`.
+*   **Fortification de la protection (RLS)** : Activation des politiques d'accès basées sur les rôles (Admin/Manager/Cashier).
+*   **Activation de la liaison** : Liaison du personnel et des commandes à l'identité de l'utilisateur enregistré.
 
-## ملاحظة هامة حول Storage:
-يجب عليك إنشاء "Bucket" جديد يدوياً في قسم **Storage** باسم `backups` وتعيين خصوصيته كـ `Private` للسماح للنظام بحفظ واسترجاع النسخ الاحتياطية السحابية.
+## Note importante sur le Storage :
+Vous devez créer manuellement un nouveau "Bucket" dans la section **Storage** nommé `backups` et définir sa confidentialité sur `Private` pour permettre au système de sauvegarder et de restaurer les sauvegardes cloud.
 
 ---
-**إذا استمر ظهور خطأ STAFF_FETCH_FAILED، تأكد من تنفيذ السكربت أعلاه بنجاح.**
+**Si l'erreur STAFF_FETCH_FAILED persiste, assurez-vous que le script ci-dessus a été exécuté avec succès.**

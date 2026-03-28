@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -28,7 +29,7 @@ import { CsvImporter } from '@/lib/csv-utils';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Sovereign Product Management (Sovereign Authority - Protected)
+ * @fileOverview Gestion Souveraine des Articles (Autorité Souveraine - Protégé)
  */
 
 export default function ProductsPage() {

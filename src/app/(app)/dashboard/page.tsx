@@ -57,7 +57,7 @@ const StatCard = ({ title, value, icon: Icon, change, isLoading, href, positiveI
                                     )}>
                                         {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(1)}%
                                     </span>
-                                    <span className="text-muted-foreground uppercase opacity-60">vs. précédent</span>
+                                    <span className="text-muted-foreground uppercase font-black opacity-60">vs. précédent</span>
                                 </p>
                             ) : <div className="h-[18px]"></div>
                         )}

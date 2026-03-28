@@ -30,8 +30,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 
 /**
- * @fileOverview Customer Command Center (Finalized Excellence)
- * المركز السيادي للتحكم في حساب الزبون، الديون، وتتبع النشاط التجاري.
+ * @fileOverview Centre de Commandement Client (Excellence Finalisée)
+ * Centre souverain pour le contrôle des comptes, dettes et suivi de l'activité commerciale.
  */
 
 export default function CustomerDetailPage() {
