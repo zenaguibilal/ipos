@@ -3,12 +3,12 @@ import type { Expense } from "@/lib/types";
 
 /**
  * @fileOverview Expense Repository (Absolute Data Authority)
- * المسؤول الحصري عن تسجيل المصاريف وتصنيفها.
+ * المسؤول الحصري عن تسجيل المصاريف وتصنيفها وإدارة العمليات الجماعية.
  */
 export class ExpenseRepository {
     private supabase = createClient();
 
-    async getAll(filters?: { from?: string; to?: string }): Promise<Expense[]> {
+    async getAll(filters?: { from?: string; to?: string; category?: string }): Promise<Expense[]> {
         let query = this.supabase.from('expenses').select('*');
 
         if (filters?.from) {
@@ -16,6 +16,9 @@ export class ExpenseRepository {
         }
         if (filters?.to) {
             query = query.lte('expense_date', filters.to);
+        }
+        if (filters?.category && filters.category !== 'all') {
+            query = query.eq('category', filters.category);
         }
 
         const { data, error } = await query.order('expense_date', { ascending: false });
@@ -52,6 +55,11 @@ export class ExpenseRepository {
     async delete(uuid: string): Promise<void> {
         const { error } = await this.supabase.from('expenses').delete().eq('uuid', uuid);
         if (error) throw new Error(`EXPENSE_DELETE_FAILURE: ${error.message}`);
+    }
+
+    async bulkDelete(uuids: string[]): Promise<void> {
+        const { error } = await this.supabase.from('expenses').delete().in('uuid', uuids);
+        if (error) throw new Error(`EXPENSE_BULK_DELETE_FAILURE: ${error.message}`);
     }
 
     private mapFromDb(e: any): Expense {
