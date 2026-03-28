@@ -6,7 +6,7 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 /**
- * [QUAL-01] Modulaire Component pour les résultats de Zakat
+ * [QUAL-01] Composant pour l'affichage des résultats du calcul de Zakat
  */
 interface ZakatResultsPanelProps {
     result: any;
@@ -64,7 +64,7 @@ export function ZakatResultsPanel({ result, isSaving, onSave }: ZakatResultsPane
                 </div>
             </CardContent>
             <CardFooter className="p-10 bg-white/5 border-t border-white/5">
-                <Button onClick={onSave} disabled={isSaving || !result.isNisabReached} className="w-full h-16 rounded-[1.5rem] font-black uppercase text-xs tracking-[0.3em] gap-4 shadow-2xl shadow-emerald-500/30 group hover:scale-105 active:scale-95 transition-all bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={onSave} disabled={isSaving || !result.isNisabReached} className="w-full h-16 rounded-[1.5rem] font-black uppercase text-xs tracking-[0.3em] gap-4 shadow-2xl shadow-emerald-500/30 transition-all bg-emerald-600 hover:bg-emerald-700 text-white">
                     {isSaving ? <Loader2 className="animate-spin h-5 w-5"/> : <Save className="h-5 w-5"/>} 
                     Archiver le Point de Calcul
                 </Button>

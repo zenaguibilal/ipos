@@ -9,7 +9,7 @@ import { formatCurrency } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * [QUAL-01] Modulaire Component pour le formulaire de Zakat
+ * [QUAL-01] Composant Modulaire pour le formulaire de Zakat
  */
 interface ZakatCalculatorFormProps {
     zakatData: any;

@@ -15,18 +15,34 @@ export class SaleRepository {
     private customerRepo = new CustomerRepository();
 
     /**
-     * Génère un numéro de facture avec une entropie élevée.
+     * [QUAL-03] Génère un numéro de facture avec une entropie élevée.
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
         
-        // [QUAL-03] Cryptographically secure random values
+        // Use cryptographically secure random values
         const array = new Uint32Array(1);
-        crypto.getRandomValues(array);
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            crypto.getRandomValues(array);
+        } else {
+            // Fallback for edge cases, though crypto is standard in modern environments
+            array[0] = Math.floor(Math.random() * 0xFFFFFFFF);
+        }
+        
         const randomPart = array[0].toString(16).toUpperCase().slice(-6).padStart(6, '0');
         
         return `INV-${datePart}-${randomPart}`;
+    }
+
+    async findByCustomerUuid(customerUuid: string): Promise<Sale[]> {
+        const { data, error } = await this.supabase
+            .from('sales')
+            .select('*, sale_items(*)')
+            .eq('customer_uuid', customerUuid)
+            .order('created_at', { ascending: false });
+        if (error) return [];
+        return data.map(this.mapFromDb);
     }
 
     async getAll(): Promise<Sale[]> {
@@ -79,19 +95,40 @@ export class SaleRepository {
 
         await this.supabase.from('sale_items').insert(saleItems);
 
-        // Inventory synchronization
         for (const item of saleItems) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
 
-        // Customer balance synchronization
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
 
         return this.mapFromDb({ ...sale, sale_items: saleItems });
+    }
+
+    async delete(uuid: string): Promise<void> {
+        const { data: sale, error: fErr } = await this.supabase
+            .from('sales')
+            .select('*, sale_items(*)')
+            .eq('uuid', uuid)
+            .single();
+        
+        if (fErr || !sale) throw new Error("SALE_NOT_FOUND");
+
+        for (const item of sale.sale_items) {
+            if (item.product_uuid) {
+                await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);
+            }
+        }
+
+        const { error: dErr } = await this.supabase.from('sales').delete().eq('uuid', uuid);
+        if (dErr) throw new Error(`SALE_DELETE_FAILED`);
+
+        if (sale.customer_uuid) {
+            await this.customerRepo.recalculateBalance(sale.customer_uuid);
+        }
     }
 
     private mapFromDb(s: any): Sale {

@@ -41,11 +41,11 @@ export async function POST(req: Request) {
 
         if (profileError) {
             // ATOMIC ROLLBACK: Delete auth user if profile fails
-            // Requires service role or admin privileges if configured
+            // This requires administrative privileges in real Supabase environments
             console.error("[SIGNUP_CRITICAL] Profile creation failed, rolling back user:", userId);
             
-            // In a real Supabase production env, you'd use a DB function (RPC) 
-            // but here we implement the logical rollback as requested.
+            // Note: In production, use a Database Function (RPC) for true atomicity.
+            // This is a programmatic rollback fallback.
             await supabase.auth.admin.deleteUser(userId);
             
             throw new Error("SIGNUP_ATOMIC_FAILURE");

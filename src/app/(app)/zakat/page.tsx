@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Scale, History, Clock, ShieldAlert } from 'lucide-react';
@@ -15,10 +15,9 @@ import { ZakatCharts } from '@/components/zakat/ZakatCharts';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
 
 /**
- * @fileOverview Zakat Command Center
+ * @fileOverview Zakat Command Center (Refactored)
  * [QUAL-01] Refactorisé en composants modulaires pour la maintenabilité.
  */
 
