@@ -6,7 +6,7 @@ import type { ProductReturn } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt, Undo2, PackageCheck, PackageX } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt, Undo2, PackageCheck, PackageX, History, FileCheck } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -86,17 +86,17 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px] shadow-2xl border-white/10">
                             <DropdownMenuItem onClick={() => onViewDetails(productReturn)} className="rounded-lg font-bold gap-3 py-2.5">
-                                <FileText className="h-4 w-4 opacity-60" /> Détails Flux
+                                <History className="h-4 w-4 opacity-60" /> Archives du Flux
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onPrint(productReturn, 'thermal')} className="rounded-lg font-bold gap-3 py-2.5">
-                                <Printer className="h-4 w-4 text-primary" /> Ticket 80mm
+                                <Printer className="h-4 w-4 text-primary" /> Ticket Thermique
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => onPrint(productReturn, 'a4')} className="rounded-lg font-bold gap-3 py-2.5">
-                                <Printer className="h-4 w-4 text-primary" /> Facture A4
+                                <FileCheck className="h-4 w-4 text-primary" /> Document A4
                             </DropdownMenuItem>
                             {isManagerOrAdmin && (
                                 <DropdownMenuItem onClick={() => onCancelReturn(productReturn)} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 gap-3 py-2.5">
-                                    <Trash2 className="h-4 w-4" /> Annuler Retour
+                                    <Trash2 className="h-4 w-4" /> Révoquer le Retour
                                 </DropdownMenuItem>
                             )}
                         </DropdownMenuContent>
@@ -117,14 +117,14 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
 
                 <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 rounded-xl bg-chart-quaternary/5 border border-chart-quaternary/10">
-                        <p className="text-[8px] font-black uppercase text-chart-quaternary/60 mb-1">Remboursé</p>
+                        <p className="text-[8px] font-black uppercase text-chart-quaternary/60 mb-1">Liquidités</p>
                         <p className="text-sm font-black text-chart-quaternary flex items-center gap-1.5">
                             {formatCurrency(productReturn.amountRefunded)}
                             <Banknote className="h-3 w-3" />
                         </p>
                     </div>
                     <div className="p-3 rounded-xl bg-primary/5 border border-primary/10">
-                        <p className="text-[8px] font-black uppercase text-primary/60 mb-1">Impact Solde</p>
+                        <p className="text-[8px] font-black uppercase text-primary/60 mb-1">Avoir Compte</p>
                         <p className="text-sm font-black text-primary flex items-center gap-1.5">
                             -{formatCurrency(impactDebt)}
                             <HandCoins className="h-3 w-3" />
@@ -133,12 +133,12 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                 </div>
 
                 <div className="flex items-center gap-2 pt-2">
-                    <Badge variant="outline" className="text-[8px] font-black uppercase gap-1.5 border-white/5 bg-background/40 h-5">
+                    <Badge variant="outline" className="text-[8px] font-black uppercase gap-1.5 border-white/5 bg-background/40 h-5 px-2">
                         <PackageCheck className="h-2.5 w-2.5 text-green-500" />
                         {restockedCount} Re-stock
                     </Badge>
                     {productReturn.items.length > restockedCount && (
-                        <Badge variant="outline" className="text-[8px] font-black uppercase gap-1.5 border-white/5 bg-background/40 h-5">
+                        <Badge variant="outline" className="text-[8px] font-black uppercase gap-1.5 border-white/5 bg-background/40 h-5 px-2">
                             <PackageX className="h-2.5 w-2.5 text-destructive" />
                             {productReturn.items.length - restockedCount} Perte
                         </Badge>

@@ -7,7 +7,7 @@ import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
-    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins, History, Filter, TrendingDown
+    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins, History, Filter, TrendingDown, Receipt, PackageCheck, AlertTriangle
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -31,13 +31,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Returns Sovereign Ledger (Finalized Perfection)
+ * @fileOverview Returns Sovereign Ledger (Finalized Excellence)
  * المركز السيادي لتعقب حركات الإرجاع وتصحيح الأرصدة والمخزون.
  */
 
 const ITEMS_PER_PAGE = 12;
 
-const StatCard = ({ title, value, icon: Icon, colorClass, desc }: { title: string, value: string, icon: any, colorClass: string, desc: string }) => (
+const StatCard = ({ title, value, icon: Icon, colorClass, desc, subValue }: { title: string, value: string, icon: any, colorClass: string, desc: string, subValue?: string }) => (
     <Card className="luxury-glass bg-muted/10 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden">
         <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
             <Icon className="h-24 w-24 rotate-12" />
@@ -47,8 +47,11 @@ const StatCard = ({ title, value, icon: Icon, colorClass, desc }: { title: strin
             <Icon className={cn("h-4 w-4 opacity-50", colorClass)} />
         </CardHeader>
         <CardContent className="relative z-10">
-            <div className="text-2xl font-black tracking-tight">{value}</div>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 opacity-60 italic">{desc}</p>
+            <div className={cn("text-2xl font-black tracking-tight", colorClass)}>{value}</div>
+            <div className="flex items-center justify-between mt-1">
+                <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{desc}</p>
+                {subValue && <span className="text-[10px] font-black text-foreground/40">{subValue}</span>}
+            </div>
         </CardContent>
     </Card>
 );
@@ -98,7 +101,7 @@ export default function ReturnsPage() {
             setVisibleCount(ITEMS_PER_PAGE);
             setSelectedReturnsUuids(new Set());
         } catch (error: any) {
-            toast.error("Impossible de charger les retours.");
+            toast.error("Impossible de charger les archives des retours.");
             setAllReturns([]);
         } finally {
             if (manual) setIsRefreshing(false);
@@ -110,14 +113,15 @@ export default function ReturnsPage() {
     }, [fetchReturnsAndCustomers]);
 
     const stats = useMemo(() => {
-        if (!allReturns) return { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 };
+        if (!allReturns) return { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0, restockedCount: 0 };
         return allReturns.reduce((acc, r) => {
             acc.totalValue += r.totalReturnValue;
             acc.totalRefunded += r.amountRefunded;
             acc.itemCount += r.items.length;
             acc.impactDebt += Math.max(0, r.totalReturnValue - r.amountRefunded);
+            acc.restockedCount += r.items.filter(i => i.wasRestocked).length;
             return acc;
-        }, { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 });
+        }, { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0, restockedCount: 0 });
     }, [allReturns]);
 
     const visibleReturns = useMemo(() => {
@@ -174,27 +178,27 @@ export default function ReturnsPage() {
     const handleExport = () => {
         if (!allReturns?.length) return;
         CsvImporter.exportReturns(allReturns, customerMap);
-        toast.success("Registre des retours exporté.");
+        toast.success("Registre des retours exporté vers le terminal local.");
     };
 
     const handleReset = () => {
         setSearchQuery('');
         setSelectedReturnsUuids(new Set());
-        toast.info("Filtres réinitialisés.");
+        toast.info("Filtres souverains réinitialisés.");
     };
 
     return (
-        <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
+        <div className="p-4 sm:p-6 space-y-10 animate-in fade-in duration-1000 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader 
                 title="Souveraineté des Retours" 
-                description="Régularisation des stocks و correction des balances clients après annulation."
+                description="Contrôle absolu des marchandises restituées و correction des balances financières."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!allReturns?.length} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-2">
+                    <Button variant="outline" onClick={handleExport} disabled={!allReturns?.length} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3 hover:bg-primary/5">
                         <FileUp className="h-4 w-4" /> 
                         Exporter CSV
                     </Button>
-                    <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest gap-2">
+                    <Button asChild className="bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/20 rounded-2xl h-12 px-10 font-black uppercase text-[10px] tracking-[0.2em] gap-3 hover:scale-105 active:scale-95 transition-all">
                         <Link href="/returns/new">
                             <Plus className="h-4 w-4" /> 
                             Nouveau Retour
@@ -204,10 +208,10 @@ export default function ReturnsPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Valeur Retours" value={formatCurrency(stats.totalValue)} icon={Undo2} colorClass="text-destructive" desc="Pertes de revenus bruts" />
+                <StatCard title="Valeur Marchande" value={formatCurrency(stats.totalValue)} icon={Undo2} colorClass="text-destructive" desc="Volume brut des retours" subValue={`${stats.itemCount} Un.`} />
                 <StatCard title="Remboursements" value={formatCurrency(stats.totalRefunded)} icon={Banknote} colorClass="text-chart-quaternary" desc="Sorties de caisse réelles" />
-                <StatCard title="Correction Dettes" value={formatCurrency(stats.impactDebt)} icon={HandCoins} colorClass="text-primary" desc="Crédit sur comptes clients" />
-                <StatCard title="Volume Flux" value={`${allReturns?.length || 0} Bons`} icon={Archive} colorClass="text-muted-foreground" desc="Opérations enregistrées" />
+                <StatCard title="Crédit Client" value={formatCurrency(stats.impactDebt)} icon={HandCoins} colorClass="text-primary" desc="Réduction des créances" />
+                <StatCard title="Récupération" value={`${stats.restockedCount}`} icon={PackageCheck} colorClass="text-blue-400" desc="Articles réintégrés au stock" subValue={`${allReturns?.length || 0} Bons`} />
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4">
@@ -215,7 +219,7 @@ export default function ReturnsPage() {
                     <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
-                        placeholder="Rechercher par N° Facture أو ملاحظات..."
+                        placeholder="Rechercher par N° Facture, Identité Client أو ملاحظات..."
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10 shadow-inner"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
@@ -230,7 +234,7 @@ export default function ReturnsPage() {
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <DateRangePicker date={dateRange} setDate={setDate} />
                     
-                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5 shadow-inner">
+                    <div className="flex items-center gap-1 rounded-xl bg-background/40 p-1 border border-white/10 shadow-inner">
                         <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setReturnViewMode('grid')}>
                             <LayoutGrid className="h-4.5 w-4.5"/>
                         </Button>
@@ -250,12 +254,12 @@ export default function ReturnsPage() {
             </div>
 
             {selectedReturnsUuids.size > 0 && (
-                <div className="flex justify-between items-center bg-destructive/10 border border-destructive/20 rounded-[1.5rem] p-4 animate-in slide-in-from-top-4 duration-500 shadow-lg">
+                <div className="flex justify-between items-center bg-destructive/5 border border-destructive/20 rounded-[1.5rem] p-4 animate-in slide-in-from-top-4 duration-500 shadow-xl">
                     <div className="flex items-center gap-4">
-                        <Badge variant="destructive" className="px-4 py-1.5 rounded-xl font-black text-xs">
+                        <Badge variant="destructive" className="px-4 py-1.5 rounded-xl font-black text-[10px] tracking-widest uppercase">
                             {selectedReturnsUuids.size} retour(s) sélectionné(s)
                         </Badge>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-destructive opacity-60">Actions de masse sur les flux</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-destructive opacity-60">Actions de masse sur les archives</p>
                     </div>
                     {isManagerOrAdmin && (
                         <Button 
@@ -273,26 +277,29 @@ export default function ReturnsPage() {
             
             <div className="min-h-[500px]">
                 {allReturns === undefined ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-56 w-full rounded-[2.5rem]" />)}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                        {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-[2.5rem]" />)}
                     </div>
                 ) : allReturns.length === 0 ? (
                     <EmptyState 
                         icon={Undo2} 
-                        title="Aucun retour détecté" 
-                        description={searchQuery ? "La recherche n'a retourné aucun flux." : "Le registre des retours est vierge. Commencez par régulariser une vente."} 
-                        className="py-32 luxury-glass border-white/5 bg-muted/5"
+                        title="Registre de Retours Vierge" 
+                        description={searchQuery ? "Aucune archive ne correspond à vos critères de filtrage." : "Le système n'a détecté aucune opération de retour. Commencez par régulariser une vente."} 
+                        className="py-32 luxury-glass border-white/5 bg-muted/5 rounded-[3rem]"
                     >
                         {!searchQuery && (
-                            <Button asChild className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
-                                <Link href="/returns/new">Initialiser un retour</Link>
+                            <Button asChild className="rounded-2xl px-12 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest gap-3">
+                                <Link href="/returns/new">
+                                    <Plus className="h-4 w-4" />
+                                    Initialiser un retour
+                                </Link>
                             </Button>
                         )}
                     </EmptyState>
                 ) : (
                     <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-1000">
                         {viewMode === 'grid' ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-10">
                                 {visibleReturns.map(pr => {
                                     const customer = pr.customerUuid ? customerMap.get(pr.customerUuid) : null;
                                     const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
@@ -329,10 +336,10 @@ export default function ReturnsPage() {
                                     variant="outline" 
                                     size="lg" 
                                     onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)}
-                                    className="min-w-[240px] h-14 rounded-2xl luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-widest hover:bg-primary/10 transition-all shadow-xl gap-3 group"
+                                    className="min-w-[280px] h-16 rounded-[1.5rem] luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-[0.2em] hover:bg-primary/10 transition-all shadow-xl gap-4 group"
                                 >
                                     Extraire plus d'archives ({visibleCount} / {allReturns.length})
-                                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                    <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform" />
                                 </Button>
                             </div>
                         )}
