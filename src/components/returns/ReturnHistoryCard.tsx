@@ -2,8 +2,8 @@
 'use client';
 
 import React from 'react';
-import type { ProductReturn, Customer } from '@/lib/types';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import type { ProductReturn } from '@/lib/types';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt, Undo2 } from 'lucide-react';
@@ -37,25 +37,25 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                 <Undo2 className="h-32 w-32 rotate-12" />
             </div>
 
-            <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
+            <CardHeader className="pb-3 border-b border-white/5 bg-white/5 px-6 pt-6">
                 <div className="flex justify-between items-start">
                     <div className="space-y-1">
                         <div className="flex items-center gap-2">
                             <Receipt className="h-3.5 w-3.5 text-destructive opacity-60" />
                             <CardTitle className="text-sm font-mono font-black text-destructive tracking-tighter">#{productReturn.originalInvoiceNumber}</CardTitle>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground opacity-60 uppercase">
-                            <Clock className="h-3 w-3" />
+                        <CardDescription className="text-[10px] flex items-center gap-1.5 uppercase tracking-[0.1em] font-black opacity-50">
+                            <Clock className="h-3 w-3 text-destructive/40" />
                             {format(safeToDate(productReturn.createdAt!), 'd MMM yyyy, HH:mm', { locale: fr })}
-                        </div>
+                        </CardDescription>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <MoreHorizontal className="h-5 w-5" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px] shadow-2xl">
+                        <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px] shadow-2xl border-white/10">
                             <DropdownMenuItem onClick={() => onViewDetails(productReturn)} className="rounded-lg font-bold gap-3 py-2.5">
                                 <FileText className="h-4 w-4 opacity-60" /> Détails Flux
                             </DropdownMenuItem>
@@ -72,7 +72,7 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                 </div>
             </CardHeader>
 
-            <CardContent className="pt-6 space-y-4 flex-grow">
+            <CardContent className="pt-6 space-y-4 px-6 flex-grow">
                 <div className="flex items-center gap-3 p-3 rounded-2xl bg-background/40 border border-white/5 shadow-inner">
                     <div className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center">
                         <User className="h-5 w-5 opacity-30" />
@@ -101,7 +101,7 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                 </div>
             </CardContent>
 
-            <CardFooter className="bg-destructive/5 p-4 border-t border-destructive/10 mt-auto relative z-10">
+            <CardFooter className="bg-destructive/5 p-5 border-t border-destructive/10 mt-auto relative z-10">
                 <div className="flex justify-between items-center w-full">
                     <span className="text-[10px] font-black uppercase tracking-widest text-destructive/70">Valeur Nette Retour</span>
                     <span className="text-2xl font-black text-destructive tracking-tighter">-{formatCurrency(productReturn.totalReturnValue)}</span>

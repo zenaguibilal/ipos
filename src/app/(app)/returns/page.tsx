@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
     TrendingDown, Wallet, HandCoins, Archive, 
-    History, ArrowRight, RotateCcw, Filter, LayoutGrid, List, X
+    History, ArrowRight, RotateCcw, Filter, LayoutGrid, List, X, Clock, Receipt
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -28,9 +28,10 @@ import { useAppStore, useAppActions } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Returns Sovereign Ledger (Finalized Excellence)
+ * @fileOverview Returns Sovereign Ledger (Finalized Perfection)
  * المركز السيادي لتعقب حركات الإرجاع وتصحيح الأرصدة والمخزون.
  */
 

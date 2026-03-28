@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api-client';
@@ -47,7 +47,7 @@ export default function NewReturnPage() {
         
         setIsSearching(true);
         try {
-            // Updated to fetch sales through standard API
+            // Fetch sales and find exact match
             const sales = await api.get<Sale[]>(`sales`);
             const sale = sales.find(s => s.invoiceNumber === targetInv);
             
@@ -99,7 +99,10 @@ export default function NewReturnPage() {
     const debtReduction = Math.max(0, totalReturnValue - amountRefunded);
 
     const handleSaveReturn = async () => {
-        if (!foundSale || totalReturnValue <= 0) return;
+        if (!foundSale || totalReturnValue <= 0) {
+            toast.error("Aucun article à retourner.");
+            return;
+        }
         setIsSaving(true);
         try {
             const success = await processReturn({
@@ -177,7 +180,7 @@ export default function NewReturnPage() {
                     </Card>
 
                     {foundSale && (
-                        <Card className="luxury-glass border-white/5 overflow-hidden animate-in slide-in-from-bottom-4 duration-700">
+                        <Card className="luxury-glass border-white/5 overflow-hidden animate-in slide-in-from-bottom-4 duration-700 shadow-2xl">
                             <CardHeader className="bg-white/5 p-8 border-b border-white/5">
                                 <CardTitle className="flex items-center gap-4 text-lg font-black uppercase">
                                     <div className="p-2 bg-primary/10 rounded-xl"><ShoppingBag className="h-4 w-4 text-primary" /></div>
@@ -300,7 +303,7 @@ export default function NewReturnPage() {
                                     <div>
                                         <p className="text-xs font-black uppercase tracking-tighter">Conseil de Gestion</p>
                                         <p className="text-[10px] text-muted-foreground italic leading-relaxed">
-                                            "Si vous remboursez intégralement en cash, l'impact sur le solde client sera de zero."
+                                            "Si vous remboursez intégralement en cash, l'impact sur le solde client sera de zéro DA."
                                         </p>
                                     </div>
                                 </div>
