@@ -3,8 +3,8 @@ import { calculateZakat } from "@/lib/utils";
 
 /**
  * @fileOverview Zakat Repository (Absolute Data Authority - Resilient Edition)
- * PHASE 4, 7 & 15: Centralized logic for Zakat computation with robust error handling.
- * المسؤول عن جلب البيانات المالية الموزعة وحساب الوعاء الزكوي بشكل حتمي مع ضمان عدم انهيار المنظومة عند نقص الجداول.
+ * PHASE 15: Centralized logic for Zakat computation with robust error handling.
+ * المسؤول عن جلب البيانات المالية الموزعة وحساب الوعاء الزكوي بشكل حتمي مع ضمان عدم انهيار المنظومة.
  */
 export class ZakatRepository {
     private supabase = createClient();
@@ -18,7 +18,6 @@ export class ZakatRepository {
                 this.supabase.from('company_profile').select('gold_price_per_gram').maybeSingle()
             ]);
 
-            // التحقق من البيانات واستخدام القيم الافتراضية لمنع الأخطاء الحسابية
             const inventoryValue = (pRes.data || []).reduce((sum, p) => sum + ((p.quantity || 0) * (p.purchase_price || 0)), 0);
             const customerDebts = (cRes.data || []).reduce((sum, c) => sum + (c.outstanding_balance || 0), 0);
             const supplierDebts = (sRes.data || []).reduce((sum, s) => sum + (s.balance || 0), 0);
@@ -31,12 +30,7 @@ export class ZakatRepository {
             };
         } catch (e: any) {
             console.error('[ZAKAT_DATA_FETCH_FAILED]', e.message);
-            return {
-                inventoryValue: 0,
-                customerDebts: 0,
-                supplierDebts: 0,
-                goldPrice: 0
-            };
+            return { inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 };
         }
     }
 
@@ -48,9 +42,9 @@ export class ZakatRepository {
                 .order('created_at', { ascending: false });
             
             if (error) {
-                // التعامل مع خطأ الجدول المفقود (Postgres code 42P01) بمرونة
+                // Postgres code 42P01: undefined_table
                 if (error.code === '42P01') {
-                    console.warn('[REPOSITORY_WARNING] Table zakat_logs not found. Returning empty history.');
+                    console.warn('[REPOSITORY_WARNING] zakat_logs table missing. Returning empty array.');
                     return [];
                 }
                 throw error;
@@ -64,7 +58,6 @@ export class ZakatRepository {
                 details: l.details
             }));
         } catch (e: any) {
-            // منع انهيار الواجهة عند فشل استرجاع الأرشيف
             console.error(`[ZAKAT_HISTORY_FETCH_FAILED_SILENT] ${e.message}`);
             return [];
         }

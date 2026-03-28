@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -15,15 +14,16 @@ import { Separator } from '@/components/ui/separator';
 import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { History, TrendingUp, Landmark, Banknote, Coins, CheckCircle2, ShieldCheck, Activity } from 'lucide-react';
+import { History, TrendingUp, Landmark, Banknote, Coins, CheckCircle2, ShieldCheck, Activity, Printer } from 'lucide-react';
 
 interface ZakatHistoryDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     calculation: any;
+    onPrint?: (calc: any) => void;
 }
 
-export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation }: ZakatHistoryDialogProps) {
+export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation, onPrint }: ZakatHistoryDialogProps) {
     if (!calculation) return null;
 
     return (
@@ -69,9 +69,9 @@ export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation }: ZakatH
                             <Badge variant="outline" className="border-emerald-500/20 text-emerald-500 font-black uppercase text-[8px] px-3">Valeurs Positives</Badge>
                         </div>
                         <div className="grid gap-4">
-                            <DetailRow label="Valeur des Stocks" value={calculation.details.inventoryValue} icon={TrendingUp} color="text-foreground" />
-                            <DetailRow label="Créances Clients" value={calculation.details.customerDebts} icon={TrendingUp} color="text-emerald-500" />
-                            <DetailRow label="Cash & Liquidités" value={calculation.details.cashOnHand} icon={Banknote} color="text-emerald-500" />
+                            <DetailRow label="Valeur des Stocks" value={calculation.details?.inventoryValue} icon={TrendingUp} color="text-foreground" />
+                            <DetailRow label="Créances Clients" value={calculation.details?.customerDebts} icon={TrendingUp} color="text-emerald-500" />
+                            <DetailRow label="Cash & Liquidités" value={calculation.details?.cashOnHand} icon={Banknote} color="text-emerald-500" />
                         </div>
                     </div>
 
@@ -86,8 +86,8 @@ export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation }: ZakatH
                             <Badge variant="outline" className="border-destructive/20 text-destructive font-black uppercase text-[8px] px-3">Déductions</Badge>
                         </div>
                         <div className="grid gap-4">
-                            <DetailRow label="Dettes Fournisseurs" value={calculation.details.supplierDebts} icon={Landmark} color="text-destructive" isNegative />
-                            <DetailRow label="Autres Charges" value={calculation.details.otherDebts} icon={Landmark} color="text-destructive" isNegative />
+                            <DetailRow label="Dettes Fournisseurs" value={calculation.details?.supplierDebts} icon={Landmark} color="text-destructive" isNegative />
+                            <DetailRow label="Autres Charges" value={calculation.details?.otherDebts} icon={Landmark} color="text-destructive" isNegative />
                         </div>
                     </div>
 
@@ -98,7 +98,7 @@ export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation }: ZakatH
                             </div>
                             <span className="text-[11px] font-black uppercase tracking-[0.2em] opacity-60">Référence Or (24k)</span>
                         </div>
-                        <span className="font-black text-lg text-emerald-500">{formatCurrency(calculation.details.goldPrice)} <span className="text-[10px] font-bold">/g</span></span>
+                        <span className="font-black text-lg text-emerald-500">{formatCurrency(calculation.details?.goldPrice || 0)} <span className="text-[10px] font-bold">/g</span></span>
                     </div>
                 </div>
 
@@ -108,12 +108,17 @@ export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation }: ZakatH
                             <ShieldCheck className="h-5 w-5 text-emerald-500" />
                         </div>
                         <p className="text-[10px] text-muted-foreground italic leading-relaxed max-w-xs">
-                            "Ce point de calcul constitue une archive immuable de l'état de votre patrimoine commercial à la date indiquée."
+                            "Ce point de calcul constitue une archive immuable de l'état de votre patrimoine commercial à cette date."
                         </p>
                     </div>
-                    <Button onClick={() => onOpenChange(false)} className="rounded-2xl h-14 px-12 font-black uppercase text-[11px] tracking-widest bg-muted/20 hover:bg-muted/30 border border-white/10 w-full sm:w-auto">
-                        Fermer l'Archive
-                    </Button>
+                    <div className="flex gap-3 w-full sm:w-auto">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-2xl h-14 px-8 font-black uppercase text-[11px] tracking-widest border border-white/10">Fermer</Button>
+                        {onPrint && (
+                            <Button onClick={() => onPrint(calculation)} className="bg-primary hover:bg-primary/90 rounded-2xl h-14 px-10 font-black uppercase text-[11px] tracking-[0.2em] gap-3 shadow-2xl shadow-primary/20 transition-all">
+                                <Printer className="h-5 w-5" /> Imprimer
+                            </Button>
+                        )}
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -121,6 +126,7 @@ export function ZakatHistoryDialog({ isOpen, onOpenChange, calculation }: ZakatH
 }
 
 function DetailRow({ label, value, icon: Icon, color, isNegative }: any) {
+    if (value === undefined) return null;
     return (
         <div className="flex items-center justify-between p-5 rounded-2xl bg-background/40 border border-white/5 hover:border-white/10 transition-colors shadow-sm group">
             <div className="flex items-center gap-4">
