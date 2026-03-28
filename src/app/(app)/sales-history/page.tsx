@@ -11,7 +11,7 @@ import {
     LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
     DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
     AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
-    Target, Activity, TrendingUpDown, Zap
+    Target, Activity, TrendingUpDown, Zap, ArrowRight
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -61,9 +61,8 @@ const sortOptions = {
 
 export default function SalesHistoryPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { viewMode, isLoadingGlobal } = useAppStore(state => ({
-        viewMode: state.salesHistoryViewMode,
-        isLoadingGlobal: state.isLoading.salesHistory
+    const { viewMode } = useAppStore(state => ({
+        viewMode: state.salesHistoryViewMode
     }));
     const { setSalesHistoryViewMode } = useAppActions();
 
@@ -268,19 +267,31 @@ export default function SalesHistoryPage() {
         toast.info("Filtres réinitialisés.");
     };
 
-    const StatCard = ({ title, value, icon: Icon, colorClass, sub, extra }: any) => (
-        <Card className="luxury-glass border-white/5 bg-muted/10 group relative overflow-hidden transition-all duration-500 hover:border-primary/20">
+    const StatCard = ({ title, value, icon: Icon, colorClass, sub, extra, restricted = false }: any) => (
+        <Card className={cn(
+            "luxury-glass border-white/5 bg-muted/10 group relative overflow-hidden transition-all duration-500 hover:border-primary/20",
+            restricted && "opacity-60 grayscale cursor-not-allowed"
+        )}>
             <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
                 <Icon className="h-24 w-24 rotate-12" />
             </div>
-            <CardHeader className="py-4 px-6 border-b border-white/5 flex flex-row items-center justify-between">
+            <CardHeader className="py-4 px-6 border-b border-white/5 flex flex-row items-center justify-between relative z-10">
                 <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">{title}</CardTitle>
                 <Icon className={cn("h-4 w-4 opacity-50", colorClass)} />
             </CardHeader>
             <CardContent className="p-6 relative z-10">
-                <div className={cn("text-2xl font-black tracking-tighter", colorClass)}>{value}</div>
-                {sub && <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 opacity-60 italic">{sub}</p>}
-                {extra}
+                {restricted ? (
+                    <div className="flex items-center gap-2 text-muted-foreground py-2">
+                        <Lock className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase tracking-widest italic">Accès Souverain</span>
+                    </div>
+                ) : (
+                    <>
+                        <div className={cn("text-2xl font-black tracking-tighter", colorClass)}>{value}</div>
+                        {sub && <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1 opacity-60 italic">{sub}</p>}
+                        {extra}
+                    </>
+                )}
             </CardContent>
         </Card>
     );
@@ -328,6 +339,7 @@ export default function SalesHistoryPage() {
                     icon={HandCoins} 
                     colorClass="text-destructive"
                     sub="Restant à percevoir"
+                    restricted={!isManagerOrAdmin}
                 />
                 <StatCard 
                     title="Bénéfice Brut" 
@@ -335,6 +347,7 @@ export default function SalesHistoryPage() {
                     icon={DollarSign} 
                     colorClass="text-chart-secondary"
                     sub="Marge sur prix d'achat"
+                    restricted={!isManagerOrAdmin}
                 />
                 <StatCard 
                     title="Indice de Recouvrement" 
@@ -357,7 +370,7 @@ export default function SalesHistoryPage() {
                     <Input 
                         ref={searchInputRef}
                         placeholder="N° Facture ou Identité Client... (F1)"
-                        className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10"
+                        className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10 shadow-inner"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
@@ -368,17 +381,17 @@ export default function SalesHistoryPage() {
                     )}
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <div className="flex items-center gap-1 rounded-xl bg-background/40 p-1 border border-white/10 shadow-inner">
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg" onClick={() => setDateShortcut('today')}>Today</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg" onClick={() => setDateShortcut('week')}>7 J</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg" onClick={() => setDateShortcut('month')}>Mois</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('today')}>Today</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('week')}>7 J</Button>
+                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('month')}>Mois</Button>
                     </div>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[140px] justify-between">
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[140px] justify-between shadow-sm">
                                 <span className="flex items-center gap-2">
                                     <Filter className="h-3.5 w-3.5 text-primary" />
                                     {paymentFilter === 'all' ? 'Tous statuts' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
@@ -386,14 +399,14 @@ export default function SalesHistoryPage() {
                                 <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px]">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Filtrer par Règlement</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
+                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px] p-2">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Filtrer par Règlement</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuRadioGroup value={paymentFilter} onValueChange={(val) => setPaymentFilter(val as PaymentFilter)}>
-                                <DropdownMenuRadioItem value="all" className="font-bold py-2">Toutes les ventes</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="paid" className="font-bold py-2 text-chart-quaternary">Réglées uniquement</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="partial" className="font-bold py-2 text-chart-secondary">Paiements partiels</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="unpaid" className="font-bold py-2 text-destructive">Ventes à crédit (Impayées)</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="all" className="font-bold py-2.5 rounded-lg">Toutes les ventes</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="paid" className="font-bold py-2.5 rounded-lg text-chart-quaternary">Réglées uniquement</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="partial" className="font-bold py-2.5 rounded-lg text-chart-secondary">Paiements partiels</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="unpaid" className="font-bold py-2.5 rounded-lg text-destructive">Ventes à crédit (Impayées)</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -402,7 +415,7 @@ export default function SalesHistoryPage() {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between shadow-sm">
                                 <span className="flex items-center gap-2">
                                     <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
                                     {sortOptions[sortBy as keyof typeof sortOptions]}
@@ -410,12 +423,12 @@ export default function SalesHistoryPage() {
                                 <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px]">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Tri du Journal</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
+                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px] p-2">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Tri du Journal</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
                                 {Object.entries(sortOptions).map(([key, label]) => (
-                                    <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2">{label}</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2.5 rounded-lg">{label}</DropdownMenuRadioItem>
                                 ))}
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
@@ -459,7 +472,7 @@ export default function SalesHistoryPage() {
                ) : (
                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-1000">
                         {viewMode === 'grid' ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
                                 {visibleSales.map(s => {
                                     const customer = s.customerUuid ? customerMap.get(s.customerUuid) : undefined;
                                     const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
@@ -488,14 +501,15 @@ export default function SalesHistoryPage() {
                         )}
 
                         {visibleSalesCount < filteredAndSortedSales.length && (
-                            <div className="flex justify-center pt-10">
+                            <div className="flex justify-center pt-10 pb-20">
                                 <Button 
                                     variant="outline" 
                                     size="lg" 
                                     onClick={handleLoadMore} 
-                                    className="min-w-[240px] h-14 rounded-2xl luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-widest hover:bg-primary/10 hover:text-primary transition-all shadow-xl"
+                                    className="min-w-[240px] h-14 rounded-2xl luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-widest hover:bg-primary/10 hover:text-primary transition-all shadow-xl gap-3 group"
                                 >
                                     Extraire plus d'archives ({visibleSales.length} / {filteredAndSortedSales.length})
+                                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                                 </Button>
                             </div>
                         )}
@@ -545,3 +559,6 @@ export default function SalesHistoryPage() {
         </div>
     );
 }
+
+// Fixed missing icon imports
+import { Lock } from 'lucide-react';
