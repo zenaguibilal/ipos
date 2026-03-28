@@ -5,7 +5,8 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Return Repository (Absolute Authority - Nuclear Rebuilt)
- * PHASE 16: Robust handling of stock reversals and transactional debt recovery.
+ * PHASE 18: Robust handling of stock reversals and transactional debt recovery.
+ * Ensures stock is only reversed if it was originally restocked.
  */
 export class ReturnRepository {
     private supabase = createClient();
@@ -94,6 +95,7 @@ export class ReturnRepository {
         // Precise Stock Reversal: Only subtract from stock if it was previously added (restocked)
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
+                // If it was restocked, removing the return means we remove those items from stock again
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
             }
         }

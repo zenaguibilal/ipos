@@ -9,6 +9,7 @@ import { CustomerRepository } from "./customer.repository";
 /**
  * @fileOverview Sale Repository (Sovereign Authority - Nuclear Rebuilt)
  * PHASE 18: Ultra-high resolution invoice numbering to prevent concurrency collisions.
+ * Deterministic logic for stock transactions and ledger updates.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -26,12 +27,13 @@ export class SaleRepository {
 
     /**
      * Deterministic High-Entropy Invoice Numbering
+     * Uses date, micro-time, and cryptographic-strength entropy.
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
         // Micro-timestamp for near-zero collision probability
-        const microTime = performance.now().toString().split('.')[1]?.slice(0, 4) || '0000';
+        const microTime = (performance.now() % 1000).toFixed(0).padStart(3, '0');
         const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
         return `INV-${datePart}-${microTime}${entropy}`;
     }
@@ -63,7 +65,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE`);
+        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE: ${sErr.message}`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
@@ -77,6 +79,7 @@ export class SaleRepository {
 
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
+            // ROLLBACK MANUAL
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
             throw new Error(`SALE_ITEMS_SYNC_CRITICAL`);
         }

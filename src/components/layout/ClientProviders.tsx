@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 /**
  * @fileOverview THE SYSTEM PURIFIER (NUCLEAR EDITION)
  * PHASE 18: Precision purge logic to protect system-critical UX keys.
+ * Ensures that theme and user preferences are NOT wiped by the cloud-only enforcement protocol.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {

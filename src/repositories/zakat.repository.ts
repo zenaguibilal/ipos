@@ -4,6 +4,7 @@ import { calculateZakat } from "@/lib/utils";
 /**
  * @fileOverview Zakat Repository (Absolute Data Authority - Resilient Edition)
  * PHASE 18: Hardened data aggregation with defensive fault tolerance.
+ * Ensures the system remains deterministic even during partial cloud failures.
  */
 export class ZakatRepository {
     private supabase = createClient();
@@ -68,7 +69,7 @@ export class ZakatRepository {
                 zakat_amount: calc.zakatAmount,
                 details: calc
             }]);
-        if (error) throw new Error(`ZAKAT_LOG_FAILED`);
+        if (error) throw new Error(`ZAKAT_LOG_FAILED: ${error.message}`);
     }
 
     static calculate(data: any) {

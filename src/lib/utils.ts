@@ -23,7 +23,7 @@ export function formatDateToYYYYMMDD(date: Date): string {
 
 /**
  * Global Currency Formatter (Sovereign Authority)
- * PHASE 18: Optimized for ZERO Hydration Mismatches.
+ * PHASE 18: Optimized for ZERO Hydration Mismatches and defensive against SSR context.
  */
 export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
@@ -41,7 +41,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
             decimals = profile.decimalPlaces ?? 1;
         }
     } catch {
-        // Fallback to defaults during boot
+        // Fallback to defaults during boot or error
     }
   }
 
