@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import type { BreadOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Package, Truck, ShoppingBag, TrendingUp, Banknote, Clock, Wheat } from 'lucide-react';
+import { Package, Truck, ShoppingBag, TrendingUp, Banknote, Clock, Wheat, Star, Target, DollarSign } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -23,17 +23,20 @@ const StatCard = ({ title, value, icon: Icon, colorClass, desc, subValue, trend 
             <Icon className={cn("h-4 w-4 opacity-50", colorClass)} />
         </CardHeader>
         <CardContent className="relative z-10">
-            <div className={cn("text-2xl font-black tracking-tight", colorClass)}>{value}</div>
+            <div className={cn("text-3xl font-black tracking-tighter", colorClass)}>{value}</div>
             <div className="flex items-center justify-between mt-1">
                 <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{desc}</p>
                 {subValue && <span className="text-[10px] font-black text-foreground/40">{subValue}</span>}
             </div>
-            {trend && (
-                <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div 
-                        className={cn("h-full transition-all duration-1000", colorClass.replace('text-', 'bg-'))}
-                        style={{ width: `${trend}%` }}
-                    />
+            {trend !== undefined && (
+                <div className="mt-4 space-y-1.5">
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                        <div 
+                            className={cn("h-full transition-all duration-1000", colorClass.replace('text-', 'bg-'))}
+                            style={{ width: `${trend}%` }}
+                        />
+                    </div>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-right opacity-40">{Math.round(trend)}% ACHÈVEMENT</p>
                 </div>
             )}
         </CardContent>
@@ -63,28 +66,28 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
     if(isLoading && !orders) {
         return (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-[2rem]" />)}
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 w-full rounded-[2.5rem]" />)}
             </div>
         )
     }
 
     return (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-top-4 duration-1000">
             <StatCard 
-                title="Volume Total Attendu" 
-                value={`${stats.ordered} Pains`} 
+                title="Flux de Production" 
+                value={`${stats.ordered}`} 
                 icon={Wheat} 
                 colorClass="text-primary"
-                desc="Flux théorique du jour"
-                subValue={`${orders?.length || 0} Bons`}
+                desc="Unités attendues"
+                subValue={`${orders?.length || 0} Points de chute`}
             />
             
             <StatCard 
-                title="Indice de Livraison" 
-                value={`${Math.round(stats.deliveryRate)}%`} 
+                title="Performance Logistique" 
+                value={`${stats.delivered} Pcs`} 
                 icon={Truck} 
                 colorClass="text-blue-400"
-                desc={`${stats.delivered} unités expédiées`}
+                desc="Volume effectivement livré"
                 trend={stats.deliveryRate}
             />
 
@@ -93,16 +96,16 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
                 value={`${stats.billed} Un.`} 
                 icon={ShoppingBag} 
                 colorClass="text-chart-quaternary"
-                desc={`${stats.ordered - stats.billed} en attente MAC`}
+                desc={`${stats.ordered - stats.billed} Restant à facturer`}
                 subValue={formatCurrency(stats.billedRevenue)}
             />
 
             <StatCard 
-                title="C.A Prévisionnel" 
+                title="Valeur Prévisionnelle" 
                 value={formatCurrency(stats.potentialRevenue)} 
-                icon={TrendingUp} 
+                icon={DollarSign} 
                 colorClass="text-chart-secondary"
-                desc="Valeur brute du planning"
+                desc="Chiffre d'affaires du jour"
                 subValue={`P.U: ${breadPrice} DA`}
             />
         </div>

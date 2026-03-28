@@ -10,13 +10,14 @@ import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { BreadClientList } from '@/components/bread/BreadClientList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert, Lock } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert, Lock, Activity } from 'lucide-react';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 /**
- * @fileOverview Bread Management Page (Guarded)
+ * @fileOverview Bread Management Page (Completed Sovereign Edition)
+ * المركز السيادي لإدارة المخبزة: أتمتة، توزيع، وفوترة ذكية.
  */
 
 export default function BreadPage() {
@@ -70,10 +71,18 @@ export default function BreadPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full animate-in fade-in duration-1000">
-            <PageHeader 
-                title="Souveraineté Boulangère"
-                description="Automatisation des commandes récurrentes et suivi des flux de distribution."
-            />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <PageHeader 
+                    title="Souveraineté Boulangère"
+                    description="Automatisation des commandes récurrentes et suivi des flux de distribution."
+                />
+                <div className="flex items-center gap-3 luxury-glass p-2 bg-muted/20 border-white/5">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
+                        <Activity className="h-3 w-3 text-primary animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary">Terminal Actif</span>
+                    </div>
+                </div>
+            </div>
 
             <Tabs defaultValue="distribution" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-10 luxury-glass p-1.5 h-14 bg-muted/20 border-white/5 shadow-inner">
@@ -110,7 +119,7 @@ export default function BreadPage() {
                                 variant={isToday ? "secondary" : "outline"} 
                                 onClick={() => setCurrentDate(new Date())} 
                                 disabled={isToday}
-                                className="flex-1 sm:flex-none rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-md"
+                                className="flex-1 sm:flex-none rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest shadow-md transition-all active:scale-95"
                             >
                                 <Calendar className="mr-2 h-4 w-4 opacity-50" />
                                 Temps Réel
