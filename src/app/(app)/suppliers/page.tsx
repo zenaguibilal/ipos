@@ -5,7 +5,11 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, Loader2, Printer, ChevronDown } from 'lucide-react';
+import { 
+    Plus, Search, Building, LayoutGrid, List, RefreshCw, 
+    Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, 
+    Loader2, Printer, ChevronDown 
+} from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
 import { SupplierDialog } from '@/components/suppliers/SupplierDialog';
