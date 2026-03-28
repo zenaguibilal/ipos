@@ -7,11 +7,14 @@ import { CompanyProfileForm } from "@/components/profile/company-profile-form";
 import { DataManagementCard } from "@/components/profile/DataManagementCard";
 import { StaffManagement } from "@/components/profile/StaffManagement";
 import { SecuritySettings } from "@/components/profile/SecuritySettings";
+import { DisplaySettings } from "@/components/profile/DisplaySettings";
 import { useAppStore, useIsAdmin, useAppActions } from "@/stores/appStore";
 import { 
     User, Building2, Database, Settings2, ShieldCheck, 
-    BadgeCheck, LayoutDashboard, Cloud, Wifi, 
-    Monitor, Cpu, Fingerprint, Globe, KeyRound, Server, Users, Terminal, Activity, Zap, Lock, History, ShoppingBag, ArrowRight
+    BadgeCheck, LayoutDashboard, Cloud, Wifi, Monitor, 
+    Cpu, Fingerprint, Globe, KeyRound, Server, Users, 
+    Terminal, Activity, Zap, Lock, History, ShoppingBag, 
+    Palette
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -24,11 +27,10 @@ import { Separator } from "@/components/ui/separator";
  */
 
 export default function ProfilePage() {
-    const { profile, sales, expenses, stockIntakes } = useAppStore(state => ({
+    const { profile, sales, expenses } = useAppStore(state => ({
         profile: state.profile,
-        sales: state.lastCompletedSale ? [state.lastCompletedSale.sale] : [], // Use store or fetch
+        sales: state.lastCompletedSale ? [state.lastCompletedSale.sale] : [],
         expenses: state.expenses,
-        stockIntakes: state.breadOrders // or real intakes
     }));
     const isAdmin = useIsAdmin();
     const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...', platform: 'GCP-Sovereign' });
@@ -77,7 +79,6 @@ export default function ProfilePage() {
     const currentRole = (profile?.role as string) || 'cashier';
     const RoleIcon = roleLabels[currentRole]?.icon || ShieldCheck;
 
-    // Recent activity list for "System" tab
     const recentActivity = useMemo(() => {
         return [
             ...expenses.slice(0, 3).map(e => ({ type: 'expense', title: e.description, amount: e.amount, date: e.expenseDate })),
@@ -121,7 +122,7 @@ export default function ProfilePage() {
             </div>
 
             <Tabs defaultValue="account" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 luxury-glass p-2 h-auto bg-muted/20 border-white/5 shadow-inner gap-2">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 luxury-glass p-2 h-auto bg-muted/20 border-white/5 shadow-inner gap-2">
                     <TabsTrigger value="account" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Terminal className="h-4 w-4" /> Système
                     </TabsTrigger>
@@ -130,6 +131,9 @@ export default function ProfilePage() {
                     </TabsTrigger>
                     <TabsTrigger value="settings" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Settings2 className="h-4 w-4" /> Réglages
+                    </TabsTrigger>
+                    <TabsTrigger value="display" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
+                        <Palette className="h-4 w-4" /> Affichage
                     </TabsTrigger>
                     <TabsTrigger value="security" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Lock className="h-4 w-4" /> Sécurité
@@ -295,6 +299,10 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CompanyProfileForm mode="settings" />
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="display" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
+                    <DisplaySettings />
                 </TabsContent>
 
                 <TabsContent value="security" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
