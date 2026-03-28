@@ -7,12 +7,13 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Filter, Building, FileUp, Trash2 } from 'lucide-react';
+import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Filter, Building, FileUp, Trash2, Printer } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 import { StockIntakeTable } from '@/components/stock/stock-intake-table';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
+import { PrintStockListDialog } from '@/components/stock/PrintStockListDialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -167,6 +168,7 @@ export default function StockPage() {
                 description="Suivi souverain des réceptions de marchandises et ingénierية des coûts de revient."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintStockListDialog intakes={stockIntakes || []} supplierMap={supplierMap} />
                     <Button variant="outline" onClick={handleExportCSV} disabled={isLoading} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-2">
                         <FileUp className="h-4 w-4" /> 
                         Exporter CSV
@@ -257,7 +259,7 @@ export default function StockPage() {
                     <EmptyState
                         icon={Archive}
                         title="Aucun flux de stock détecté"
-                        description={selectedSupplierUuid !== 'all' || searchQuery ? "Aucun bon ne correspond à vos filtres actuels." : "Commencez par enregistrer une réception de marchandise pour alimenter votre inventaire."}
+                        description={selectedSupplierUuid !== 'all' || searchQuery ? "Aucun bon ne correspond à vos filtres actuels." : "Commencez par enregistrez une réception de marchandise pour alimenter votre inventaire."}
                         className="py-32 luxury-glass border-white/5 bg-muted/5"
                     >
                          {selectedSupplierUuid === 'all' && !searchQuery && (

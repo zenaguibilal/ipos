@@ -11,7 +11,7 @@ import {
     LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
     DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
     AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
-    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock
+    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock, Printer
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -21,6 +21,7 @@ import { SalesHistoryTableSkeleton } from '@/components/sales/SalesHistoryTableS
 import { SaleDetailsDialog } from '@/components/sales/SaleDetailsDialog';
 import { CancelSaleDialog } from '@/components/sales/CancelSaleDialog';
 import { PrintSaleReceiptDialog } from '@/components/sales/PrintSaleReceiptDialog';
+import { PrintSaleListDialog } from '@/components/sales/PrintSaleListDialog';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -305,6 +306,7 @@ export default function SalesHistoryPage() {
                 description="Suivi chronologique des flux de caisse, analyse des bénéfices و gestion des encaissements."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintSaleListDialog sales={filteredAndSortedSales} />
                     <Button variant="outline" onClick={handleExport} disabled={!allSales} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-2">
                         <FileUp className="h-4 w-4" />
                         Exporter CSV

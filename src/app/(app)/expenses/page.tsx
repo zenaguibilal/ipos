@@ -15,6 +15,7 @@ import { ExpenseStats } from '@/components/expenses/ExpenseStats';
 import ExpenseDialog from '@/components/expenses/ExpenseDialog';
 import DeleteExpenseDialog from '@/components/expenses/DeleteExpenseDialog';
 import { DeleteMultipleExpensesDialog } from '@/components/expenses/DeleteMultipleExpensesDialog';
+import { PrintExpenseListDialog } from '@/components/expenses/PrintExpenseListDialog';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -122,6 +123,7 @@ export default function ExpensesPage() {
                 description="Audit chronologique des flux sortants, classification و maîtrise des dépenses."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintExpenseListDialog expenses={filteredExpenses} />
                     <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3 hover:bg-primary/5">
                         <FileUp className="h-4 w-4" /> Export CSV
                     </Button>

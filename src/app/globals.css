@@ -173,11 +173,57 @@
   @apply bg-primary/40;
 }
 
+/* 
+ * PRINT SYSTEM ARCHITECTURE 
+ */
 @media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
   body {
     background: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
+
+  body::before { display: none !important; }
+
+  /* Hide everything except the target container */
+  main, header, footer, nav, .print-hide, button, [role="dialog"]:not(.print-dialog-content) {
+    display: none !important;
+  }
+
+  #receipt-for-print {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Thermal Receipt Specifics */
+  .thermal-receipt {
+    width: 80mm !important;
+    padding: 2mm !important;
+    margin: 0 auto !important;
+  }
+
+  /* A4 Specifics */
+  .a4-receipt {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 15mm !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
   .luxury-glass {
     border: 1px solid #ddd !important;
     background: white !important;
