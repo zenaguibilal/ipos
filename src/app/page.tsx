@@ -1,8 +1,9 @@
+
 import { redirect } from 'next/navigation';
 
 /**
- * @fileOverview Root Redirect
- * توجيه مباشر إلى مركز القيادة.
+ * @fileOverview Redirection racine
+ * Redirige automatiquement vers le tableau de bord souverain.
  */
 export default async function RootPage() {
   redirect('/dashboard');

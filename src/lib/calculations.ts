@@ -1,12 +1,14 @@
+
 /**
- * @fileOverview THE CALCULATION SINGULARITY
- * المركز السيادي للعمليات الحسابية والمنطق المالي لكسر التبعيات الدائرية وضمان الحتمية.
+ * @fileOverview LA SINGULARITÉ DES CALCULS
+ * Centre souverain pour les opérations mathématiques et la logique financière 
+ * afin de briser les dépendances circulaires et garantir le déterminisme.
  */
 
 import type { Cart } from './types';
 
 /**
- * حساب إجماليات السلة بشكل حتمي.
+ * Calcule les totaux du panier de manière déterministe.
  */
 export function calculateCartTotals(cart: Pick<Cart, 'items' | 'discount'>) {
     const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
@@ -21,7 +23,7 @@ export function calculateCartTotals(cart: Pick<Cart, 'items' | 'discount'>) {
 }
 
 /**
- * محرك حساب الزكاة الموحد (Sovereign Engine)
+ * Moteur de calcul unifié de la Zakat (Sovereign Engine)
  */
 export function calculateZakat(data: {
     goldPrice: number;
