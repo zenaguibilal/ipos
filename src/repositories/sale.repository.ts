@@ -6,7 +6,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Absolute Data Authority)
- * يضمن تسجيل المبيعات مع ربطها بحساب المستخدم للامتثال لسياسات RLS.
+ * يضمن تسجيل المبيعات مع فرض التزامن الفوري مع المخزون وأرصدة العملاء.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -71,6 +71,18 @@ export class SaleRepository {
             throw new Error(`SALE_ITEMS_SYNC_FAILED: ${iErr.message}`);
         }
 
+        // أتمتة السلطة: تحديث المخزون لكل عنصر مباع وتسجيل الحركة
+        for (const item of saleItems) {
+            if (item.product_uuid) {
+                await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
+            }
+        }
+
+        // تحديث ميزان العميل إذا كانت البيعة مرتبطة بحساب
+        if (saleData.customerUuid) {
+            await this.customerRepo.recalculateBalance(saleData.customerUuid);
+        }
+
         return this.mapFromDb({ ...sale, sale_items: saleItems });
     }
 
@@ -93,9 +105,10 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND_FOR_DELETION");
 
+        // استرجاع البضاعة للمخزون وتسجيل حركة الإلغاء
         for (const item of sale.sale_items) {
             if (item.product_uuid) {
-                await this.productRepo.updateStock(item.product_uuid, item.quantity);
+                await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);
             }
         }
 

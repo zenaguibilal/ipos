@@ -1,8 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
-import type { Product } from "@/lib/types";
+import type { Product, InventoryLog } from "@/lib/types";
+import { InventoryRepository } from "./inventory.repository";
 
 /**
  * @fileOverview Product Repository (Absolute Data Authority)
+ * المسؤول عن إدارة المنتجات وفرض التزامن مع سجلات حركة المخزون.
  */
 export class ProductRepository {
     private supabase = createClient();
@@ -64,7 +66,7 @@ export class ProductRepository {
         return data ? this.mapFromDb(data) : null;
     }
 
-    async updateStock(uuid: string, quantityChange: number): Promise<void> {
+    async updateStock(uuid: string, quantityChange: number, reason: InventoryLog['reason'], relatedUuid?: string): Promise<void> {
         const { data: product, error: fErr } = await this.supabase
             .from('products')
             .select('quantity, min_stock_level')
@@ -86,6 +88,16 @@ export class ProductRepository {
             .eq('uuid', uuid);
         
         if (uErr) throw new Error("STOCK_SYNC_FAILURE");
+
+        // فرض التزامن: تسجيل الحركة في سجل المخزون
+        const inventoryRepo = new InventoryRepository();
+        await inventoryRepo.add({
+            productUuid: uuid,
+            change: quantityChange,
+            newQuantity: newQuantity,
+            reason: reason,
+            relatedUuid: relatedUuid
+        });
     }
 
     async bulkDelete(uuids: string[]): Promise<void> {
@@ -110,7 +122,20 @@ export class ProductRepository {
             }])
             .select()
             .single();
+        
         if (error) throw new Error(`PRODUCT_CREATE_FAILURE: ${error.message}`);
+
+        // إذا تم إنشاء المنتج برصيد مخزني، نسجل ذلك كحركة تعديل يدوي
+        if (quantity > 0) {
+            const inventoryRepo = new InventoryRepository();
+            await inventoryRepo.add({
+                productUuid: data.uuid,
+                change: quantity,
+                newQuantity: quantity,
+                reason: 'manual_adjustment'
+            });
+        }
+
         return this.mapFromDb(data);
     }
 

@@ -2,16 +2,17 @@ import { createClient } from "@/utils/supabase/server";
 import type { StockIntake } from "@/lib/types";
 import { ProductRepository } from "./product.repository";
 import { SupplierRepository } from "./supplier.repository";
+import { InventoryRepository } from "./inventory.repository";
 
 /**
  * @fileOverview Stock Repository (Absolute Data Authority)
- * المسؤول عن توريد المخزون مع فرض التحقق الصارم من هوية المستخدم (RLS).
- * تم تحديثه ليدعم إنشاء المنتجات الجديدة تلقائياً أثناء التوريد.
+ * المسؤول عن توريد المخزون مع فرض التزامن الصارم وحساب التكاليف.
  */
 export class StockRepository {
     private supabase = createClient();
     private productRepo = new ProductRepository();
     private supplierRepo = new SupplierRepository();
+    private inventoryRepo = new InventoryRepository();
 
     async getAll(filters?: { from?: string; to?: string; query?: string; supplierUuid?: string }): Promise<StockIntake[]> {
         let query = this.supabase.from('stock_intakes').select('*, stock_intake_items(*)');
@@ -39,7 +40,7 @@ export class StockRepository {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) throw new Error("UNAUTHENTICATED");
 
-        // 1. Create Intake Record
+        // 1. إنشاء سجل التوريد الأساسي
         const { data: intake, error: sErr } = await this.supabase
             .from('stock_intakes')
             .insert([{
@@ -57,12 +58,12 @@ export class StockRepository {
 
         const finalItems = [];
 
-        // 2. Process Items (Create products if new, update stock if existing)
+        // 2. معالجة العناصر (إنشاء منتجات جديدة أو تحديث الموجود)
         for (const item of intakeData.items) {
             let productUuid = item.productUuid;
 
             if (!productUuid) {
-                // Determine unit and category for new product
+                // إنشاء منتج جديد تلقائياً إذا لم يكن موجوداً
                 const unit = item.unite || 'Pièce';
                 const category = item.category || 'Non classé';
                 const sellingPrice = item.price || (item.purchasePrice * 1.2);
@@ -71,21 +72,23 @@ export class StockRepository {
                     name: item.productName,
                     purchasePrice: item.purchasePrice,
                     price: sellingPrice,
-                    quantity: item.quantityReceived - (item.quantityDamaged || 0),
+                    quantity: 0, // سنقوم بتحديث الرصيد عبر updateStock لضمان تسجيل الحركة
                     unite: unit as any,
                     category: category,
                     supplierUuid: intake.supplier_uuid
                 });
                 productUuid = newProd.uuid;
-            } else {
-                const netQuantity = item.quantityReceived - (item.quantityDamaged || 0);
-                await this.productRepo.updateStock(productUuid, netQuantity);
-                
-                await this.supabase.from('products').update({
-                    purchase_price: item.purchasePrice,
-                    updated_at: new Date().toISOString()
-                }).eq('uuid', productUuid);
             }
+
+            // تحديث المخزون وتسجيل الحركة كـ stock_intake
+            const netQuantity = item.quantityReceived - (item.quantityDamaged || 0);
+            await this.productRepo.updateStock(productUuid, netQuantity, 'stock_intake', intake.uuid);
+            
+            // تحديث سعر الشراء الأخير في بطاقة المنتج
+            await this.supabase.from('products').update({
+                purchase_price: item.purchasePrice,
+                updated_at: new Date().toISOString()
+            }).eq('uuid', productUuid);
 
             finalItems.push({
                 user_id: user.id,
@@ -99,11 +102,11 @@ export class StockRepository {
             });
         }
 
-        // 3. Insert Intake Items
+        // 3. حفظ تفاصيل بنود التوريد
         const { error: iErr } = await this.supabase.from('stock_intake_items').insert(finalItems);
         if (iErr) throw new Error("STOCK_ITEMS_SYNC_FAILED");
 
-        // 4. Update Supplier Balance
+        // 4. تحديث ميزان المورد آلياً
         if (intake.supplier_uuid) {
             await this.supplierRepo.recalculateBalance(intake.supplier_uuid);
         }
@@ -120,10 +123,11 @@ export class StockRepository {
         
         if (iErr || !intake) throw new Error("INTAKE_NOT_FOUND");
 
+        // سحب الكميات من المخزون وتسجيل حركة إلغاء التوريد
         for (const item of intake.stock_intake_items) {
             if (item.product_uuid) {
                 const netReceived = item.quantity_received - item.quantity_damaged;
-                await this.productRepo.updateStock(item.product_uuid, -netReceived);
+                await this.productRepo.updateStock(item.product_uuid, -netReceived, 'cancellation', uuid);
             }
         }
 
