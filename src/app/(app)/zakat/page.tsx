@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -9,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Printer, RefreshCw, Save, Loader2, ShieldAlert, Coins, History, Scale, Landmark, Banknote, Target, TrendingUp, Info, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Printer, RefreshCw, Save, Loader2, ShieldAlert, Coins, History, Scale, Landmark, Banknote, Target, TrendingUp, Info, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
@@ -17,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ZakatReport } from '@/components/zakat/ZakatReport';
+import { ZakatHistoryDialog } from '@/components/zakat/ZakatHistoryDialog';
 
 /**
  * @fileOverview Zakat Command Center (Finalized Sovereign Edition)
@@ -36,6 +36,10 @@ export default function ZakatPage() {
         result: state.zakat.result
     }));
     const { refreshZakatData, setZakatInputs, saveZakatCalculation } = useAppActions();
+    
+    const [selectedHistory, setSelectedHistory] = useState<any>(null);
+    const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+    
     const reportRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -60,6 +64,11 @@ export default function ZakatPage() {
         } catch (error) { 
             toast.error("Échec de l'archivage souverain."); 
         }
+    };
+
+    const handleViewHistory = (h: any) => {
+        setSelectedHistory(h);
+        setIsHistoryDialogOpen(true);
     };
 
     const handlePrintReport = () => {
@@ -279,7 +288,7 @@ export default function ZakatPage() {
                 <TabsContent value="history" className="animate-in slide-in-from-bottom-4 duration-700 outline-none">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pb-20">
                         {zakatHistory.map(h => (
-                            <Card key={h.uuid} className="luxury-glass p-8 border-white/5 bg-muted/10 hover:border-primary/30 transition-all group relative overflow-hidden flex flex-col justify-between h-64">
+                            <Card key={h.uuid} className="luxury-glass p-8 border-white/5 bg-muted/10 hover:border-primary/30 transition-all group relative overflow-hidden flex flex-col justify-between h-64 cursor-pointer" onClick={() => handleViewHistory(h)}>
                                 <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
                                     <Landmark className="h-24 w-24 rotate-12" />
                                 </div>
@@ -304,13 +313,19 @@ export default function ZakatPage() {
                                 <History className="h-20 w-20 mx-auto" />
                                 <div className="space-y-2">
                                     <p className="text-xl font-black uppercase tracking-widest">Aucun historique archivé</p>
-                                    <p className="text-xs font-bold uppercase tracking-widest italic leading-relaxed">Les points de calcul gravés dans le Cloud iPOS apparaîtront ici.</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest italic leading-relaxed">Les نقاط de calcul gravés dans le Cloud iPOS apparaîtront ici.</p>
                                 </div>
                             </div>
                         )}
                     </div>
                 </TabsContent>
             </Tabs>
+
+            <ZakatHistoryDialog 
+                isOpen={isHistoryDialogOpen} 
+                onOpenChange={setIsHistoryDialogOpen} 
+                calculation={selectedHistory} 
+            />
 
             {/* Hidden component for printing */}
             <div className="hidden">

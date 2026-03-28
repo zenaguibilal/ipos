@@ -4,6 +4,7 @@ import { calculateZakat } from "@/lib/utils";
 /**
  * @fileOverview Zakat Repository (Absolute Data Authority)
  * Phase 4 & 7: Centralized logic for Zakat computation.
+ * المسؤول عن جلب البيانات المالية الموزعة وحساب الوعاء الزكوي بشكل حتمي.
  */
 export class ZakatRepository {
     private supabase = createClient();
@@ -38,12 +39,15 @@ export class ZakatRepository {
             .from('zakat_logs')
             .select('*')
             .order('created_at', { ascending: false });
+        
         if (error) throw new Error("ZAKAT_HISTORY_FETCH_FAILED");
+        
         return data.map((l: any) => ({
             uuid: l.uuid,
             zakatBase: l.zakat_base,
             zakatAmount: l.zakat_amount,
-            createdAt: l.created_at
+            createdAt: l.created_at,
+            details: l.details // Return full details for the history dialog
         }));
     }
 
@@ -53,7 +57,7 @@ export class ZakatRepository {
             .insert([{
                 zakat_base: calc.zakatBase,
                 zakat_amount: calc.zakatAmount,
-                details: calc
+                details: calc // Store the entire calculation snapshot
             }]);
         if (error) throw new Error("ZAKAT_SAVE_FAILED");
     }
