@@ -48,18 +48,18 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 const allNavLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
-  { href: '/stock', label: 'Réceptions', icon: Archive, managerOnly: true },
-  { href: '/products', label: 'Articles', icon: Package, managerOnly: true },
-  { href: '/costing', label: 'Coûts', icon: Calculator, managerOnly: true },
-  { href: '/suppliers', label: 'Fournisseurs', icon: Building, managerOnly: true },
-  { href: '/customers', label: 'Clients', icon: Users2, managerOnly: false },
-  { href: '/sales-history', label: 'Historique', icon: History, managerOnly: false },
-  { href: '/returns', label: 'Retours', icon: Undo2, managerOnly: false },
-  { href: '/expenses', label: 'Dépenses', icon: Wallet, managerOnly: true },
-  { href: '/bread', label: 'Boulangerie', icon: Wheat, managerOnly: true },
-  { href: '/zakat', label: 'Zakat', icon: Coins, managerOnly: true },
-  { href: '/settings', label: 'Réglages', icon: Settings2, managerOnly: true },
+  { slug: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, managerOnly: false },
+  { slug: 'stock', href: '/stock', label: 'Réceptions', icon: Archive, managerOnly: true },
+  { slug: 'products', href: '/products', label: 'Articles', icon: Package, managerOnly: true },
+  { slug: 'costing', href: '/costing', label: 'Coûts', icon: Calculator, managerOnly: true },
+  { slug: 'suppliers', href: '/suppliers', label: 'Fournisseurs', icon: Building, managerOnly: true },
+  { slug: 'customers', href: '/customers', label: 'Clients', icon: Users2, managerOnly: false },
+  { slug: 'sales-history', href: '/sales-history', label: 'Historique', icon: History, managerOnly: false },
+  { slug: 'returns', href: '/returns', label: 'Retours', icon: Undo2, managerOnly: false },
+  { slug: 'expenses', href: '/expenses', label: 'Dépenses', icon: Wallet, managerOnly: true },
+  { slug: 'bread', href: '/bread', label: 'Boulangerie', icon: Wheat, managerOnly: true },
+  { slug: 'zakat', href: '/zakat', label: 'Zakat', icon: Coins, managerOnly: true },
+  { slug: 'settings', href: '/settings', label: 'Réglages', icon: Settings2, managerOnly: true },
 ];
 
 export function AppHeader() {
@@ -69,10 +69,21 @@ export function AppHeader() {
   const { profile, actions } = useAppStore();
 
   const mainActionLinks = [
-    { href: '/sell', label: 'Caisse Live', icon: ShoppingCart },
+    { slug: 'sell', href: '/sell', label: 'Caisse Live', icon: ShoppingCart },
   ];
   
-  const navLinks = allNavLinks.filter(link => !link.managerOnly || isManagerOrAdmin);
+  const navLinks = allNavLinks.filter(link => {
+    // 1. Role Filter
+    const roleAllowed = !link.managerOnly || isManagerOrAdmin;
+    // 2. Permission Filter (if permissions exist in profile)
+    const permissionAllowed = profile?.permissions?.length ? profile.permissions.includes(link.slug) : true;
+    
+    return roleAllowed && permissionAllowed;
+  });
+
+  const currentMainActions = mainActionLinks.filter(link => 
+    profile?.permissions?.length ? profile.permissions.includes(link.slug) : true
+  );
 
   const roleConfig: Record<string, { label: string, color: string, icon: any, desc: string }> = {
     admin: { 
@@ -99,7 +110,6 @@ export function AppHeader() {
 
   return (
     <header className="flex h-16 items-center gap-4 bg-background/60 px-4 sm:px-8 print-hide sticky top-0 z-40 border-b border-white/5 backdrop-blur-2xl transition-all duration-500 shadow-sm">
-      {/* Brand & Logo Section */}
       <div className="flex-1 flex justify-start">
          <div className="flex items-center gap-3">
               <Link
@@ -117,11 +127,10 @@ export function AppHeader() {
           </div>
       </div>
 
-        {/* Central Navigation Center (Tooltips Enabled) */}
         <div className="flex-grow flex justify-center">
             <TooltipProvider>
                 <nav className="hidden xl:flex items-center gap-1 rounded-3xl border bg-black/5 dark:bg-black/20 p-1.5 luxury-glass border-white/5 shadow-inner">
-                    {mainActionLinks.map(link => (
+                    {currentMainActions.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>
                                 <Button 
@@ -139,12 +148,14 @@ export function AppHeader() {
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="luxury-glass">
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Interface de Vente Haute Rapidité (F9)</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest">Interface de Vente (F9)</p>
                             </TooltipContent>
                         </Tooltip>
                     ))}
                     
-                    <div className="h-6 w-px bg-white/10 mx-2" />
+                    {currentMainActions.length > 0 && navLinks.length > 0 && (
+                        <div className="h-6 w-px bg-white/10 mx-2" />
+                    )}
                     
                     <div className="flex items-center gap-1">
                         {navLinks.map(link => (
@@ -175,8 +186,6 @@ export function AppHeader() {
             </TooltipProvider>
         </div>
 
-
-        {/* Command Center Controls (Right Section) */}
         <div className="flex-1 flex justify-end">
             <div className="flex items-center gap-3 sm:gap-5">
                 <div className="hidden lg:block border-r border-white/5 pr-5 py-1">

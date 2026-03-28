@@ -34,6 +34,7 @@ export const StaffMemberSchema = z.object({
     email: z.string().email(),
     displayName: z.string().min(1),
     role: z.enum(['admin', 'manager', 'cashier']),
+    permissions: z.array(z.string()).default([]),
     isActive: z.boolean().default(true),
 });
 

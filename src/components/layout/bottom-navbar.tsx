@@ -12,32 +12,42 @@ import {
   Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 
 /**
  * @fileOverview Sovereign Mobile Navigation (Luxury Floating Edition)
- * Updated to include separate Settings and Profile links.
+ * Updated to respect granular staff permissions.
  */
 
 const allNavLinks = [
-  { href: '/dashboard', label: 'Stats', icon: LayoutDashboard, manager: false },
-  { href: '/customers', label: 'Clients', icon: Users2, manager: false },
-  { href: '/sales-history', label: 'Historique', icon: History, manager: false },
-  { href: '/settings', label: 'Réglages', icon: Settings2, manager: true },
+  { slug: 'dashboard', href: '/dashboard', label: 'Stats', icon: LayoutDashboard, manager: false },
+  { slug: 'customers', href: '/customers', label: 'Clients', icon: Users2, manager: false },
+  { slug: 'sales-history', href: '/sales-history', label: 'Historique', icon: History, manager: false },
+  { slug: 'settings', href: '/settings', label: 'Réglages', icon: Settings2, manager: true },
 ];
 
 export function BottomNavBar() {
   const pathname = usePathname();
   const isManagerOrAdmin = useIsManagerOrAdmin();
+  const { profile } = useAppStore();
 
-  // Role Filtering for mobile links
-  const navLinks = allNavLinks.filter(link => !link.manager || isManagerOrAdmin);
+  // Role & Permission Filtering for mobile links
+  const navLinks = allNavLinks.filter(link => {
+    const roleAllowed = !link.manager || isManagerOrAdmin;
+    const permissionAllowed = profile?.permissions?.length ? profile.permissions.includes(link.slug) : true;
+    return roleAllowed && permissionAllowed;
+  });
+
+  const isSellAllowed = profile?.permissions?.length ? profile.permissions.includes('sell') : true;
 
   return (
     <div className="fixed bottom-0 left-0 z-50 w-full border-t border-white/5 bg-background/80 backdrop-blur-3xl md:hidden print-hide safe-bottom pb-4 shadow-[0_-15px_40px_-5px_rgba(0,0,0,0.4)]">
-      <div className="grid grid-cols-5 items-stretch justify-around h-16 px-2">
+      <div className={cn(
+          "grid items-stretch justify-around h-16 px-2",
+          isSellAllowed ? "grid-cols-5" : `grid-cols-${navLinks.length + 1}`
+      )}>
         
-        {/* Home & Customers */}
+        {/* First half of links */}
         {navLinks.slice(0, 2).map(link => (
           <Link
             key={link.href}
@@ -62,18 +72,20 @@ export function BottomNavBar() {
           </Link>
         ))}
 
-        {/* Central Action: Live Sell */}
-        <div className="flex items-center justify-center">
-            <Link href="/sell" className="-mt-12 transition-all active:scale-90 relative group">
-                 <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl group-hover:bg-primary/50 transition-all duration-1000 animate-pulse" />
-                 <div className="flex h-16 w-16 items-center justify-center rounded-[2.2rem] bg-primary text-primary-foreground shadow-[0_15px_35px_-5px_rgba(var(--primary),0.6)] ring-4 ring-background relative overflow-hidden z-10 border border-white/20">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-50" />
-                    <ShoppingCart className="h-7 w-7 relative z-10 group-hover:scale-110 transition-transform duration-500" />
-                 </div>
-            </Link>
-        </div>
+        {/* Central Action: Live Sell (If Allowed) */}
+        {isSellAllowed && (
+            <div className="flex items-center justify-center">
+                <Link href="/sell" className="-mt-12 transition-all active:scale-90 relative group">
+                    <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl group-hover:bg-primary/50 transition-all duration-1000 animate-pulse" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-[2.2rem] bg-primary text-primary-foreground shadow-[0_15px_35px_-5px_rgba(var(--primary),0.6)] ring-4 ring-background relative overflow-hidden z-10 border border-white/20">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-50" />
+                        <ShoppingCart className="h-7 w-7 relative z-10 group-hover:scale-110 transition-transform duration-500" />
+                    </div>
+                </Link>
+            </div>
+        )}
 
-        {/* Settings/History */}
+        {/* Second half of links */}
         {navLinks.slice(2).map(link => (
           <Link
             key={link.href}
@@ -98,7 +110,7 @@ export function BottomNavBar() {
           </Link>
         ))}
 
-        {/* Profile Link */}
+        {/* Profile Link (Always Visible) */}
         <Link
             href="/profile"
             className={cn(

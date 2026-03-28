@@ -56,6 +56,7 @@ export interface StaffMember {
     email: string;
     displayName: string;
     role: AppRole;
+    permissions: string[]; // List of allowed page slugs
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -197,6 +198,7 @@ export interface CompanyProfile {
     decimalPlaces?: number;
     zakatAnniversary?: string;
     role: AppRole;
+    permissions?: string[];
     updatedAt: string;
 }
 

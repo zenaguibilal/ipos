@@ -1,4 +1,3 @@
-
 import { createClient } from "@/utils/supabase/server";
 import type { StaffMember } from "@/lib/types";
 
@@ -17,9 +16,8 @@ export class StaffRepository {
                 .order('created_at', { ascending: true });
             
             if (error) {
-                // Handle missing table error gracefully during initial setup
                 if (error.code === '42P01') {
-                    console.warn('[REPOSITORY_WARNING] Table staff_profiles not found. Please run migrations.');
+                    console.warn('[REPOSITORY_WARNING] Table staff_profiles not found.');
                     return [];
                 }
                 throw error;
@@ -27,7 +25,7 @@ export class StaffRepository {
             return data.map(this.mapFromDb);
         } catch (e: any) {
             console.error(`[STAFF_FETCH_FAILED] ${e.message}`);
-            return []; // Return empty instead of crashing
+            return [];
         }
     }
 
@@ -38,6 +36,7 @@ export class StaffRepository {
                 email: member.email,
                 display_name: member.displayName,
                 role: member.role || 'cashier',
+                permissions: member.permissions || [],
                 is_active: member.isActive ?? true,
             }])
             .select()
@@ -53,6 +52,7 @@ export class StaffRepository {
             .update({
                 display_name: member.displayName,
                 role: member.role,
+                permissions: member.permissions,
                 is_active: member.isActive,
                 updated_at: new Date().toISOString()
             })
@@ -80,6 +80,7 @@ export class StaffRepository {
             email: s.email,
             displayName: s.display_name,
             role: s.role,
+            permissions: s.permissions || [],
             isActive: s.is_active,
             createdAt: s.created_at,
             updatedAt: s.updated_at,

@@ -1,4 +1,3 @@
-
 import { createClient } from "@/utils/supabase/server";
 import type { CompanyProfile, AppRole } from "@/lib/types";
 
@@ -24,7 +23,7 @@ export class CompanyRepository {
         if (profileError) throw new Error(`PROFILE_FETCH_FAILED: ${profileError.message}`);
         
         if (profile) {
-            return this.mapFromDb(profile, 'admin');
+            return this.mapFromDb(profile, 'admin', undefined);
         }
 
         // 2. إذا لم يكن مالكاً، نبحث في سجل الموظفين
@@ -44,7 +43,7 @@ export class CompanyRepository {
 
             // جلب بيانات المنشأة المرتبطة
             const { data: comp } = await this.supabase.from('company_profile').select('*').limit(1).maybeSingle();
-            return this.mapFromDb(comp || { company_name: "iPOS Terminal" }, staff.role);
+            return this.mapFromDb(comp || { company_name: "iPOS Terminal" }, staff.role, staff.permissions);
         }
 
         return null;
@@ -79,10 +78,10 @@ export class CompanyRepository {
             .single();
 
         if (error) throw new Error(`PROFILE_UPDATE_FAILED: ${error.message}`);
-        return this.mapFromDb(updated, 'admin');
+        return this.mapFromDb(updated, 'admin', undefined);
     }
 
-    private mapFromDb(p: any, role: AppRole): CompanyProfile {
+    private mapFromDb(p: any, role: AppRole, permissions?: string[]): CompanyProfile {
         return {
             uuid: p.uuid || '',
             user_id: p.user_id || '',
@@ -102,6 +101,7 @@ export class CompanyRepository {
             currencySymbol: p.currency_symbol || 'DA',
             decimalPlaces: p.decimal_places ?? 1,
             role: role,
+            permissions: permissions || [],
             updatedAt: p.updated_at || new Date().toISOString(),
         };
     }
