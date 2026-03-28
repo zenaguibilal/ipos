@@ -89,6 +89,10 @@ export const StockIntakeSchema = z.object({
         quantityDamaged: z.number().nonnegative().default(0),
         purchasePrice: z.number().nonnegative(),
         costPrice: z.number().nonnegative(),
+        // New product creation support
+        price: z.number().optional(),
+        unite: z.string().optional(),
+        category: z.string().optional(),
     })).min(1),
 });
 

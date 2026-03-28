@@ -3,7 +3,7 @@
 
 import Papa from 'papaparse';
 import { api } from './api-client';
-import type { Customer, ImportAnalysis, Product, ProductImportAnalysis, Supplier, Expense, Sale, ProductReturn } from './types';
+import type { Customer, ImportAnalysis, Product, ProductImportAnalysis, Supplier, Expense, Sale, ProductReturn, StockIntake } from './types';
 
 /**
  * @fileOverview THE CSV SINGULARITY
@@ -182,5 +182,20 @@ export class CsvImporter {
                 'Remboursé': r.amountRefunded
             };
         }), 'returns-export');
+    }
+
+    static exportStockIntakes(intakes: StockIntake[], supplierMap: Map<string, Supplier>) {
+        this.download(intakes.map(i => {
+            const supplier = i.supplierUuid ? supplierMap.get(i.supplierUuid) : null;
+            return {
+                'Référence Facture': i.invoiceNumber,
+                'Date Facture': new Date(i.invoiceDate).toLocaleDateString(),
+                'Fournisseur': supplier ? supplier.name : 'Inconnu',
+                'Valeur Marchandise': i.totalValue,
+                'Frais Transport': i.transportFees,
+                'Total Bon': i.totalValue + i.transportFees,
+                'Nbr Articles': i.items.length
+            };
+        }), 'stock-register-export');
     }
 }

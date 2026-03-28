@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
@@ -6,12 +7,11 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Activity, Filter, Calendar } from 'lucide-react';
+import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Activity, Filter, Calendar, FileUp, Building } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
 import { StockIntakeTable } from '@/components/stock/stock-intake-table';
-import { StockIntakeTableSkeleton } from '@/components/stock/stock-intake-table-skeleton';
 import { StockIntakeDetailsDialog } from '@/components/stock/stock-intake-details-dialog';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -23,6 +23,16 @@ import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appSto
 import { CancelIntakeDialog } from '@/components/stock/CancelIntakeDialog';
 import { StockIntakeStats } from '@/components/stock/StockIntakeStats';
 import { cn } from '@/lib/utils';
+import { CsvImporter } from '@/lib/csv-utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * @fileOverview Sovereign Stock & Intake Ledger
@@ -47,7 +57,9 @@ export default function StockPage() {
     const [isCancelOpen, setIsCancelOpen] = useState(false);
 
     const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [supplierMap, setSupplierMap] = useState<Map<string, Supplier>>(new Map());
+    const [selectedSupplierUuid, setSelectedSupplierUuid] = useState<string>('all');
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Role Guard
@@ -68,7 +80,8 @@ export default function StockPage() {
             const query = new URLSearchParams({
                 query: debouncedSearchQuery,
                 from: dateRange.from?.toISOString() || '',
-                to: dateRange.to?.toISOString() || ''
+                to: dateRange.to?.toISOString() || '',
+                supplierUuid: selectedSupplierUuid
             }).toString();
 
             const [intakesData, suppliersData] = await Promise.all([
@@ -77,6 +90,7 @@ export default function StockPage() {
             ]);
 
             setStockIntakes(intakesData);
+            setSuppliers(suppliersData);
             setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
         } catch (error: any) {
             toast.error("Impossible de synchroniser le registre des réceptions.");
@@ -84,7 +98,7 @@ export default function StockPage() {
         } finally {
             if (manual) setIsRefreshing(false);
         }
-    }, [isMounted, debouncedSearchQuery, dateRange, isManagerOrAdmin]);
+    }, [isMounted, debouncedSearchQuery, dateRange, isManagerOrAdmin, selectedSupplierUuid]);
 
     useEffect(() => {
         fetchStockIntakesAndSuppliers();
@@ -99,6 +113,14 @@ export default function StockPage() {
         setSelectedIntake(intake);
         setIsCancelOpen(true);
     }, []);
+
+    const handleExportCSV = () => {
+        if (!stockIntakes || stockIntakes.length === 0) {
+            toast.error("Aucune donnée à exporter.");
+            return;
+        }
+        CsvImporter.exportStockIntakes(stockIntakes, supplierMap);
+    };
 
     if (!profile || !isManagerOrAdmin) {
         return (
@@ -121,14 +143,20 @@ export default function StockPage() {
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader
                 title="Registre de Tissage Stock"
-                description="Suivi souverain des réceptions de marchandises et ingénierie des coûts de revient."
+                description="Suivi souverain des réceptions de marchandises et ingénierية des coûts de revient."
             >
-                <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest gap-2">
-                    <Link href="/stock/intake">
-                        <Plus className="h-4 w-4" /> 
-                        Nouvelle Réception
-                    </Link>
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleExportCSV} disabled={isLoading} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-2">
+                        <FileUp className="h-4 w-4" /> 
+                        Exporter CSV
+                    </Button>
+                    <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest gap-2">
+                        <Link href="/stock/intake">
+                            <Plus className="h-4 w-4" /> 
+                            Nouvelle Réception
+                        </Link>
+                    </Button>
+                </div>
             </PageHeader>
 
             <StockIntakeStats intakes={stockIntakes} isLoading={isLoading} />
@@ -138,7 +166,7 @@ export default function StockPage() {
                     <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
-                        placeholder="Rechercher par Fournisseur ou N° Facture..."
+                        placeholder="Rechercher par N° Facture..."
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
@@ -146,6 +174,30 @@ export default function StockPage() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <Building className="h-3.5 w-3.5 text-primary" />
+                                    {selectedSupplierUuid === 'all' ? 'Tous les fournisseurs' : supplierMap.get(selectedSupplierUuid)?.name}
+                                </span>
+                                <Filter className="h-3.5 w-3.5 opacity-40" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px]">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2">Filtrer par Partenaire</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={selectedSupplierUuid} onValueChange={setSelectedSupplierUuid}>
+                                <DropdownMenuRadioItem value="all" className="font-bold py-2">Tout afficher</DropdownMenuRadioItem>
+                                {suppliers.map(s => (
+                                    <DropdownMenuRadioItem key={s.uuid} value={s.uuid} className="font-bold py-2">
+                                        {s.name}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <DateRangePicker date={dateRange} setDate={setDate} />
                     
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5">
@@ -172,12 +224,14 @@ export default function StockPage() {
                     <EmptyState
                         icon={Archive}
                         title="Aucun flux de stock détecté"
-                        description="Commencez par enregistrer une réception de marchandise pour alimenter votre inventaire."
+                        description={selectedSupplierUuid !== 'all' || searchQuery ? "Aucun bon ne correspond à vos filtres actuels." : "Commencez par enregistrer une réception de marchandise pour alimenter votre inventaire."}
                         className="py-32 luxury-glass border-white/5 bg-muted/5"
                     >
-                         <Button asChild className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
-                            <Link href="/stock/intake">Initialiser le Flux</Link>
-                        </Button>
+                         {selectedSupplierUuid === 'all' && !searchQuery && (
+                            <Button asChild className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
+                                <Link href="/stock/intake">Initialiser le Flux</Link>
+                            </Button>
+                         )}
                     </EmptyState>
                 ) : (
                     <div className="animate-in slide-in-from-bottom-4 duration-1000">
@@ -209,7 +263,7 @@ export default function StockPage() {
                 isOpen={isDetailsOpen}
                 onOpenChange={setIsDetailsOpen}
                 intake={selectedIntake}
-                supplierName={selectedIntake?.supplierUuid ? supplierMap.get(selectedIntake.uuid)?.name : 'Fournisseur Inconnu'}
+                supplierName={selectedIntake?.supplierUuid ? supplierMap.get(selectedIntake.supplierUuid)?.name : 'Fournisseur Inconnu'}
             />
 
             <CancelIntakeDialog

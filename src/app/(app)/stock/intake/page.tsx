@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -125,7 +126,7 @@ export default function NewStockIntakePage() {
             if (item.id === id) {
                 const updatedItem = { ...item, [field]: value };
                 if (field === 'purchasePrice' || field === 'quantityReceived') {
-                    if (updatedItem.isNew && updatedItem.price === 0) {
+                    if (updatedItem.isNew && (updatedItem.price === 0 || updatedItem.price === undefined)) {
                         updatedItem.price = parseFloat(String(updatedItem.purchasePrice)) * 1.2;
                     }
                 }
@@ -169,7 +170,11 @@ export default function NewStockIntakePage() {
         const processedItems = items.map(item => ({
             ...item,
             costPrice: item.purchasePrice * (1 + transportRatio),
-            productName: item.name
+            productName: item.name,
+            // Include details for new products
+            price: item.price,
+            unite: item.unite,
+            category: item.category
         }));
 
         const success = await processStockIntake({
@@ -341,7 +346,7 @@ export default function NewStockIntakePage() {
                             <tbody>
                                 {items.map(item => {
                                     const unitRevient = item.purchasePrice * (1 + transportRatio);
-                                    const unitMargin = item.price - unitRevient;
+                                    const unitMargin = (item.price || 0) - unitRevient;
                                     const isLoss = item.price > 0 && unitRevient > 0 && item.price < unitRevient;
                                     
                                     return (
@@ -380,7 +385,7 @@ export default function NewStockIntakePage() {
                                 {items.length === 0 && (
                                     <tr>
                                         <td colSpan={7} className="p-12 text-center text-muted-foreground italic">
-                                            Scanneز ou recherchez un produit pour commencer le calcul du coût de revient.
+                                            Scannez ou recherchez un produit pour commencer le calcul du coût de revient.
                                         </td>
                                     </tr>
                                 )}
