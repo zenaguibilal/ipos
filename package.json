@@ -34,6 +34,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "html5-qrcode": "^2.3.8",
     "immer": "^10.1.1",
     "jsbarcode": "^3.11.6",
     "lucide-react": "^0.417.0",
