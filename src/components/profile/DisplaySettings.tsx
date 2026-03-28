@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -14,6 +13,7 @@ import { useAppStore, useAppActions } from "@/stores/appStore";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
+import { Badge } from "../ui/badge";
 import { toast } from "sonner";
 
 /**
