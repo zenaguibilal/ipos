@@ -12,7 +12,7 @@ import {
     Loader2, Lock, Mail, Building2, UserPlus, ShieldCheck, 
     ArrowRight, Eye, EyeOff, CheckCircle2, Globe, Server, 
     Info, Zap, ShieldAlert, Cpu, Activity, Fingerprint, 
-    KeyRound, Terminal as TerminalIcon, Wifi, Shield
+    KeyRound, Terminal as TerminalIcon, Wifi, Shield, Network
 } from 'lucide-react';
 import Image from 'next/image';
 import { useAppStore } from '@/stores/appStore';
@@ -33,7 +33,6 @@ import {
 /**
  * @fileOverview AUTHENTICATION GATEWAY (SOVEREIGN EDITION - FINALIZED)
  * البوابة الرسمية والوحيدة للولوج إلى بنية iPOS السحابية.
- * تم إتمام المنطق، تحسين الحماية، وصقل الواجهة الزجاجية الفاخرة.
  */
 
 // Validation Schemas
@@ -48,7 +47,7 @@ const signupSchema = z.object({
     confirmPassword: z.string(),
     companyName: z.string().min(2, "Le nom de l'établissement est trop court"),
     agreeToTerms: z.literal(true, {
-        errorMap: () => ({ message: "Acceptation des conditions requise" }),
+        errorMap: () => ({ message: "Acceptation du mيثاق requise" }),
     }),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Les clés d'accès ne correspondent pas",
@@ -67,6 +66,7 @@ export default function AuthPage() {
     const [activeTab, setActiveTab] = useState('login');
     const [terminalId, setTerminalId] = useState('INIT-NODE-0000');
     const [systemPulse, setSystemPulse] = useState(false);
+    const [handshakeComplete, setHandshakeComplete] = useState(false);
     
     // Form States
     const [email, setEmail] = useState('');
@@ -76,16 +76,21 @@ export default function AuthPage() {
     const [rememberMe, setRememberMe] = useState(true);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
 
-    // Set Terminal ID on mount to avoid hydration mismatch
+    // Initial Handshake Logic
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const platform = window.navigator.platform.substring(0, 3).toUpperCase();
             const id = `iPOS-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${platform}`;
             setTerminalId(id);
             
-            // Start system pulse animation
-            const timer = setTimeout(() => setSystemPulse(true), 500);
-            return () => clearTimeout(timer);
+            // Simulated technical sequence
+            const pulseTimer = setTimeout(() => setSystemPulse(true), 300);
+            const handshakeTimer = setTimeout(() => setHandshakeComplete(true), 1200);
+            
+            return () => {
+                clearTimeout(pulseTimer);
+                clearTimeout(handshakeTimer);
+            };
         }
     }, []);
 
@@ -180,6 +185,12 @@ export default function AuthPage() {
                                 className="group-hover:scale-110 transition-transform duration-700"
                             />
                         </div>
+                        {!handshakeComplete && (
+                            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-1 rounded-full bg-background/80 backdrop-blur-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-500">
+                                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                <span className="text-[8px] font-black uppercase tracking-widest text-primary">Handshake...</span>
+                            </div>
+                        )}
                     </div>
                     <div className="space-y-3">
                         <h1 className="text-7xl font-black tracking-tighter uppercase italic bg-gradient-to-br from-foreground via-foreground to-foreground/30 bg-clip-text text-transparent leading-none">
@@ -377,11 +388,11 @@ export default function AuthPage() {
                                     {password && (
                                         <div className="space-y-2 animate-in fade-in duration-500">
                                             <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest">
-                                                <span className="text-muted-foreground">Force du Flux</span>
+                                                <span className="text-muted-foreground">Force du Flux Access</span>
                                                 <span className={cn(
                                                     getPasswordStrength() < 66 ? "text-destructive" : "text-green-500"
                                                 )}>
-                                                    {getPasswordStrength() < 66 ? 'Vulnérable' : 'Sécurisé'}
+                                                    {getPasswordStrength() < 66 ? 'Vulnérable' : 'Sécurisé (AES-256)'}
                                                 </span>
                                             </div>
                                             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
@@ -404,7 +415,7 @@ export default function AuthPage() {
                                             className="h-5 w-5 rounded-lg border-white/10 mt-1 data-[state=checked]:bg-primary"
                                         />
                                         <label htmlFor="terms" className="text-[10px] font-black uppercase tracking-widest opacity-60 cursor-pointer leading-relaxed">
-                                            J'accepte les conditions de déploiement و السيادة الرقمية الكاملة للمنظومة.
+                                            J'accepte le ميثاق iPOS و السيادة الرقمية الكاملة للمنظومة على البيانات.
                                         </label>
                                     </div>
                                 </CardContent>
@@ -434,20 +445,22 @@ export default function AuthPage() {
                 <div className="flex flex-col items-center space-y-10 pt-10">
                     <div className="flex flex-wrap justify-center gap-6">
                         <SystemBadge icon={Globe} label="Cloud Native" />
-                        <SystemBadge icon={Server} label="Multi-Region" />
+                        <SystemBadge icon={Network} label="Multi-Region" />
                         <SystemBadge icon={Shield} label="AES-256 Auth" />
                         <SystemBadge icon={Cpu} label="Pure Authority" />
                     </div>
                     
-                    <div className="flex flex-col items-center gap-4 py-6 px-10 rounded-[2rem] bg-muted/10 border border-white/5 shadow-inner group">
-                        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground opacity-30 group-hover:opacity-60 transition-opacity">
+                    <div className="flex flex-col items-center gap-4 py-6 px-10 rounded-[2rem] bg-muted/10 border border-white/5 shadow-inner group overflow-hidden relative">
+                        <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.5em] text-muted-foreground opacity-30 group-hover:opacity-100 transition-all relative z-10">
                             <Activity className="h-3 w-3 text-primary animate-pulse" />
-                            ID المحطة: {terminalId}
+                            PROTOCOL: iPOS-CORE-V1.2 • ID: {terminalId}
                         </div>
-                        <div className="flex items-center gap-6 opacity-20 group-hover:opacity-40 transition-opacity">
+                        <div className="flex items-center gap-6 opacity-20 group-hover:opacity-60 transition-all relative z-10">
                             <Fingerprint className="h-5 w-5" />
                             <KeyRound className="h-5 w-5" />
                             <TerminalIcon className="h-5 w-5" />
+                            <Wifi className="h-5 w-5" />
                         </div>
                     </div>
 
@@ -462,21 +475,21 @@ export default function AuthPage() {
                                         <ShieldCheck className="h-6 w-6 text-primary" />
                                         Décret de Souveraineté iPOS
                                     </DialogTitle>
-                                    <DialogDescription className="font-bold text-[10px] uppercase tracking-widest opacity-60">Engagement de Confidentialité Absolue</DialogDescription>
+                                    <DialogDescription className="font-bold text-[10px] uppercase tracking-widest opacity-60">Engagement de Confidentialité و Intégrité Cloud</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-6 py-6 text-sm font-medium leading-relaxed opacity-80 overflow-y-auto max-h-[50vh] pr-4">
-                                    <p>1. <strong>Cloud Authority</strong>: Vos données résident exclusivement dans une infrastructure multi-région sécurisée. Aucune donnée n'est stockée localement de manière permanente.</p>
-                                    <p>2. <strong>Chiffrement Maître</strong>: Chaque enregistrement financier est protégé par un algorithme AES-256 de classe militaire.</p>
-                                    <p>3. <strong>Isolation des Rôles</strong>: L'accès au terminal est strictement hiérarchisé. Seul l'administrateur possède la clé de révocation globale.</p>
-                                    <p>4. <strong>Audit de Flux</strong>: Chaque mouvement de stock ou transaction est horأت ذاتي horodaté et signé par le terminal émetteur.</p>
+                                    <p>1. <strong>Cloud Authority</strong>: Vos données résident exclusivement dans une infrastructure multi-région sécurisée. Aucune donnée n'est stockée localement de manière permanente (Pure Cloud-Only).</p>
+                                    <p>2. <strong>Chiffrement Maître</strong>: Chaque enregistrement financier و transaction est protégée par un algorithme AES-256 de classe militaire dès son émission.</p>
+                                    <p>3. <strong>Isolation des Rôles</strong>: L'accès au terminal est strictement hiérarchisé. Le mيثاق garantit que chaque action est signée par le rôle émetteur.</p>
+                                    <p>4. <strong>Audit de Flux</strong>: Chaque mouvement de stock ou encaissement est horodaté و immuable dans l'archive souveraine iPOS.</p>
                                 </div>
                                 <DialogFooter>
-                                    <Button variant="outline" className="rounded-xl font-black uppercase text-[10px] tracking-widest border-primary/20">Compris و Accusé Réception</Button>
+                                    <Button variant="outline" className="rounded-xl font-black uppercase text-[10px] tracking-widest border-primary/20" onClick={() => toast.info("Accusé réception enregistré.")}>Compris و Accusé Réception</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
                         <span className="h-1 w-1 rounded-full bg-white/10" />
-                        <button className="text-[10px] font-black uppercase tracking-widest text-primary/40 hover:text-primary transition-colors" onClick={() => toast.info("Contactez l'Autorité Support iPOS pour assistance.")}>Support Terminal</button>
+                        <button className="text-[10px] font-black uppercase tracking-widest text-primary/40 hover:text-primary transition-colors" onClick={() => toast.info("Contactez l'Autorité Support iPOS pour assistance technique.")}>Support Terminal</button>
                     </div>
                 </div>
             </div>
