@@ -1,9 +1,10 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { StaffMember } from "@/lib/types";
 
 /**
- * @fileOverview Staff Repository (Absolute Data Authority)
- * المسؤول عن إدارة ملفات الموظفين وصلاحياتهم مع معالجة الأخطاء السيادية.
+ * @fileOverview Référentiel du Personnel (Autorité de Données Absolue)
+ * Responsable de la gestion des profils des employés et de leurs permissions avec traitement souverain des erreurs.
  */
 export class StaffRepository {
     private supabase = createClient();
@@ -17,14 +18,14 @@ export class StaffRepository {
             
             if (error) {
                 if (error.code === '42P01') {
-                    console.warn('[REPOSITORY_WARNING] Table staff_profiles not found.');
+                    console.warn('[AVERTISSEMENT_RÉFÉRENTIEL] Table staff_profiles non trouvée.');
                     return [];
                 }
                 throw error;
             }
             return data.map(this.mapFromDb);
         } catch (e: any) {
-            console.error(`[STAFF_FETCH_FAILED] ${e.message}`);
+            console.error(`[ÉCHEC_RÉCUPÉRATION_PERSONNEL] ${e.message}`);
             return [];
         }
     }
@@ -42,7 +43,7 @@ export class StaffRepository {
             .select()
             .single();
 
-        if (error) throw new Error(`STAFF_CREATE_FAILED: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_CRÉATION_PERSONNEL : ${error.message}`);
         return this.mapFromDb(data);
     }
 
@@ -60,7 +61,7 @@ export class StaffRepository {
             .select()
             .single();
 
-        if (error) throw new Error(`STAFF_UPDATE_FAILED: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_MISE_À_JOUR_PERSONNEL : ${error.message}`);
         return this.mapFromDb(data);
     }
 
@@ -70,7 +71,7 @@ export class StaffRepository {
             .delete()
             .eq('uuid', uuid);
         
-        if (error) throw new Error(`STAFF_DELETE_FAILED: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_SUPPRESSION_PERSONNEL : ${error.message}`);
     }
 
     private mapFromDb(s: any): StaffMember {

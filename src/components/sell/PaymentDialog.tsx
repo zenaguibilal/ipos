@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -51,19 +52,19 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
     const newTotalOutstanding = (cartCustomer?.outstandingBalance ?? 0) + debtFromThisSale;
     const isOverLimit = cartCustomer?.creditLimit && cartCustomer.creditLimit > 0 && newTotalOutstanding > cartCustomer.creditLimit;
 
-    // Auto-calculate Due Date based on customer's settlement day
+    // Auto-calcul de la Date d'Échéance basé sur le jour de règlement du client
     useEffect(() => {
         if (paymentMode === 'credit' && cartCustomer?.settlementDay) {
             const now = new Date();
             let dueDate = setDayOfMonth(now, cartCustomer.settlementDay);
             
-            // If the settlement day for this month has passed or is today, move to next month
+            // Si le jour de règlement pour ce mois est déjà passé ou est aujourd'hui, passer au mois suivant
             if (isAfter(now, dueDate) || now.getDate() === cartCustomer.settlementDay) {
                 dueDate = addMonths(dueDate, 1);
             }
             setCalculatedDueDate(dueDate);
         } else if (paymentMode === 'credit') {
-            // Default to 30 days if no settlement day defined
+            // Par défaut à 30 jours si aucun jour de règlement défini
             setCalculatedDueDate(addMonths(new Date(), 1));
         } else {
             setCalculatedDueDate(undefined);
@@ -145,7 +146,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                 initializePayment();
             }
         } catch (error) {
-            // Error managed by global store actions
+            // Erreur gérée par les actions du store global
         } finally {
             setIsLoading(false);
         }
@@ -293,7 +294,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                                                     </span>
                                                 </div>
                                                 <p className="text-[8px] text-muted-foreground italic px-1">
-                                                    * Basé على "يوم التسوية" المتفق عليه في ملف الزبون.
+                                                    * Basé sur le 'jour de règlement' convenu dans le dossier client.
                                                 </p>
                                             </div>
                                             <div className="flex flex-col justify-center p-3 rounded-xl bg-background/40 border border-white/5 text-right">

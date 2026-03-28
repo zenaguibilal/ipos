@@ -4,8 +4,8 @@ import type { SupplierPayment } from "@/lib/types";
 import { SupplierRepository } from "./supplier.repository";
 
 /**
- * @fileOverview SupplierPayment Repository (Absolute Server Authority)
- * المسؤول عن تسجيل مدفوعات الموردين وتصحيح موازينهم بشكل حتمي.
+ * @fileOverview Référentiel de Paiement Fournisseur (Autorité Serveur Absolue)
+ * Responsable de l'enregistrement des paiements aux fournisseurs et de la correction de leurs balances de manière déterministe.
  */
 export class SupplierPaymentRepository {
     private supabase = createClient();
@@ -24,9 +24,9 @@ export class SupplierPaymentRepository {
             .select()
             .single();
 
-        if (error) throw new Error(`SUPPLIER_PAYMENT_FAILED: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_PAIEMENT_FOURNISSEUR : ${error.message}`);
 
-        // أتمتة السلطة: إعادة حساب ميزان المورد فوراً
+        // Automatisation de l'autorité : Recalculer immédiatement le solde du fournisseur
         await this.supplierRepo.recalculateBalance(payment.supplierUuid);
 
         return this.mapFromDb(data);

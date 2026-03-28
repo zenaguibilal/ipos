@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -12,23 +13,23 @@ interface ZakatReportProps {
 }
 
 /**
- * @fileOverview Official Zakat Assessment Certificate (A4 Optimized - Sovereign Edition)
- * وثيقة رسمية تحمل الطابع السيادي والمهني لتقييم الزكاة للمنشأة.
+ * @fileOverview Certificat Officiel d'Évaluation de Zakat (Optimisé A4 - Édition Souveraine)
+ * Document officiel portant le caractère souverain et professionnel pour l'évaluation de la Zakat.
  */
 export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({ calculation, profile }, ref) => {
     const details = calculation.details || calculation;
 
     return (
         <div ref={ref} className="p-16 bg-white text-black font-sans min-h-[297mm] w-full relative overflow-hidden">
-            {/* Elegant Decoration */}
+            {/* Décoration Élégante */}
             <div className="absolute top-0 left-0 w-full h-6 bg-emerald-900" />
             <div className="absolute bottom-0 left-0 w-full h-6 bg-emerald-900" />
             
-            {/* Header */}
+            {/* En-tête */}
             <header className="flex justify-between items-start pb-8 border-b-4 border-emerald-900 mb-12">
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-tighter text-emerald-900">{profile?.companyName || 'Mon Magasin'}</h1>
-                    <p className="text-[10px] mt-1 uppercase font-black text-gray-500 tracking-[0.3em]">iPOS Cloud Authority Instance</p>
+                    <p className="text-[10px] mt-1 uppercase font-black text-gray-500 tracking-[0.3em]">Instance Cloud iPOS Authority</p>
                     <div className="mt-6 space-y-1 text-xs font-bold text-gray-600">
                         {profile?.address && <p>{profile.address}</p>}
                         {profile?.city && <p>{profile.city}, {profile.country || 'Algérie'}</p>}
@@ -41,19 +42,19 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                         Certificat de Zakat
                     </div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-emerald-900">Document Certifié • {new Date().getFullYear()}</p>
-                    <p className="text-xs font-bold mt-1">Émis le: {format(new Date(), 'dd MMMM yyyy', { locale: fr })}</p>
+                    <p className="text-xs font-bold mt-1">Émis le : {format(new Date(), 'dd MMMM yyyy', { locale: fr })}</p>
                 </div>
             </header>
 
-            {/* Assessment Certificate Title */}
+            {/* Titre du Certificat d'Évaluation */}
             <div className="text-center mb-16">
-                <h2 className="text-4xl font-black uppercase tracking-[0.4em] border-b-4 border-emerald-900 inline-block pb-4 mb-8 italic">Evaluation du Patrimoine</h2>
+                <h2 className="text-4xl font-black uppercase tracking-[0.4em] border-b-4 border-emerald-900 inline-block pb-4 mb-8 italic">Évaluation du Patrimoine</h2>
                 <p className="text-sm italic text-gray-600 max-w-2xl mx-auto leading-relaxed font-medium">
-                    Attestation déterministe de calcul de l'assiette zakátique établie sur la base des actifs circulants و des passifs exigibles identifiés par le terminal souverain iPOS Cloud.
+                    Attestation déterministe de calcul de l'assiette zakatique établie sur la base des actifs circulants et des passifs exigibles identifiés par le terminal souverain iPOS Cloud.
                 </p>
             </div>
 
-            {/* Main Stats Grid */}
+            {/* Grille des Statistiques Principales */}
             <div className="grid grid-cols-2 gap-12 mb-16">
                 <div className="p-10 border-4 border-emerald-900 rounded-[3rem] bg-gray-50 flex flex-col justify-center items-center text-center shadow-inner relative overflow-hidden">
                     <h3 className="text-[10px] font-black uppercase text-gray-500 mb-4 tracking-[0.4em]">ASSIETTE NETTE IMPOSABLE</h3>
@@ -65,7 +66,7 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                 </div>
             </div>
 
-            {/* Breakdown Table */}
+            {/* Tableau de Ventilation */}
             <section className="mb-16">
                 <h3 className="text-[11px] font-black uppercase mb-6 border-b-2 border-emerald-900/20 pb-3 tracking-[0.5em] flex items-center gap-3 text-emerald-900">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-900" />
@@ -80,7 +81,7 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                             <td className="p-5 text-right font-black text-lg">{formatCurrency(details.inventoryValue || 0)}</td>
                         </tr>
                         <tr className="border-b border-gray-100">
-                            <td className="p-5 font-bold text-gray-700">Liquidités disponibles (Caisse و Banque)</td>
+                            <td className="p-5 font-bold text-gray-700">Liquidités disponibles (Caisse et Banque)</td>
                             <td className="p-5 text-right font-black text-lg">{formatCurrency(details.cashOnHand || 0)}</td>
                         </tr>
                         <tr className="border-b border-gray-100">
@@ -95,14 +96,14 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                             <td className="p-5 text-right font-black text-lg text-red-600">-{formatCurrency(details.supplierDebts || 0)}</td>
                         </tr>
                         <tr className="border-b border-gray-100">
-                            <td className="p-5 font-bold text-gray-700">Autres charges و dettes de fonctionnement</td>
+                            <td className="p-5 font-bold text-gray-700">Autres charges et dettes de fonctionnement</td>
                             <td className="p-5 text-right font-black text-lg text-red-600">-{formatCurrency(details.otherDebts || 0)}</td>
                         </tr>
                     </tbody>
                 </table>
             </section>
 
-            {/* Reference Data */}
+            {/* Données de Référence */}
             <section className="p-8 border-4 border-double border-emerald-900 rounded-[2.5rem] bg-emerald-50/30 flex justify-between items-center mb-20">
                 <div>
                     <p className="text-[10px] font-black uppercase text-emerald-800 mb-2 tracking-[0.3em]">PARAMÈTRE DE RÉFÉRENCE MARCHÉ</p>
@@ -118,7 +119,7 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
             <div className="mt-auto grid grid-cols-2 gap-24 pt-12">
                 <div className="text-center">
                     <p className="text-[10px] font-black uppercase text-gray-400 mb-24 tracking-[0.3em]">Audit Interne iPOS Authority</p>
-                    <div className="border-t-4 border-emerald-900 pt-4 font-black uppercase text-xs text-emerald-900">VÉRIFIÉ و CERTIFIÉ PAR SYSTÈME</div>
+                    <div className="border-t-4 border-emerald-900 pt-4 font-black uppercase text-xs text-emerald-900">VÉRIFIÉ ET CERTIFIÉ PAR SYSTÈME</div>
                 </div>
                 <div className="text-center">
                     <p className="text-[10px] font-black uppercase text-gray-400 mb-24 tracking-[0.3em]">Direction de l'Établissement</p>
@@ -126,9 +127,9 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
                 </div>
             </div>
 
-            {/* Footer */}
+            {/* Pied de page */}
             <footer className="absolute bottom-12 left-16 right-16 text-center text-[8px] text-emerald-900/40 italic border-t border-gray-100 pt-6 uppercase font-black tracking-[0.5em]">
-                <p>iPOS Cloud Authority Core • نظام حتمي للرقابة المالية • © {new Date().getFullYear()} All Rights Reserved.</p>
+                <p>iPOS Cloud Authority Core • Système déterministe de contrôle financier • © {new Date().getFullYear()} Tous droits réservés.</p>
             </footer>
         </div>
     );

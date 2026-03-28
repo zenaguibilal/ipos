@@ -51,7 +51,7 @@ const sortOptions: { [key: string]: string } = {
 };
 
 /**
- * @fileOverview Sovereign Supplier Management (Finalized with Granular Permission)
+ * @fileOverview Gestion Souveraine des Fournisseurs (Finalisée avec Permission Granulaire)
  */
 
 export default function SuppliersPage() {
@@ -84,7 +84,7 @@ export default function SuppliersPage() {
 
     const isAllowed = profile?.permissions?.includes('suppliers') || isManagerOrAdmin;
 
-    // Access Guard
+    // Garde d'Accès
     useEffect(() => {
         if (profile && !isAllowed) {
             toast.error("Unité Fournisseurs Restreinte", { 
@@ -372,7 +372,7 @@ export default function SuppliersPage() {
                 <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-2xl p-4 animate-in slide-in-from-top-4 duration-500 shadow-lg">
                     <div className="flex items-center gap-4">
                         <Badge className="bg-primary text-primary-foreground px-4 py-1.5 rounded-xl font-black text-xs">
-                            {selectedSuppliers.size} مورد(ين) مختار(ين)
+                            {selectedSuppliers.size} fournisseur(s) sélectionné(s)
                         </Badge>
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Actions sur la sélection</p>
                     </div>

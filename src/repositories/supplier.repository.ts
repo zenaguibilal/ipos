@@ -1,9 +1,10 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { Supplier } from "@/lib/types";
 
 /**
- * @fileOverview Supplier Repository (Absolute Data Authority)
- * المصدر السيادي لبيانات الموردين وموازينهم المالية.
+ * @fileOverview Référentiel Fournisseur (Autorité de Données Absolue)
+ * La source souveraine des données des fournisseurs et de leurs balances financières.
  */
 export class SupplierRepository {
     private supabase = createClient();
@@ -13,7 +14,7 @@ export class SupplierRepository {
             .from('suppliers')
             .select('*')
             .order('name', { ascending: true });
-        if (error) throw new Error(`SUPPLIER_FETCH_ERROR: ${error.message}`);
+        if (error) throw new Error(`ERREUR_RÉCUPÉRATION_FOURNISSEUR : ${error.message}`);
         return data.map(this.mapFromDb);
     }
 
@@ -29,7 +30,7 @@ export class SupplierRepository {
 
     async bulkDelete(uuids: string[]): Promise<void> {
         const { error } = await this.supabase.from('suppliers').delete().in('uuid', uuids);
-        if (error) throw new Error(`SUPPLIER_BULK_DELETE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_SUPPRESSION_GROUPÉE_FOURNISSEUR : ${error.message}`);
     }
 
     async create(supplier: Partial<Supplier>): Promise<Supplier> {
@@ -45,7 +46,7 @@ export class SupplierRepository {
             }])
             .select()
             .single();
-        if (error) throw new Error(`SUPPLIER_CREATE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_CRÉATION_FOURNISSEUR : ${error.message}`);
         return this.mapFromDb(data);
     }
 
@@ -63,7 +64,7 @@ export class SupplierRepository {
             .eq('uuid', uuid)
             .select()
             .single();
-        if (error) throw new Error(`SUPPLIER_UPDATE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_MISE_À_JOUR_FOURNISSEUR : ${error.message}`);
         return this.mapFromDb(data);
     }
 
@@ -71,7 +72,7 @@ export class SupplierRepository {
         const { data: intakes, error: iErr } = await this.supabase.from('stock_intakes').select('total_value').eq('supplier_uuid', uuid);
         const { data: payments, error: pErr } = await this.supabase.from('supplier_payments').select('amount').eq('supplier_uuid', uuid);
 
-        if (iErr || pErr) throw new Error("SUPPLIER_BALANCE_AUTHORITY_ERROR");
+        if (iErr || pErr) throw new Error("ERREUR_AUTORITÉ_SOLDE_FOURNISSEUR");
 
         const totalBought = intakes?.reduce((sum, i) => sum + i.total_value, 0) || 0;
         const totalPaid = payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
@@ -84,7 +85,7 @@ export class SupplierRepository {
 
     async delete(uuid: string): Promise<void> {
         const { error } = await this.supabase.from('suppliers').delete().eq('uuid', uuid);
-        if (error) throw new Error(`SUPPLIER_DELETE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_SUPPRESSION_FOURNISSEUR : ${error.message}`);
     }
 
     private mapFromDb(s: any): Supplier {

@@ -9,10 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
     Search, History, FileUp, Filter, TrendingUp, ShoppingBag, 
-    LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
-    DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
-    AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
-    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock, Printer, ShieldX, MessageSquare
+    LayoutGrid, List, RefreshCw, Wallet, HandCoins, 
+    DollarSign, X, CheckCircle2,
+    Clock, Printer, ShieldX, MessageSquare, Zap, ArrowRight, Lock, ChevronDown
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -33,7 +32,6 @@ import { formatCurrency, cn } from '@/lib/utils';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
-import { startOfDay, endOfDay, subDays, startOfMonth } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,7 +47,7 @@ import { fr } from 'date-fns/locale';
 import { format } from 'date-fns';
 
 /**
- * @fileOverview Sales Sovereign Ledger (Finalized with WhatsApp Integration)
+ * @fileOverview Registre Souverain des Ventes (Finalisé avec Intégration WhatsApp)
  */
 
 type PaymentFilter = 'all' | 'paid' | 'partial' | 'unpaid';
@@ -87,7 +85,7 @@ export default function SalesHistoryPage() {
 
     const isAllowed = profile?.permissions?.includes('sales-history') || isManagerOrAdmin;
 
-    // Access Guard
+    // Garde d'Accès
     useEffect(() => {
         if (profile && !isAllowed) {
             toast.error("Unité Journal Restreinte", { 
@@ -288,8 +286,8 @@ export default function SalesHistoryPage() {
     return (
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader
-                title="Grand Livre المبيعات"
-                description="Suivi chronologique des flux de caisse, analyse des bénéfices و gestion des encaissements."
+                title="Grand Livre des Ventes"
+                description="Suivi chronologique des flux de caisse, analyse des bénéfices et gestion des encaissements."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <PrintSaleListDialog sales={filteredAndSortedSales} />

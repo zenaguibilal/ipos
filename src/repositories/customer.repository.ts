@@ -1,8 +1,9 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { Customer } from "@/lib/types";
 
 /**
- * @fileOverview Customer Repository (Absolute Data Authority)
+ * @fileOverview Référentiel Client (Autorité de Données Absolue)
  */
 export class CustomerRepository {
     private supabase = createClient();
@@ -12,7 +13,7 @@ export class CustomerRepository {
             .from('customers')
             .select('*')
             .order('last_name', { ascending: true });
-        if (error) throw new Error(`CUSTOMER_FETCH_ERROR: ${error.message}`);
+        if (error) throw new Error(`ERREUR_RÉCUPÉRATION_CLIENT : ${error.message}`);
         return data.map(this.mapFromDb);
     }
 
@@ -22,7 +23,7 @@ export class CustomerRepository {
             .select('category')
             .not('category', 'is', null);
         
-        if (error) throw new Error(`CUSTOMER_CATEGORIES_FETCH_ERROR: ${error.message}`);
+        if (error) throw new Error(`ERREUR_RÉCUPÉRATION_CATÉGORIES_CLIENT : ${error.message}`);
         const cats = Array.from(new Set(data.map(i => i.category)));
         return cats.sort();
     }
@@ -109,7 +110,7 @@ export class CustomerRepository {
 
     async create(customer: Partial<Customer>): Promise<Customer> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHENTICATED");
+        if (!user) throw new Error("NON_AUTHENTIFIÉ");
 
         const searchName = `${customer.firstName} ${customer.lastName}`.toLowerCase().trim();
         const { data, error } = await this.supabase
@@ -124,7 +125,7 @@ export class CustomerRepository {
             }])
             .select()
             .single();
-        if (error) throw new Error(`CUSTOMER_CREATE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_CRÉATION_CLIENT : ${error.message}`);
         return this.mapFromDb(data);
     }
 
@@ -135,7 +136,7 @@ export class CustomerRepository {
 
     async bulkDelete(uuids: string[]): Promise<void> {
         const { error } = await this.supabase.from('customers').delete().in('uuid', uuids);
-        if (error) throw new Error(`CUSTOMER_BULK_DELETE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_SUPPRESSION_GROUPÉE_CLIENT : ${error.message}`);
     }
 
     async update(uuid: string, customer: Partial<Customer>): Promise<Customer> {
@@ -153,13 +154,13 @@ export class CustomerRepository {
             .eq('uuid', uuid)
             .select()
             .single();
-        if (error) throw new Error(`CUSTOMER_UPDATE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_MISE_À_JOUR_CLIENT : ${error.message}`);
         return this.mapFromDb(data);
     }
 
     async delete(uuid: string): Promise<void> {
         const { error } = await this.supabase.from('customers').delete().eq('uuid', uuid);
-        if (error) throw new Error(`CUSTOMER_DELETE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_SUPPRESSION_CLIENT : ${error.message}`);
     }
 
     private mapFromDb(c: any): Customer {

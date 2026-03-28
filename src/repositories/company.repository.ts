@@ -1,10 +1,11 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { CompanyProfile, AppRole } from "@/lib/types";
 
 /**
- * @fileOverview Company Repository (Absolute Server Authority)
- * PHASE 2, 11 & 13: Deterministic profile & role discovery logic.
- * المركز السيادي لإدارة ملفات المنشأة وتحديد مستويات السلطة والتحقق من نشاط الحسابات.
+ * @fileOverview Référentiel de l'Entreprise (Autorité Serveur Absolue)
+ * PHASE 2, 11 & 13 : Logique de découverte de profil et de rôle déterministe.
+ * Le centre souverain pour gérer les fichiers de l'établissement, définir les niveaux d'autorité et vérifier l'activité des comptes.
  */
 export class CompanyRepository {
     private supabase = createClient();
@@ -13,35 +14,35 @@ export class CompanyRepository {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) return null;
 
-        // 1. التحقق أولاً إذا كان المستخدم هو المالك (Admin)
+        // 1. Vérifier d'abord si l'utilisateur est le propriétaire (Admin)
         const { data: profile, error: profileError } = await this.supabase
             .from('company_profile')
             .select('*')
             .eq('user_id', user.id)
             .maybeSingle();
 
-        if (profileError) throw new Error(`PROFILE_FETCH_FAILED: ${profileError.message}`);
+        if (profileError) throw new Error(`ÉCHEC_RÉCUPÉRATION_PROFIL : ${profileError.message}`);
         
         if (profile) {
             return this.mapFromDb(profile, 'admin', undefined);
         }
 
-        // 2. إذا لم يكن مالكاً، نبحث في سجل الموظفين
+        // 2. Si ce n'est pas le propriétaire, chercher dans les profils du personnel
         const { data: staff, error: staffError } = await this.supabase
             .from('staff_profiles')
             .select('*')
             .eq('email', user.email)
             .maybeSingle();
 
-        if (staffError) throw new Error(`STAFF_CHECK_FAILED: ${staffError.message}`);
+        if (staffError) throw new Error(`ÉCHEC_VÉRIFICATION_PERSONNEL : ${staffError.message}`);
 
         if (staff) {
-            // بروتوكول التطهير: منع الحسابات الموقوفة فوراً
+            // Protocole de purification : Interdire immédiatement les comptes suspendus
             if (!staff.is_active) {
-                throw new Error("ACCOUNT_SUSPENDED");
+                throw new Error("COMPTE_SUSPENDU");
             }
 
-            // جلب بيانات المنشأة المرتبطة
+            // Récupérer les données de l'entreprise associée
             const { data: comp } = await this.supabase.from('company_profile').select('*').limit(1).maybeSingle();
             return this.mapFromDb(comp || { company_name: "iPOS Terminal" }, staff.role, staff.permissions);
         }
@@ -50,7 +51,7 @@ export class CompanyRepository {
     }
 
     /**
-     * وظيفة سيادية للتحقق السريع من الدور في الـ API
+     * Fonction souveraine pour une vérification rapide du rôle dans l'API
      */
     async checkRole(requiredRoles: AppRole[]): Promise<boolean> {
         try {
@@ -58,17 +59,17 @@ export class CompanyRepository {
             if (!profile) return false;
             return requiredRoles.includes(profile.role);
         } catch (e: any) {
-            if (e.message === "ACCOUNT_SUSPENDED") return false;
+            if (e.message === "COMPTE_SUSPENDU") return false;
             throw e;
         }
     }
 
     async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHENTICATED");
+        if (!user) throw new Error("NON_AUTHENTIFIÉ");
 
         const currentProfile = await this.get();
-        if (currentProfile?.role !== 'admin') throw new Error("UNAUTHORIZED_PROFILE_UPDATE");
+        if (currentProfile?.role !== 'admin') throw new Error("MISE_À_JOUR_PROFIL_NON_AUTORISÉE");
 
         const { data: updated, error } = await this.supabase
             .from('company_profile')
@@ -77,7 +78,7 @@ export class CompanyRepository {
             .select()
             .single();
 
-        if (error) throw new Error(`PROFILE_UPDATE_FAILED: ${error.message}`);
+        if (error) throw new Error(`ÉCHEC_MISE_À_JOUR_PROFIL : ${error.message}`);
         return this.mapFromDb(updated, 'admin', undefined);
     }
 
@@ -85,7 +86,7 @@ export class CompanyRepository {
         return {
             uuid: p.uuid || '',
             user_id: p.user_id || '',
-            companyName: p.company_name || "iPOS Instance",
+            companyName: p.company_name || "Instance iPOS",
             address: p.address || '',
             city: p.city || '',
             zipCode: p.zip_code || '',

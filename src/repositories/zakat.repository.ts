@@ -1,10 +1,9 @@
 
 import { createClient } from "@/utils/supabase/server";
-import { calculateZakat } from "@/lib/calculations";
 
 /**
- * @fileOverview Zakat Repository (Absolute Data Authority)
- * Removed 'use client'. Pure server-side logic.
+ * @fileOverview Référentiel de la Zakat (Autorité de Données Absolue)
+ * Logique pure côté serveur pour le calcul patrimonial.
  */
 export class ZakatRepository {
     private supabase = createClient();

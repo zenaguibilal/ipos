@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -14,7 +15,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { 
     Loader2, Wheat, ShoppingCart, Trash2, Sparkles, 
-    PackageCheck, AlertCircle, Search, Filter, X, 
+    PackageCheck, AlertCircle, Search,
     CheckCircle2, Clock, ListFilter
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -33,8 +34,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * @fileOverview Bread Day View (Nuclear Cleaned)
- * PHASE 16: Verified imports and cleaned action flows.
+ * @fileOverview Vue Quotidienne de la Boulangerie (Nettoyage Nucléaire)
+ * PHASE 16 : Importations vérifiées et flux d'actions nettoyés.
  */
 
 interface BreadDayViewProps {
@@ -103,7 +104,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                 toast.info("Rien à générer.");
             }
         } catch (error: any) {
-            toast.error("Génération échوقت.");
+            toast.error("Génération échouée.");
         } finally {
             setIsGenerating(false);
         }
@@ -197,7 +198,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                         disabled={isDeleting} 
                                         className="h-14 px-8 bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive/10 rounded-2xl font-black uppercase text-[10px] tracking-widest"
                                     >
-                                        <Trash2 className="h-4 w-4 mr-2.5" /> Révoker
+                                        <Trash2 className="h-4 w-4 mr-2.5" /> Révoquer
                                     </Button>
                                     <Button 
                                         variant="outline" 
@@ -305,7 +306,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                 title="Révocation Définitive" 
                 description={`Êtes-vous certain de vouloir purger ces ${selectedOrders.size} flux de distribution ?`} 
                 onConfirm={handleDeleteSelected} 
-                confirmText="Révoker" 
+                confirmText="Révoquer" 
             />
         </div>
     );
