@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -53,7 +54,7 @@ export const ExpenseStats = ({ expenses, isLoading }: ExpenseStatsProps) => {
     if (isLoading && !expenses) {
         return (
              <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-[2rem]" />)}
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-[2.5rem]" />)}
             </div>
         )
     }

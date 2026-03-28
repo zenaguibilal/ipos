@@ -57,7 +57,7 @@ export function ExpenseTable({
                     <Checkbox 
                         checked={expenses.length > 0 && selectedExpenses.size === expenses.length} 
                         onCheckedChange={onToggleAll} 
-                        className="border-white/20"
+                        className="border-white/20 data-[state=checked]:bg-destructive"
                     />
                 </TableHead>
             )}
@@ -76,31 +76,38 @@ export function ExpenseTable({
               <TableRow 
                 key={expense.uuid} 
                 className={cn(
-                    "hover:bg-destructive/5 transition-all border-white/5 cursor-pointer group",
-                    isSelected && "bg-destructive/10"
+                    "hover:bg-destructive/5 transition-all border-white/5 cursor-pointer group h-20",
+                    isSelected && "bg-destructive/[0.03]"
                 )}
                 onClick={() => onToggleSelection?.(expense.uuid)}
               >
                 {onToggleSelection && (
                     <TableCell className="px-6" onClick={(e) => e.stopPropagation()}>
-                        <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelection(expense.uuid)} className="border-white/20" />
+                        <Checkbox 
+                            checked={isSelected} 
+                            onCheckedChange={() => onToggleSelection(expense.uuid)} 
+                            className="border-white/20 data-[state=checked]:bg-destructive" 
+                        />
                     </TableCell>
                 )}
                 <TableCell className="px-8 py-5">
                     <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-destructive/10 flex items-center justify-center font-black text-destructive shadow-inner group-hover:scale-110 transition-transform">
+                        <div className={cn(
+                            "h-10 w-10 rounded-xl flex items-center justify-center font-black text-destructive shadow-inner group-hover:scale-110 transition-transform",
+                            isSelected ? "bg-destructive/20" : "bg-destructive/10"
+                        )}>
                             <Banknote className="h-5 w-5" />
                         </div>
                         <div className="flex flex-col">
                             <span className="font-black text-sm tracking-tight text-foreground uppercase truncate max-w-[300px] group-hover:text-destructive transition-colors">
                                 {expense.description}
                             </span>
-                            <span className="text-[9px] font-mono text-muted-foreground opacity-40">ID: {expense.uuid.substring(0,8)}</span>
+                            <span className="text-[9px] font-mono text-muted-foreground opacity-40">SOVEREIGN_ID: {expense.uuid.substring(0,8)}</span>
                         </div>
                     </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="bg-destructive/5 text-destructive border-destructive/20 text-[9px] font-black uppercase tracking-widest px-3 h-6">
+                  <Badge variant="outline" className="bg-destructive/5 text-destructive border-destructive/20 text-[9px] font-black uppercase tracking-widest px-3 h-6 shadow-sm">
                     <Tag className="h-2.5 w-2.5 mr-1.5 opacity-60" />
                     {expense.category}
                   </Badge>
@@ -119,7 +126,7 @@ export function ExpenseTable({
                     <span className="text-lg font-black text-destructive tracking-tighter">
                         -{formatCurrency(expense.amount)}
                     </span>
-                    <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest opacity-30">Sortie de Caisse</span>
+                    <span className="text-[8px] font-black uppercase text-muted-foreground tracking-widest opacity-30">Audit Flow Out</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right px-8" onClick={(e) => e.stopPropagation()}>
@@ -131,20 +138,20 @@ export function ExpenseTable({
                         </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px] shadow-2xl border-white/10">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Audit Flux</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Audit de Charge</DropdownMenuLabel>
                             {isManagerOrAdmin && (
                                 <>
-                                    <DropdownMenuItem onClick={() => onEdit(expense)} className="rounded-xl py-3 font-bold gap-3">
+                                    <DropdownMenuItem onClick={() => onEdit(expense)} className="rounded-xl py-3 font-bold gap-3 cursor-pointer">
                                         <Edit className="h-4 w-4 opacity-60" /> Rectifier
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onDelete(expense)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-xl py-3 font-bold gap-3">
+                                    <DropdownMenuItem onClick={() => onDelete(expense)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-xl py-3 font-bold gap-3 cursor-pointer">
                                         <Trash2 className="h-4 w-4" /> Supprimer
                                     </DropdownMenuItem>
                                 </>
                             )}
                             <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuItem className="rounded-xl py-3 font-bold gap-3 opacity-50 cursor-not-allowed">
-                                <History className="h-4 w-4" /> Journal Logs
+                                <History className="h-4 w-4" /> Grand Livre Logs
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

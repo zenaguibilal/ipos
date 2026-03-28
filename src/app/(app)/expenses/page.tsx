@@ -35,6 +35,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
+import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Expense Ledger (Sovereign Authority - Finalized Perfection)
@@ -104,7 +105,7 @@ export default function ExpensesPage() {
     const handleExport = () => {
         if (!filteredExpenses.length) return;
         CsvImporter.exportExpenses(filteredExpenses);
-        toast.success("Registre des charges exporté.");
+        toast.success("Registre des charges exporté vers le terminal local.");
     };
 
     const handleResetFilters = () => {
@@ -121,13 +122,13 @@ export default function ExpensesPage() {
                 description="Audit chronologique des flux sortants, classification و maîtrise des dépenses."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3">
+                    <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3 hover:bg-primary/5">
                         <FileUp className="h-4 w-4" /> Export CSV
                     </Button>
                     {isManagerOrAdmin && (
                         <Button 
                             onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }} 
-                            className="bg-destructive hover:bg-destructive/90 shadow-2xl shadow-destructive/20 rounded-2xl h-12 px-10 font-black uppercase text-[10px] tracking-[0.2em] gap-3 group"
+                            className="bg-destructive hover:bg-destructive/90 shadow-2xl shadow-destructive/20 rounded-2xl h-12 px-10 font-black uppercase text-[10px] tracking-[0.2em] gap-3 group hover:scale-105 active:scale-95 transition-all"
                         >
                             <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" /> 
                             Nouvelle Dépense
@@ -158,7 +159,7 @@ export default function ExpensesPage() {
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between shadow-sm">
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between shadow-sm hover:bg-white/5">
                                 <span className="flex items-center gap-2">
                                     <Activity className="h-3.5 w-3.5 text-destructive" />
                                     {selectedCategory === 'all' ? 'Tous les postes' : selectedCategory}
@@ -202,7 +203,7 @@ export default function ExpensesPage() {
             {selectedExpenseUuids.size > 0 && (
                 <div className="flex justify-between items-center bg-destructive/5 border border-destructive/20 rounded-[1.5rem] p-4 animate-in slide-in-from-top-4 duration-500 shadow-xl">
                     <div className="flex items-center gap-4">
-                        <Badge variant="destructive" className="px-4 py-1.5 rounded-xl font-black text-[10px] tracking-widest uppercase">
+                        <Badge variant="destructive" className="px-4 py-1.5 rounded-xl font-black text-[10px] tracking-widest uppercase shadow-lg shadow-destructive/20">
                             {selectedExpenseUuids.size} ligne(s) sélectionnée(s)
                         </Badge>
                         <p className="text-[9px] font-black uppercase tracking-widest text-destructive opacity-60">Actions de masse sur le grand livre</p>
@@ -212,7 +213,7 @@ export default function ExpensesPage() {
                             variant="destructive" 
                             size="sm" 
                             onClick={() => setIsBulkDeleteOpen(true)} 
-                            className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6 shadow-lg shadow-destructive/20"
+                            className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6 shadow-lg shadow-destructive/20 hover:scale-105 active:scale-95 transition-all"
                         >
                             <Trash2 className="h-4 w-4" /> 
                             Révocation Massive
@@ -223,8 +224,8 @@ export default function ExpensesPage() {
 
             <div className="min-h-[500px]">
                {isLoading && expenses.length === 0 ? (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                       {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-[2.5rem]" />)}
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                       {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-[2.5rem]" />)}
                    </div>
                ) : filteredExpenses.length === 0 ? (
                    <EmptyState 
@@ -234,7 +235,7 @@ export default function ExpensesPage() {
                         className="py-32 luxury-glass border-white/5 bg-muted/5 rounded-[3rem]"
                     >
                         {!searchQuery && selectedCategory === 'all' && isManagerOrAdmin && (
-                            <Button onClick={() => setIsExpenseDialogOpen(true)} className="rounded-2xl px-12 h-14 bg-destructive shadow-2xl shadow-destructive/20 font-black uppercase text-[11px] tracking-widest">
+                            <Button onClick={() => setIsExpenseDialogOpen(true)} className="rounded-2xl px-12 h-14 bg-destructive shadow-2xl shadow-destructive/20 font-black uppercase text-[11px] tracking-widest hover:scale-105 transition-all">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Initialiser une charge
                             </Button>
@@ -277,7 +278,7 @@ export default function ExpensesPage() {
                     <div className="space-y-1">
                         <p className="text-sm font-black uppercase tracking-tight italic">Optimisation des Flux</p>
                         <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministه حتمي.
+                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministe حتمي.
                         </p>
                     </div>
                 </div>

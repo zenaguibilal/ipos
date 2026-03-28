@@ -73,10 +73,10 @@ const ExpenseCardComponent = ({ expense, onEdit, onDelete, isSelected, onToggleS
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[160px] shadow-2xl border-white/10">
-                                <DropdownMenuItem onClick={() => onEdit(expense)} className="rounded-lg font-bold gap-3 py-2.5">
+                                <DropdownMenuItem onClick={() => onEdit(expense)} className="rounded-lg font-bold gap-3 py-2.5 cursor-pointer">
                                     <Edit className="h-4 w-4 opacity-60" /> Modifier
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onDelete(expense)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg font-bold gap-3 py-2.5">
+                                <DropdownMenuItem onClick={() => onDelete(expense)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg font-bold gap-3 py-2.5 cursor-pointer">
                                     <Trash2 className="h-4 w-4" /> Supprimer
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
