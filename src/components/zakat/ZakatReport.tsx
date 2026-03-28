@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -14,7 +13,7 @@ interface ZakatReportProps {
 
 /**
  * @fileOverview Certificat Officiel d'Évaluation de Zakat (Optimisé A4 - Édition Souveraine)
- * Document officiel portant le caractère souverain et professionnel pour l'évaluation de la Zakat.
+ * Document officiel certifiant l'assiette et le montant de l'obligation légale.
  */
 export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({ calculation, profile }, ref) => {
     const details = calculation.details || calculation;
@@ -28,7 +27,7 @@ export const ZakatReport = React.forwardRef<HTMLDivElement, ZakatReportProps>(({
             {/* En-tête */}
             <header className="flex justify-between items-start pb-8 border-b-4 border-emerald-900 mb-12">
                 <div>
-                    <h1 className="text-3xl font-black uppercase tracking-tighter text-emerald-900">{profile?.companyName || 'Mon Magasin'}</h1>
+                    <h1 className="text-3xl font-black uppercase tracking-tighter text-emerald-900">{profile?.companyName || 'Mon Établissement'}</h1>
                     <p className="text-[10px] mt-1 uppercase font-black text-gray-500 tracking-[0.3em]">Instance Cloud iPOS Authority</p>
                     <div className="mt-6 space-y-1 text-xs font-bold text-gray-600">
                         {profile?.address && <p>{profile.address}</p>}

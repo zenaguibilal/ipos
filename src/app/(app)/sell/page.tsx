@@ -1,4 +1,3 @@
-
 'use client';
 
 import { CartDisplay } from '@/components/sell/CartDisplay';
@@ -9,8 +8,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { DraftsDropdown } from '@/components/sell/DraftsDropdown';
-import { PackageSearch, UserPlus, HelpCircle, Keyboard, ShieldX, Loader2 } from 'lucide-react';
-import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
+import { PackageSearch, UserPlus, Keyboard, ShieldX, Loader2 } from 'lucide-react';
+import { useRef, useEffect, useCallback, useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
@@ -28,8 +27,8 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * @fileOverview Sell Page (Sovereign Terminal Console)
- * المرحلة النهائية: تكامل الاختصارات، الرقابة الائتمانية، والسرعة القصوى.
+ * @fileOverview Console du Terminal de Vente (Souveraineté Totale)
+ * Intégration des raccourcis clavier, contrôle de crédit et performance maximale.
  */
 
 export default function SellPage() {
@@ -54,7 +53,7 @@ export default function SellPage() {
 
     const isAllowed = profile?.permissions?.includes('sell') || isManagerOrAdmin;
 
-    // Absolute Access Guard
+    // Garde d'Accès Absolu
     useEffect(() => {
         if (profile && !isAllowed) {
             toast.error("Accès Caisse Refusé", { 

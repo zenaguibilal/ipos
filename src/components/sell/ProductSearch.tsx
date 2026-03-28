@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useState, useMemo, forwardRef, useImperativeHandle, useRef, useEffect, useCallback } from 'react';
 import type { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Barcode, PackagePlus, Search, ArrowRight, Star, Tag } from 'lucide-react';
+import { Barcode, PackagePlus, Search, ArrowRight, Tag } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -16,7 +15,6 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { api } from '@/lib/api-client';
 import { useAppStore } from '@/stores/appStore';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Badge } from '../ui/badge';
 import { Separator } from '@/components/ui/separator';
 
 interface ProductSearchProps {
@@ -48,7 +46,7 @@ const CustomProductDialog = ({ isOpen, onOpenChange, onAdd }: { isOpen: boolean,
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <PackagePlus className="h-5 w-5 text-primary" />
-                Article Temporaire (Volant)
+                Article Temporaire (Hors-Stock)
               </DialogTitle>
               <DialogDescription className="text-xs uppercase font-bold opacity-60">
                 Créez un article ponctuel sans l'enregistrer dans l'inventaire permanent.
@@ -166,10 +164,10 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
             if (product) {
                 handleSelectProduct(product);
             } else {
-                toast.error("Code-barres inconnu.");
+                toast.error("Code-barres inconnu dans le référentiel.");
             }
         } catch (error) {
-            toast.error("Erreur de recherche.");
+            toast.error("Erreur de recherche optique.");
         }
     };
     
@@ -291,7 +289,7 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
                             <Barcode className="h-16 w-16" />
                             <div className="space-y-1">
                                 <p className="font-black uppercase text-xs tracking-widest">En attente de saisie</p>
-                                <p className="text-[10px] italic">Scanner un article ou tapez son nom</p>
+                                <p className="text-[10px] italic">Scannez un article ou tapez son nom</p>
                             </div>
                         </div>
                     )}
@@ -308,7 +306,7 @@ export const ProductSearch = forwardRef<{focus: () => void, openCustomProductDia
                                 className="w-full h-12 rounded-xl border-dashed border-primary/30 text-primary hover:bg-primary/5 font-black uppercase text-[10px] tracking-widest gap-2"
                             >
                                 <PackagePlus className="h-4 w-4" /> 
-                                Produit Hors-Stock (F10)
+                                Produit Volant (F10)
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent className="luxury-glass">
@@ -364,7 +362,7 @@ const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>((
                 <div className="flex items-center gap-3">
                     <p className="text-[10px] font-black text-primary tracking-widest">{formatCurrency(product.price)}</p>
                     <span className="h-1 w-1 rounded-full bg-white/10" />
-                    <p className="text-[10px] text-muted-foreground uppercase font-medium">Stock: {availableQuantity === Infinity ? '∞' : availableQuantity} {product.unite}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-medium">Dispo: {availableQuantity === Infinity ? '∞' : availableQuantity} {product.unite}</p>
                 </div>
             </div>
 

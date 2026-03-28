@@ -5,9 +5,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Sale Repository (Autonomous Sovereign Authority)
- * [ARCH-01] Server-side only (no 'use client').
- * [QUAL-03] High-entropy invoice generation using crypto.
+ * @fileOverview Référentiel de Vente (Autorité Serveur Autonome)
+ * Phase 16 : Enregistrement déterministe, calcul d'entropie et mise à jour des stocks.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -15,18 +14,17 @@ export class SaleRepository {
     private customerRepo = new CustomerRepository();
 
     /**
-     * [QUAL-03] Génère un numéro de facture avec une entropie élevée.
+     * Génère un numéro de facture avec une entropie élevée pour éviter les collisions.
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
         
-        // Use cryptographically secure random values
+        // Utilisation de valeurs cryptographiques pour l'entropie
         const array = new Uint32Array(1);
         if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
             crypto.getRandomValues(array);
         } else {
-            // Fallback for edge cases, though crypto is standard in modern environments
             array[0] = Math.floor(Math.random() * 0xFFFFFFFF);
         }
         
@@ -50,13 +48,13 @@ export class SaleRepository {
             .from('sales')
             .select('*, sale_items(*)')
             .order('created_at', { ascending: false });
-        if (error) throw new Error(`SALE_LEDGER_ACCESS_FAILED`);
+        if (error) throw new Error(`ACCES_GRAND_LIVRE_REFUSE`);
         return data.map(this.mapFromDb);
     }
 
     async create(saleData: any): Promise<Sale> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHORIZED");
+        if (!user) throw new Error("NON_AUTORISE");
 
         const invoiceNumber = this.generateInvoiceNumber();
         const saleUuid = uuidv4();
@@ -81,7 +79,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE`);
+        if (sErr) throw new Error(`ECHEC_PERSISTENCE_VENTE`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
@@ -115,7 +113,7 @@ export class SaleRepository {
             .eq('uuid', uuid)
             .single();
         
-        if (fErr || !sale) throw new Error("SALE_NOT_FOUND");
+        if (fErr || !sale) throw new Error("VENTE_INTROUVABLE");
 
         for (const item of sale.sale_items) {
             if (item.product_uuid) {
@@ -124,7 +122,7 @@ export class SaleRepository {
         }
 
         const { error: dErr } = await this.supabase.from('sales').delete().eq('uuid', uuid);
-        if (dErr) throw new Error(`SALE_DELETE_FAILED`);
+        if (dErr) throw new Error(`ECHEC_ANNULATION_VENTE`);
 
         if (sale.customer_uuid) {
             await this.customerRepo.recalculateBalance(sale.customer_uuid);

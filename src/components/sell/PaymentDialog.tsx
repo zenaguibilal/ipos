@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -58,13 +57,11 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
             const now = new Date();
             let dueDate = setDayOfMonth(now, cartCustomer.settlementDay);
             
-            // Si le jour de règlement pour ce mois est déjà passé ou est aujourd'hui, passer au mois suivant
             if (isAfter(now, dueDate) || now.getDate() === cartCustomer.settlementDay) {
                 dueDate = addMonths(dueDate, 1);
             }
             setCalculatedDueDate(dueDate);
         } else if (paymentMode === 'credit') {
-            // Par défaut à 30 jours si aucun jour de règlement défini
             setCalculatedDueDate(addMonths(new Date(), 1));
         } else {
             setCalculatedDueDate(undefined);
@@ -122,7 +119,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
             payments.push({ method: 'cash', amount: total });
         } else {
             if (!cartCustomer) {
-                toast.error("Vente à crédit impossible sans client."); 
+                toast.error("Vente à crédit impossible sans identification client."); 
                 return;
             }
             if (isOverLimit) {
@@ -146,7 +143,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                 initializePayment();
             }
         } catch (error) {
-            // Erreur gérée par les actions du store global
+            // Géré par le store
         } finally {
             setIsLoading(false);
         }
@@ -163,7 +160,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                             <AlertTriangle className="h-6 w-6"/>
                             Vente à perte détectée
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogDescription className="text-sm font-bold opacity-70 uppercase">
                             Certains articles sont vendus en dessous de leur prix d'achat. Voulez-vous vraiment continuer ?
                             <ul className="mt-4 space-y-1">
                                 {lossItems.map(item => (
@@ -175,8 +172,8 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => onOpenChange(false)}>Modifier la vente</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleLossAlertConfirm} className="bg-destructive hover:bg-destructive/90">Autoriser & Continuer</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => onOpenChange(false)} className="rounded-xl font-bold">Modifier</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLossAlertConfirm} className="bg-destructive hover:bg-destructive/90 rounded-xl font-black uppercase text-[10px] tracking-widest">Autoriser & Continuer</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -282,7 +279,7 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                                     <div className="p-6 rounded-2xl bg-destructive/5 border border-destructive/20 animate-in fade-in slide-in-from-right-4 duration-500">
                                         <div className="flex items-center gap-3 mb-4">
                                             <ShieldCheck className="h-4 w-4 text-destructive" />
-                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-destructive">Garanties & Échéances (Contrat)</h4>
+                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-destructive">Garanties & Échéances</h4>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             <div className="space-y-2">
@@ -294,11 +291,11 @@ export function PaymentDialog({ isOpen, onOpenChange, cart, cartCustomer }: Paym
                                                     </span>
                                                 </div>
                                                 <p className="text-[8px] text-muted-foreground italic px-1">
-                                                    * Basé sur le 'jour de règlement' convenu dans le dossier client.
+                                                    * Basé sur le jour de règlement du client.
                                                 </p>
                                             </div>
                                             <div className="flex flex-col justify-center p-3 rounded-xl bg-background/40 border border-white/5 text-right">
-                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Nouveau Solde Prévisionnel</p>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Nouveau Solde Prévu</p>
                                                 <p className={cn("text-xl font-black", isOverLimit ? "text-destructive" : "text-primary")}>
                                                     {formatCurrency(newTotalOutstanding)}
                                                 </p>
