@@ -12,10 +12,11 @@ import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
-import { Loader2, Wheat, ShoppingCart, Trash2, Sparkles, PackageCheck, AlertCircle } from 'lucide-react';
+import { Loader2, Wheat, ShoppingCart, Trash2, Sparkles, PackageCheck, AlertCircle, ShieldAlert } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
+import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 
 interface BreadDayViewProps {
     orders: BreadOrder[];
@@ -29,6 +30,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     const [isConverting, setIsConverting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 
@@ -114,13 +116,14 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         setIsDeleting(true);
         try {
             await api.post('bread/bulk-delete', { uuids: Array.from(selectedOrders) });
-            toast.success("Commandes supprimées.");
+            toast.success("Commandes purgées du registre.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur de suppression.");
+            toast.error("Erreur de suppression souveraine.");
         } finally {
             setIsDeleting(false);
+            setIsDeleteConfirmOpen(false);
         }
     };
 
@@ -128,118 +131,129 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     const isAllSelected = unbilledOrdersCount > 0 && selectedOrders.size === unbilledOrdersCount;
 
     return (
-        <Card className="flex flex-col h-full min-h-[500px] luxury-glass border-white/5 overflow-hidden">
-            <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5 p-4 sm:p-6">
-                <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-                    <div className="flex items-center space-x-3">
-                        <Checkbox 
-                            id="select-all-bread" 
-                            checked={isAllSelected} 
-                            onCheckedChange={handleSelectAll} 
-                            disabled={!isManagerOrAdmin}
-                            className="h-5 w-5 rounded-md border-primary/30" 
-                        />
-                        <div className="flex flex-col">
-                            <label htmlFor="select-all-bread" className="text-xs font-black uppercase tracking-widest text-muted-foreground cursor-pointer select-none">
-                                {selectedOrders.size > 0 ? `${selectedOrders.size} sélectionné(s)` : 'Tout sélectionner'}
-                            </label>
-                            {breadPrice === 0 && (
-                                <span className="text-[9px] text-destructive font-bold flex items-center gap-1 animate-pulse">
-                                    <AlertCircle className="h-2.5 w-2.5" /> Prix du pain non configuré
-                                </span>
+        <>
+            <Card className="flex flex-col h-full min-h-[600px] luxury-glass border-white/5 overflow-hidden shadow-2xl">
+                <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5 p-6 sm:p-8">
+                    <div className="flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
+                        <div className="flex items-center space-x-4">
+                            <Checkbox 
+                                id="select-all-bread" 
+                                checked={isAllSelected} 
+                                onCheckedChange={handleSelectAll} 
+                                disabled={!isManagerOrAdmin || unbilledOrdersCount === 0}
+                                className="h-6 w-6 rounded-lg border-primary/30 data-[state=checked]:bg-primary shadow-sm" 
+                            />
+                            <div className="flex flex-col gap-1">
+                                <label htmlFor="select-all-bread" className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground cursor-pointer select-none">
+                                    {selectedOrders.size > 0 ? `${selectedOrders.size} flux sélectionné(s)` : 'Sélection collective'}
+                                </label>
+                                {breadPrice === 0 && (
+                                    <Badge variant="destructive" className="h-5 text-[8px] font-black uppercase animate-pulse gap-1.5">
+                                        <AlertCircle className="h-2.5 w-2.5" /> Prix unitaire non défini
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex gap-3 flex-wrap w-full xl:w-auto">
+                            {selectedOrders.size > 0 ? (
+                                <div className="flex items-center gap-3 w-full sm:w-auto animate-in slide-in-from-right-4 duration-500">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => setIsDeleteConfirmOpen(true)} 
+                                        disabled={isDeleting} 
+                                        className="h-12 px-6 bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive/10 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-sm"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Révoker
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={handleMarkDelivered} 
+                                        className="h-12 px-6 rounded-2xl border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-black uppercase text-[10px] tracking-widest shadow-sm"
+                                    >
+                                        <PackageCheck className="h-4 w-4 mr-2" />
+                                        Livré
+                                    </Button>
+                                    <Button 
+                                        size="sm" 
+                                        onClick={handleConvertToSales} 
+                                        disabled={isConverting || breadPrice <= 0} 
+                                        className="h-12 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl shadow-xl shadow-primary/20 font-black uppercase text-[10px] tracking-[0.2em] gap-2 transition-all active:scale-95"
+                                    >
+                                        {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+                                        Facturer {selectedOrders.size} Bons
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    {isManagerOrAdmin && (
+                                        <>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={handleGenerate} 
+                                                disabled={isGenerating} 
+                                                className="h-12 px-6 rounded-2xl border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 font-black uppercase text-[10px] tracking-widest shadow-sm transition-all"
+                                            >
+                                                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2 text-primary/60" />}
+                                                Générer Auto.
+                                            </Button>
+                                            <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
+                                        </>
+                                    )}
+                                    <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
+                                </div>
                             )}
                         </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap w-full lg:w-auto">
-                        {selectedOrders.size > 0 ? (
-                            <div className="flex items-center gap-2 w-full lg:w-auto animate-in slide-in-from-right-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={handleDeleteSelected} 
-                                    disabled={isDeleting} 
-                                    className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20 rounded-xl"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Supprimer
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={handleMarkDelivered} 
-                                    className="rounded-xl border-primary/20 bg-primary/5 text-primary"
-                                >
-                                    <PackageCheck className="h-4 w-4 mr-2" />
-                                    Marquer Livré
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    onClick={handleConvertToSales} 
-                                    disabled={isConverting} 
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 px-6"
-                                >
-                                    {isConverting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShoppingCart className="h-4 w-4 mr-2" />}
-                                    Facturer ({selectedOrders.size})
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 w-full lg:w-auto">
+                </CardHeader>
+                <CardContent className="flex-grow min-h-0 p-0 bg-muted/5">
+                    <ScrollArea className="h-full">
+                        {orders.length === 0 ? (
+                            <EmptyState
+                                icon={Wheat}
+                                title="Registre de distribution vierge"
+                                description="Aucune commande n'est programmée pour cette date. Lancez la génération automatique ou ajoutez des bons manuellement."
+                                className="py-32"
+                            >
                                 {isManagerOrAdmin && (
-                                    <>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={handleGenerate} 
-                                            disabled={isGenerating} 
-                                            className="rounded-xl border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
-                                        >
-                                            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                                            Générer depuis Récurence
-                                        </Button>
-                                        <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
-                                    </>
+                                    <Button 
+                                        onClick={handleGenerate} 
+                                        disabled={isGenerating} 
+                                        className="rounded-[1.5rem] px-12 h-14 font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl shadow-primary/30 bg-primary hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+                                    >
+                                        {isGenerating ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Sparkles className="mr-3 h-5 w-5" />}
+                                        Initialiser le planning
+                                    </Button>
                                 )}
-                                <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
+                            </EmptyState>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 p-8 pb-20">
+                                {orders.map(order => (
+                                    <BreadOrderCard 
+                                        key={order.uuid} 
+                                        order={order}
+                                        isSelected={selectedOrders.has(order.uuid)}
+                                        onToggleSelection={handleToggleSelection}
+                                        onUpdate={onOrdersChange}
+                                    />
+                                ))}
                             </div>
                         )}
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent className="flex-grow min-h-0 p-4 sm:p-6 bg-black/5">
-                <ScrollArea className="h-full">
-                    {orders.length === 0 ? (
-                        <EmptyState
-                            icon={Wheat}
-                            title="Aucune commande pour ce jour"
-                            description="Générez les commandes automatiques ou ajoutez une commande ponctuelle."
-                            className="py-24"
-                        >
-                            {isManagerOrAdmin && (
-                                <Button 
-                                    onClick={handleGenerate} 
-                                    disabled={isGenerating} 
-                                    className="rounded-xl px-8 h-12 text-lg shadow-lg shadow-primary/20"
-                                >
-                                    {isGenerating ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
-                                    Lancer la génération
-                                </Button>
-                            )}
-                        </EmptyState>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
-                            {orders.map(order => (
-                                <BreadOrderCard 
-                                    key={order.uuid} 
-                                    order={order}
-                                    isSelected={selectedOrders.has(order.uuid)}
-                                    onToggleSelection={handleToggleSelection}
-                                    onUpdate={onOrdersChange}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </ScrollArea>
-            </CardContent>
-        </Card>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+
+            <ConfirmAlertDialog 
+                isOpen={isDeleteConfirmOpen} 
+                onOpenChange={setIsDeleteConfirmOpen} 
+                title="Supprimer les commandes sélectionnées ?" 
+                description={`Cette action est irréversible. Vous allez révoquer définitivement ${selectedOrders.size} bon(s) de distribution du registre sikh.`} 
+                onConfirm={handleDeleteSelected} 
+                confirmText="Confirmer la révocation" 
+            />
+        </>
     );
 }
