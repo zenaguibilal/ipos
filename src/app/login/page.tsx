@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -23,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { z } from 'zod';
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -433,7 +433,7 @@ export default function AuthPage() {
                                                 </>
                                             )}
                                         </span>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 group-hover:scale-105 transition-transform duration-700" />
+                                        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 group-hover:scale-105 transition-transform duration-500" />
                                     </Button>
                                 </CardFooter>
                             </form>
@@ -480,7 +480,7 @@ export default function AuthPage() {
                                 <div className="space-y-6 py-6 text-sm font-medium leading-relaxed opacity-80 overflow-y-auto max-h-[50vh] pr-4">
                                     <p>1. <strong>Cloud Authority</strong>: Vos données résident exclusivement dans une infrastructure multi-région sécurisée. Aucune donnée n'est stockée localement de manière permanente (Pure Cloud-Only).</p>
                                     <p>2. <strong>Chiffrement Maître</strong>: Chaque enregistrement financier و transaction est protégée par un algorithme AES-256 de classe militaire dès son émission.</p>
-                                    <p>3. <strong>Isolation des Rôles</strong>: L'accès au terminal est strictement hiérarchisé. Le mيثاق garantit que chaque action est signée par le rôle émetteur.</p>
+                                    <p>3. <strong>Isolation des Rôles</strong>: L'accès au terminal est strictement hiérarchisé. Le ميثاق garantit que chaque action est signée par le rôle émetteur.</p>
                                     <p>4. <strong>Audit de Flux</strong>: Chaque mouvement de stock ou encaissement est horodaté و immuable dans l'archive souveraine iPOS.</p>
                                 </div>
                                 <DialogFooter>
