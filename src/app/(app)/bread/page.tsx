@@ -63,7 +63,7 @@ export default function BreadPage() {
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Protocole de Sécurité Solaire Actif</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Protocole de Sécurité Solaire Actيف Active</p>
                 </div>
             </div>
         );
@@ -76,7 +76,7 @@ export default function BreadPage() {
                     title="Souveraineté Boulangère"
                     description="Automatisation des commandes récurrentes et suivi des flux de distribution."
                 />
-                <div className="flex items-center gap-3 luxury-glass p-2 bg-muted/20 border-white/5">
+                <div className="flex items-center gap-3 luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-xl border border-primary/20">
                         <Activity className="h-3 w-3 text-primary animate-pulse" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-primary">Terminal Actif</span>

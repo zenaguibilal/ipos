@@ -32,6 +32,11 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 
+/**
+ * @fileOverview Bread Day View (Finalized Sovereign Edition)
+ * واجهة التحكم اليومية: فلترة استراتيجية، إدارة جماعية، وتكامل سحابي.
+ */
+
 interface BreadDayViewProps {
     orders: BreadOrder[];
     currentDate: string;
@@ -278,7 +283,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                             <PackageCheck className="h-3.5 w-3.5 text-blue-400" /> Livré • Non M.A.C
                                         </DropdownMenuRadioItem>
                                         <DropdownMenuRadioItem value="billed" className="font-bold py-3 px-4 rounded-xl text-xs flex items-center gap-3 cursor-pointer focus:bg-primary/5">
-                                            <ShieldCheck className="h-3.5 w-3.5 text-chart-quaternary" /> Archivé • Facturé
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-chart-quaternary" /> Archivé • Facturé
                                         </DropdownMenuRadioItem>
                                     </DropdownMenuRadioGroup>
                                 </DropdownMenuContent>

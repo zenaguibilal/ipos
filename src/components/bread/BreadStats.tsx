@@ -8,13 +8,18 @@ import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
 import { formatCurrency, cn } from '@/lib/utils';
 
+/**
+ * @fileOverview Bread Statistics (Luxury Sovereign Edition)
+ * تحليلات استراتيجية للأداء اليومي للمخبزة.
+ */
+
 interface BreadStatsProps {
     orders?: BreadOrder[];
     isLoading: boolean;
 }
 
 const StatCard = ({ title, value, icon: Icon, colorClass, desc, subValue, trend }: any) => (
-    <Card className="luxury-glass bg-muted/10 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden">
+    <Card className="luxury-glass bg-muted/10 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden shadow-sm">
         <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
             <Icon className="h-24 w-24 rotate-12" />
         </div>
@@ -22,21 +27,21 @@ const StatCard = ({ title, value, icon: Icon, colorClass, desc, subValue, trend 
             <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{title}</CardTitle>
             <Icon className={cn("h-4 w-4 opacity-50", colorClass)} />
         </CardHeader>
-        <CardContent className="relative z-10">
+        <CardContent className="relative z-10 pt-2">
             <div className={cn("text-3xl font-black tracking-tighter", colorClass)}>{value}</div>
-            <div className="flex items-center justify-between mt-1">
+            <div className="flex items-center justify-between mt-2">
                 <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{desc}</p>
-                {subValue && <span className="text-[10px] font-black text-foreground/40">{subValue}</span>}
+                {subValue && <span className="text-[10px] font-black text-foreground/40 px-2 py-0.5 bg-white/5 rounded-lg border border-white/5">{subValue}</span>}
             </div>
             {trend !== undefined && (
-                <div className="mt-4 space-y-1.5">
-                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="mt-5 space-y-2">
+                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden shadow-inner">
                         <div 
                             className={cn("h-full transition-all duration-1000", colorClass.replace('text-', 'bg-'))}
                             style={{ width: `${trend}%` }}
                         />
                     </div>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-right opacity-40">{Math.round(trend)}% ACHÈVEMENT</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-right opacity-40">{Math.round(trend)}% TAUX D'ACHÈVEMENT</p>
                 </div>
             )}
         </CardContent>
@@ -66,7 +71,7 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
     if(isLoading && !orders) {
         return (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 w-full rounded-[2.5rem]" />)}
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-44 w-full rounded-[2.5rem]" />)}
             </div>
         )
     }

@@ -16,6 +16,11 @@ import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+/**
+ * @fileOverview Bread Client List (Sovereign Authority - Completed)
+ * إدارة المشتركين: بطاقات فاخرة، محرك بحث فوري، وربط حتمي بالملفات الشخصية.
+ */
+
 interface BreadClientListProps {
     onListChange: () => void;
 }
@@ -28,7 +33,7 @@ export function BreadClientList({ onListChange }: BreadClientListProps) {
 
     const fetchClients = useCallback(async () => {
         try {
-            // Updated to fetch bread clients specifically
+            // Fetching all customers and filtering for bread clients
             const data = await api.get<Customer[]>('customers');
             setClients(data.filter(c => c.isBreadClient));
         } catch (error: any) {
