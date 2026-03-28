@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo } from 'react';
@@ -18,7 +17,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { formatCurrency, calculateCartTotals, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
+import { calculateCartTotals } from '@/lib/calculations';
 import { Separator } from '@/components/ui/separator';
 import { useAppStore, useAppActions } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
@@ -170,7 +170,7 @@ export const SaleActions = React.forwardRef<
                     <Button 
                         ref={paymentButtonRef}
                         size="lg" 
-                        className="w-full h-14 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all group overflow-hidden relative"
+                        className="w-full h-14 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-105 active:scale-90 transition-all group overflow-hidden relative"
                         disabled={activeCart.items.length === 0}
                         onClick={() => toggleSellPaymentDialog(true)}
                     >

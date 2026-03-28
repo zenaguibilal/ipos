@@ -1,15 +1,14 @@
-
 /**
  * @fileOverview THE CALCULATION SINGULARITY
- * المركز السيادي للعمليات الحسابية والمنطق المالي لكسر التبعيات الدائرية.
+ * المركز السيادي للعمليات الحسابية والمنطق المالي لكسر التبعيات الدائرية وضمان الحتمية.
  */
 
 import type { Cart } from './types';
 
 /**
- * Calculates cart totals deterministically.
+ * حساب إجماليات السلة بشكل حتمي.
  */
-export function calculateCartTotals(cart: { items: any[], discount: { type: string, value: number } }) {
+export function calculateCartTotals(cart: Pick<Cart, 'items' | 'discount'>) {
     const subtotal = cart.items.reduce((acc, item) => acc + (item.price * item.cartQuantity), 0);
     const discountAmount = cart.discount.type === 'percentage'
         ? (subtotal * (cart.discount.value || 0)) / 100
@@ -22,7 +21,7 @@ export function calculateCartTotals(cart: { items: any[], discount: { type: stri
 }
 
 /**
- * Unified Zakat Calculation Engine (Deterministic)
+ * محرك حساب الزكاة الموحد (Sovereign Engine)
  */
 export function calculateZakat(data: {
     goldPrice: number;

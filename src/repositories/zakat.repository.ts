@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { calculateZakat } from "@/lib/utils";
+import { calculateZakat } from "@/lib/calculations";
 
 /**
  * @fileOverview Zakat Repository (Absolute Data Authority - Resilient Edition)

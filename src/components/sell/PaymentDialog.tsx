@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
@@ -15,7 +14,8 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Cart, CartItem, Customer, SalePayment } from '@/lib/types';
 import { Loader2, Banknote, AlertTriangle, ShieldCheck, Wallet, HandCoins, ArrowRight, Calendar } from 'lucide-react';
-import { formatCurrency, calculateCartTotals, cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
+import { calculateCartTotals } from '@/lib/calculations';
 import { Separator } from '@/components/ui/separator';
 import { useAppActions } from '@/stores/appStore';
 import { addMonths, setDate as setDayOfMonth, isAfter, format } from 'date-fns';
