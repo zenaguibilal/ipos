@@ -1,10 +1,11 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { CompanyProfile, AppRole } from "@/lib/types";
 
 /**
  * @fileOverview Company Repository (Absolute Server Authority)
  * PHASE 2, 11 & 13: Deterministic profile & role discovery logic.
- * المركز السيادي لإدارة ملفات المنشأة وتحديد مستويات السلطة.
+ * المركز السيادي لإدارة ملفات المنشأة وتحديد مستويات السلطة والتحقق من نشاط الحسابات.
  */
 export class CompanyRepository {
     private supabase = createClient();
@@ -13,7 +14,7 @@ export class CompanyRepository {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) return null;
 
-        // 1. محاولة جلب ملف المنشأة (للمالك/الأدمن)
+        // 1. التحقق أولاً إذا كان المستخدم هو المالك (Admin)
         const { data: profile, error: profileError } = await this.supabase
             .from('company_profile')
             .select('*')
@@ -23,58 +24,50 @@ export class CompanyRepository {
         if (profileError) throw new Error(`PROFILE_FETCH_FAILED: ${profileError.message}`);
         
         if (profile) {
-            return this.mapFromDb(profile, profile.role || 'admin');
+            return this.mapFromDb(profile, 'admin');
         }
 
-        // 2. إذا لم يكن مالكاً، نبحث في سجل الموظفين بناءً على البريد الإلكتروني
+        // 2. إذا لم يكن مالكاً، نبحث في سجل الموظفين
         const { data: staff, error: staffError } = await this.supabase
             .from('staff_profiles')
             .select('*')
             .eq('email', user.email)
-            .eq('is_active', true) // التأكد من أن الحساب نشط
             .maybeSingle();
 
         if (staffError) throw new Error(`STAFF_CHECK_FAILED: ${staffError.message}`);
 
         if (staff) {
-            // جلب بيانات المنشأة الأساسية (أول سجل متاح لهذا الحساب المرتبط)
+            // بروتوكول التطهير: منع الحسابات الموقوفة فوراً
+            if (!staff.is_active) {
+                throw new Error("ACCOUNT_SUSPENDED");
+            }
+
+            // جلب بيانات المنشأة المرتبطة
             const { data: comp } = await this.supabase.from('company_profile').select('*').limit(1).maybeSingle();
             return this.mapFromDb(comp || { company_name: "iPOS Terminal" }, staff.role);
         }
 
-        // 3. حالة طارئة: مستخدم مسجل ولكن ليس له سجل منشأة أو موظف
-        return this.initializeDefault(user.id);
+        return null;
     }
 
     /**
      * وظيفة سيادية للتحقق السريع من الدور في الـ API
      */
     async checkRole(requiredRoles: AppRole[]): Promise<boolean> {
-        const profile = await this.get();
-        if (!profile) return false;
-        return requiredRoles.includes(profile.role);
-    }
-
-    private async initializeDefault(userId: string): Promise<CompanyProfile> {
-        const { data, error } = await this.supabase
-            .from('company_profile')
-            .insert([{
-                user_id: userId,
-                company_name: "Nouvel Établissement iPOS",
-                role: 'admin'
-            }])
-            .select()
-            .single();
-        
-        if (error) throw new Error("PROFILE_AUTO_INIT_FAILED");
-        return this.mapFromDb(data, 'admin');
+        try {
+            const profile = await this.get();
+            if (!profile) return false;
+            return requiredRoles.includes(profile.role);
+        } catch (e: any) {
+            if (e.message === "ACCOUNT_SUSPENDED") return false;
+            throw e;
+        }
     }
 
     async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) throw new Error("UNAUTHENTICATED");
 
-        // التأكد من أن القائم بالتعديل هو الأدمن فقط
         const currentProfile = await this.get();
         if (currentProfile?.role !== 'admin') throw new Error("UNAUTHORIZED_PROFILE_UPDATE");
 
@@ -86,14 +79,14 @@ export class CompanyRepository {
             .single();
 
         if (error) throw new Error(`PROFILE_UPDATE_FAILED: ${error.message}`);
-        return this.mapFromDb(updated, updated.role);
+        return this.mapFromDb(updated, 'admin');
     }
 
     private mapFromDb(p: any, role: AppRole): CompanyProfile {
         return {
             uuid: p.uuid || '',
             user_id: p.user_id || '',
-            companyName: p.company_name,
+            companyName: p.company_name || "iPOS Instance",
             address: p.address || '',
             city: p.city || '',
             zipCode: p.zip_code || '',

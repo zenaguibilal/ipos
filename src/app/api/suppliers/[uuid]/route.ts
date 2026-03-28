@@ -1,9 +1,11 @@
+
 import { NextResponse } from 'next/server';
 import { SupplierRepository } from '@/repositories/supplier.repository';
+import { CompanyRepository } from '@/repositories/company.repository';
 import { SupplierSchema } from '@/lib/schemas';
 
 /**
- * @fileOverview API WALL: Supplier Resource Gateway (Validated)
+ * @fileOverview API WALL: Supplier Resource Gateway (Role Guarded)
  */
 
 export async function GET(req: Request, { params }: { params: { uuid: string } }) {
@@ -19,6 +21,10 @@ export async function GET(req: Request, { params }: { params: { uuid: string } }
 
 export async function PUT(req: Request, { params }: { params: { uuid: string } }) {
     try {
+        const companyRepo = new CompanyRepository();
+        const isAuthorized = await companyRepo.checkRole(['admin', 'manager']);
+        if (!isAuthorized) return NextResponse.json({ error: 'MANAGEMENT_AUTHORITY_REQUIRED' }, { status: 403 });
+
         const body = await req.json();
         const validatedData = SupplierSchema.partial().parse(body);
         const repo = new SupplierRepository();
@@ -32,6 +38,10 @@ export async function PUT(req: Request, { params }: { params: { uuid: string } }
 
 export async function DELETE(req: Request, { params }: { params: { uuid: string } }) {
     try {
+        const companyRepo = new CompanyRepository();
+        const isAuthorized = await companyRepo.checkRole(['admin', 'manager']);
+        if (!isAuthorized) return NextResponse.json({ error: 'MANAGEMENT_AUTHORITY_REQUIRED' }, { status: 403 });
+
         const repo = new SupplierRepository();
         await repo.delete(params.uuid);
         return NextResponse.json({ data: { success: true } });
