@@ -4,9 +4,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Return Repository (Absolute Authority - Nuclear Rebuilt)
- * PHASE 18: Robust handling of stock reversals and transactional debt recovery.
- * Ensures stock is only reversed if it was originally restocked.
+ * @fileOverview Return Repository (Nuclear Hardened)
+ * PHASE 18: Transactional reliability for stock reversals and ledger sync.
  */
 export class ReturnRepository {
     private supabase = createClient();
@@ -66,10 +65,10 @@ export class ReturnRepository {
         const { error: iErr } = await this.supabase.from('return_items').insert(returnItems);
         if (iErr) {
             await this.supabase.from('product_returns').delete().eq('uuid', ret.uuid);
-            throw new Error("RETURN_ITEMS_FAILED");
+            throw new Error("RETURN_ITEMS_PERSISTENCE_FAILED");
         }
 
-        // Logic Re-Inforcement: Update stock only if restock was requested
+        // Atomic Stock Adjustment
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'return', ret.uuid);
@@ -92,10 +91,9 @@ export class ReturnRepository {
         
         if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
 
-        // Precise Stock Reversal: Only subtract from stock if it was previously added (restocked)
+        // Precise Reversal: Only deduct from stock if it was added (restocked)
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
-                // If it was restocked, removing the return means we remove those items from stock again
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
             }
         }

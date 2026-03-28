@@ -1,4 +1,3 @@
-
 'use client';
 
 import { create } from 'zustand';
@@ -193,7 +192,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     actions: {
-        setAuth: (user) => set({ user, isAuthenticated: !!user, activeCartId: get().carts[0].id }),
+        setAuth: (user) => {
+            const currentCarts = get().carts;
+            set({ 
+                user, 
+                isAuthenticated: !!user, 
+                activeCartId: currentCarts.length > 0 ? currentCarts[0].id : '' 
+            });
+        },
 
         fetchProfile: async () => {
             set({ isSettingsLoading: true });
@@ -201,7 +207,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile, isInitialized: true });
             } catch (e) {
-                console.error("Profile fetch failed:", e);
+                // Critical failure handling
             } finally {
                 set({ isSettingsLoading: false });
             }

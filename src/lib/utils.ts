@@ -22,8 +22,8 @@ export function formatDateToYYYYMMDD(date: Date): string {
 }
 
 /**
- * Global Currency Formatter (Sovereign Authority)
- * PHASE 18: Optimized for ZERO Hydration Mismatches and defensive against SSR context.
+ * Global Currency Formatter (Absolute SSR Guarded)
+ * PHASE 18: Rebuilt to eliminate all possible hydration mismatches.
  */
 export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
@@ -31,8 +31,8 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   let currency = fallbackCurrency;
   let decimals = 1;
 
-  // STRICT HYDRATION GUARD: Never attempt to read Store during SSR
-  if (typeof window !== 'undefined') {
+  // STRICT HYDRATION SHIELD
+  if (typeof window !== 'undefined' && window.localStorage) {
     try {
         const state = useAppStore.getState();
         const profile = state.profile;
@@ -41,7 +41,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
             decimals = profile.decimalPlaces ?? 1;
         }
     } catch {
-        // Fallback to defaults during boot or error
+        // Silent fallback during boot
     }
   }
 

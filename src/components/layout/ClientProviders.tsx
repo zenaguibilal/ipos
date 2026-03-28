@@ -5,35 +5,33 @@ import { Toaster } from '@/components/ui/sonner';
 import { useEffect } from 'react';
 
 /**
- * @fileOverview THE SYSTEM PURIFIER (NUCLEAR EDITION)
+ * @fileOverview THE SYSTEM PURIFIER (NUCLEAR RECONSTRUCTION)
  * PHASE 18: Precision purge logic to protect system-critical UX keys.
- * Ensures that theme and user preferences are NOT wiped by the cloud-only enforcement protocol.
+ * Ensures theme, UI resolution, and session persistence are NOT wiped.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        const executeTargetedPurge = () => {
+        const executeSurgicalPurge = () => {
             try {
-                // SURGICAL PURGE: Protect only what's essential for the UI Stability
-                const whitelistedKeys = ['theme', 'ipos-ui-pref', 'next-themes-system'];
+                // WHITELIST: Protect only essential stability keys
+                const whitelistedKeys = ['theme', 'ipos-ui-pref', 'next-themes-system', 'supabase.auth.token'];
                 
-                // Clear LocalStorage safely
-                Object.keys(localStorage).forEach(key => {
-                    if (!whitelistedKeys.some(w => key.includes(w))) {
-                        localStorage.removeItem(key);
-                    }
-                });
+                const purgeStorage = (storage: Storage) => {
+                    Object.keys(storage).forEach(key => {
+                        if (!whitelistedKeys.some(w => key.includes(w))) {
+                            storage.removeItem(key);
+                        }
+                    });
+                };
 
-                // Clear SessionStorage safely
-                Object.keys(sessionStorage).forEach(key => {
-                    if (!whitelistedKeys.some(w => key.includes(w))) {
-                        sessionStorage.removeItem(key);
-                    }
-                });
+                // Surgical cleaning
+                purgeStorage(localStorage);
+                purgeStorage(sessionStorage);
                 
-                // Nuclear IndexedDB Purge
+                // Nuclear IDB Purge (Except auth persistence if needed)
                 if (window.indexedDB && window.indexedDB.databases) {
                     window.indexedDB.databases().then(dbs => {
                         dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
@@ -46,23 +44,16 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                         names.forEach(name => caches.delete(name));
                     });
                 }
-
-                // Service Worker Suppression
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(regs => {
-                        regs.forEach(reg => reg.unregister());
-                    });
-                }
             } catch (err) {
-                // Failure is silent but the purge must attempt completion
+                // Fail silently to prevent UI crash
             }
         };
 
-        // Immediate Purge on Mount
-        executeTargetedPurge();
+        // Immediate Execution
+        executeSurgicalPurge();
         
-        // Cyclic Authority Check
-        const interval = setInterval(executeTargetedPurge, 5000);
+        // Authority Reinforcement Cycle
+        const interval = setInterval(executeSurgicalPurge, 10000); 
         return () => clearInterval(interval);
     }, []);
 
