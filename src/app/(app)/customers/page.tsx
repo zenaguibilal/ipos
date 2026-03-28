@@ -6,7 +6,11 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, RefreshCw, LayoutGrid, List, FileUp, FileDown, Trash2, Printer, RotateCcw, X, Wallet } from 'lucide-react';
+import { 
+    Plus, Search, RefreshCw, LayoutGrid, List, FileUp, 
+    FileDown, Trash2, RotateCcw, X, Filter, ChevronDown, 
+    SortAsc, UserPlus, Users, Wallet, AlertTriangle, UserCheck
+} from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
 import { CustomerTableSkeleton } from '@/components/customers/customer-table-skeleton';
@@ -25,11 +29,32 @@ import { toast } from 'sonner';
 import { CsvImporter } from '@/lib/csv-utils';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * @fileOverview Sovereign Customer Ledger (Finalized Perfection)
  * المركز السيادي للتحكم في حسابات الزبائن، الديون، والعمليات الجماعية.
  */
+
+const sortOptions = {
+    'name_asc': 'Nom (A-Z)',
+    'name_desc': 'Nom (Z-A)',
+    'debt_desc': 'Dette (Plus élevée)',
+    'debt_asc': 'Dette (Moins élevée)',
+    'activity_desc': 'Activité Récente',
+    'newest': 'Nouveaux Membres',
+};
+
+type DebtFilter = 'all' | 'debtors' | 'overlimit';
 
 export default function CustomersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -42,6 +67,11 @@ export default function CustomersPage() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebounce(searchQuery, 300);
+    
+    const [sortBy, setSortBy] = useState('name_asc');
+    const [debtFilter, setDebtFilter] = useState<DebtFilter>('all');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [categories, setCategories] = useState<string[]>([]);
 
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [selectedCustomerUuids, setSelectedCustomerUuids] = useState<Set<string>>(new Set());
@@ -58,14 +88,36 @@ export default function CustomersPage() {
 
     useEffect(() => {
         refreshCustomers();
+        api.get<string[]>('customers/categories').then(setCategories).catch(() => {});
     }, [refreshCustomers]);
 
-    const filteredCustomers = useMemo(() => {
-        return customers.filter(c => 
-            `${c.firstName} ${c.lastName}`.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-            (c.phone && c.phone.includes(debouncedSearch))
-        );
-    }, [customers, debouncedSearch]);
+    const filteredAndSortedCustomers = useMemo(() => {
+        let result = customers.filter(c => {
+            const matchesSearch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                                 (c.phone && c.phone.includes(debouncedSearch));
+            
+            const matchesDebt = debtFilter === 'all' ? true :
+                               debtFilter === 'debtors' ? c.outstandingBalance > 0 :
+                               debtFilter === 'overlimit' ? c.isOverLimit : true;
+            
+            const matchesCategory = selectedCategory === 'all' ? true : c.category === selectedCategory;
+
+            return matchesSearch && matchesDebt && matchesCategory;
+        });
+
+        const [field, order] = sortBy.split('_');
+        const isAsc = order === 'asc';
+
+        result.sort((a, b) => {
+            if (field === 'name') return isAsc ? `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`) : `${b.firstName} ${b.lastName}`.localeCompare(`${a.firstName} ${a.lastName}`);
+            if (field === 'debt') return isAsc ? a.outstandingBalance - b.outstandingBalance : b.outstandingBalance - a.outstandingBalance;
+            if (field === 'activity') return new Date(b.lastActivityDate || 0).getTime() - new Date(a.lastActivityDate || 0).getTime();
+            if (field === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            return 0;
+        });
+
+        return result;
+    }, [customers, debouncedSearch, sortBy, debtFilter, selectedCategory]);
 
     const handleToggleSelection = (uuid: string) => {
         setSelectedCustomerUuids(prev => {
@@ -77,10 +129,10 @@ export default function CustomersPage() {
     };
 
     const handleSelectAll = () => {
-        if (selectedCustomerUuids.size === filteredCustomers.length) {
+        if (selectedCustomerUuids.size === filteredAndSortedCustomers.length) {
             setSelectedCustomerUuids(new Set());
         } else {
-            setSelectedCustomerUuids(new Set(filteredCustomers.map(c => c.uuid)));
+            setSelectedCustomerUuids(new Set(filteredAndSortedCustomers.map(c => c.uuid)));
         }
     };
 
@@ -102,7 +154,7 @@ export default function CustomersPage() {
         setIsImporting(true);
         try {
             await api.post('customers/bulk', confirmedData);
-            toast.success("Opération d'importation réussie.", {
+            toast.success("Opération d'importation réussية.", {
                 description: `${confirmedData.toAdd.length} nouveaux زبائن و ${confirmedData.toUpdate.length} mises à jour.`
             });
             setIsImportPreviewOpen(false);
@@ -116,6 +168,9 @@ export default function CustomersPage() {
 
     const handleResetFilters = () => {
         setSearchQuery('');
+        setSortBy('name_asc');
+        setDebtFilter('all');
+        setSelectedCategory('all');
         setSelectedCustomerUuids(new Set());
         refreshCustomers();
     };
@@ -127,7 +182,7 @@ export default function CustomersPage() {
                 description="Contrôle absolu des comptes, gestion des créances و historique des flux clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <PrintCustomerListDialog customers={filteredCustomers} />
+                    <PrintCustomerListDialog customers={filteredAndSortedCustomers} />
                     <Button variant="outline" onClick={() => CsvImporter.exportCustomers(customers)} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-2">
                         <FileUp className="h-4 w-4" /> Exporter CSV
                     </Button>
@@ -167,9 +222,72 @@ export default function CustomersPage() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
-                    <Button variant="ghost" size="icon" className="h-10 w-10 luxury-glass hover:bg-destructive/10" onClick={handleResetFilters} title="Réinitialiser">
-                        <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                    {/* Filter: Debt Status */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <Wallet className="h-3.5 w-3.5 text-primary" />
+                                    {debtFilter === 'all' ? 'Tous les comptes' : debtFilter === 'debtors' ? 'Débiteurs' : 'Hors-Limite'}
+                                </span>
+                                <Filter className="h-3.5 w-3.5 opacity-40" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px]">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2">Filtrage des Dettes</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={debtFilter} onValueChange={(v) => setDebtFilter(v as DebtFilter)}>
+                                <DropdownMenuRadioItem value="all" className="font-bold py-2">Tout afficher</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="debtors" className="font-bold py-2 text-destructive">Avec solde débiteur</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="overlimit" className="font-bold py-2 text-destructive">Plafond dépassé</DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Filter: Category */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[140px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <UserCheck className="h-3.5 w-3.5 text-primary" />
+                                    {selectedCategory === 'all' ? 'Toutes catégories' : selectedCategory}
+                                </span>
+                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="luxury-glass min-w-[180px]">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2">Rayon Clientèle</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <DropdownMenuRadioItem value="all" className="font-bold py-2">Toutes</DropdownMenuRadioItem>
+                                {categories.map(cat => (
+                                    <DropdownMenuRadioItem key={cat} value={cat} className="font-bold py-2">{cat}</DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Sorting */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <SortAsc className="h-3.5 w-3.5 text-primary" />
+                                    {sortOptions[sortBy as keyof typeof sortOptions]}
+                                </span>
+                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px]">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2">Ordre d'Affichage</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                                {Object.entries(sortOptions).map(([key, label]) => (
+                                    <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2">{label}</DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5 shadow-inner">
                         <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setCustomerViewMode('grid')}>
@@ -179,6 +297,10 @@ export default function CustomersPage() {
                             <List className="h-4.5 w-4.5"/>
                         </Button>
                     </div>
+
+                    <Button variant="ghost" size="icon" className="h-10 w-10 luxury-glass hover:bg-destructive/10" onClick={handleResetFilters} title="Réinitialiser">
+                        <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                    </Button>
 
                     <Button variant="ghost" size="icon" className="h-10 w-10 luxury-glass hover:bg-primary/10" onClick={() => refreshCustomers()} disabled={isLoading}>
                         <RefreshCw className={cn("h-4 w-4 text-primary", isLoading && "animate-spin")} />
@@ -199,7 +321,7 @@ export default function CustomersPage() {
                             variant="destructive" 
                             size="sm" 
                             onClick={() => setIsBulkDeleteOpen(true)} 
-                            className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6"
+                            className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6 shadow-lg shadow-destructive/20"
                         >
                             <Trash2 className="h-4 w-4" /> 
                             Révocation Massive
@@ -209,7 +331,7 @@ export default function CustomersPage() {
             )}
 
             <div className="min-h-[500px]">
-               {isLoading && customers.length === 0 ? <CustomerTableSkeleton /> : filteredCustomers.length === 0 ? (
+               {isLoading && customers.length === 0 ? <CustomerTableSkeleton /> : filteredAndSortedCustomers.length === 0 ? (
                    <div className="flex flex-col items-center justify-center py-32 opacity-30 grayscale space-y-6">
                         <UserPlus className="h-20 w-20 text-primary" />
                         <div className="text-center space-y-2">
@@ -220,7 +342,7 @@ export default function CustomersPage() {
                ) : (
                    viewMode === 'grid' ? (
                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                           {filteredCustomers.map(c => (
+                           {filteredAndSortedCustomers.map(c => (
                                <CustomerCard 
                                     key={c.uuid} 
                                     customer={c} 
@@ -235,7 +357,7 @@ export default function CustomersPage() {
                        </div>
                    ) : (
                        <CustomerTable 
-                            customers={filteredCustomers} 
+                            customers={filteredAndSortedCustomers} 
                             onEdit={(c) => { setSelectedCustomer(c); setIsCustomerDialogOpen(true); }} 
                             onDelete={(c) => { setSelectedCustomer(c); setIsDeleteDialogOpen(true); }} 
                             onPayment={(c) => { setSelectedCustomer(c); setIsPaymentDialogOpen(true); }} 
@@ -263,6 +385,3 @@ export default function CustomersPage() {
         </div>
     );
 }
-
-// Fixed missing icon imports
-import { UserPlus } from 'lucide-react';
