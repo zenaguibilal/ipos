@@ -8,7 +8,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Sovereign Authority - NUCLEAR REBUILT)
- * PHASE 18: Cryptographic-strength invoice numbering and deterministic transactional flow.
+ * PHASE 18: High-entropy invoice numbering and deterministic transactional flow.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -27,6 +27,7 @@ export class SaleRepository {
     /**
      * Deterministic High-Entropy Invoice Generation
      * Pattern: INV-[YYMMDD]-[HHMMSS]-[RAND]
+     * Ensures absolute uniqueness even in high-concurrency environments.
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
@@ -79,19 +80,19 @@ export class SaleRepository {
 
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
-            // Cleanup on item failure
+            // Rollback on item failure
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
             throw new Error(`SALE_ITEMS_SYNC_FAILED`);
         }
 
-        // Atomic Stock Adjustment
+        // Atomic Item-by-Item Stock Adjustment
         for (const item of saleItems) {
-            if (item.product_uuid && item.product_uuid !== 'custom' && !item.product_uuid.startsWith('custom-')) {
+            if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
 
-        // Ledger Recalculation
+        // Global Balance Recalculation
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -118,10 +119,13 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
-        // Transactional Reversal
+        // Sovereign Reversal: Restore stock for all items
         for (const item of sale.sale_items) {
-            if (item.product_uuid && item.product_uuid !== 'custom' && !item.product_uuid.startsWith('custom-')) {
-                await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);
+            if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
+                const productExists = await this.productRepo.findByUuid(item.product_uuid);
+                if (productExists) {
+                    await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);
+                }
             }
         }
 

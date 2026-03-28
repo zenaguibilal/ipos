@@ -26,7 +26,8 @@ export function Clock() {
     };
   }, []);
 
-  // HYDRATION SHIELD: Return placeholder until client is ready
+  // HYDRATION SHIELD: Return placeholder until client is ready.
+  // This prevents "Text content does not match" warning.
   if (!isMounted || !time) {
     return <Skeleton className="h-6 w-[240px] bg-muted/20" />;
   }

@@ -91,10 +91,9 @@ export class ReturnRepository {
         
         if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
 
-        // Precise Reversal: Only deduct from stock if it was added during the return
+        // Precise Reversal: Only deduct from stock if it was added during the return process
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
-                // Check if product still exists
                 const product = await this.productRepo.findByUuid(item.product_uuid);
                 if (product) {
                     await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);

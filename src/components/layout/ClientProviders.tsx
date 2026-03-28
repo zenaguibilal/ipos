@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { useEffect } from 'react';
 
 /**
- * @fileOverview THE SYSTEM PURIFIER (SURGICAL RECONSTRUCTION)
+ * @fileOverview THE SYSTEM PURIFIER (NUCLEAR RECONSTRUCTION)
  * NUCLEAR MODE: Enforces Cloud-Only architecture while protecting system-critical UX keys.
  */
 
@@ -15,13 +15,13 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
 
         const executeSurgicalPurge = () => {
             try {
-                // WHITELIST: Protect only essential stability keys to prevent UI flickering
+                // WHITELIST: Protect only essential stability keys to prevent UI flickering or state loss
                 const whitelistedKeys = [
                     'theme', 
                     'ipos-ui-pref', 
                     'next-themes-system', 
                     'supabase.auth.token',
-                    'zustand-app-store' // If persistence is ever added to Zustand
+                    'zustand-app-store' 
                 ];
                 
                 const purgeStorage = (storage: Storage) => {
@@ -32,14 +32,18 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     });
                 };
 
-                // Surgical cleaning
+                // Surgical cleaning of transient data
                 purgeStorage(localStorage);
                 purgeStorage(sessionStorage);
                 
-                // Nuclear IDB Purge
+                // Nuclear IndexedDB Purge (Ensures no local DB leakage)
                 if (window.indexedDB && window.indexedDB.databases) {
                     window.indexedDB.databases().then(dbs => {
-                        dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
+                        dbs.forEach(db => { 
+                            if(db.name && !whitelistedKeys.includes(db.name)) {
+                                window.indexedDB.deleteDatabase(db.name); 
+                            }
+                        });
                     });
                 }
 
@@ -50,15 +54,15 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     });
                 }
             } catch (err) {
-                // Fail silently to prevent UI crash
+                // Fail silently to prevent UI crash in restricted environments
             }
         };
 
         // Immediate Execution
         executeSurgicalPurge();
         
-        // Authority Reinforcement Cycle (Every 30 seconds instead of 10 to balance performance)
-        const interval = setInterval(executeSurgicalPurge, 30000); 
+        // Authority Reinforcement Cycle (Balanced for performance)
+        const interval = setInterval(executeSurgicalPurge, 60000); 
         return () => clearInterval(interval);
     }, []);
 

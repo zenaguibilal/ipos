@@ -31,7 +31,8 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   let currency = fallbackCurrency;
   let decimals = 1;
 
-  // STRICT HYDRATION SHIELD: Only access state if client-side and store is ready
+  // STRICT HYDRATION SHIELD: Only access state if client-side and store is ready.
+  // This prevents the dreaded "Text content does not match" error during SSR.
   if (typeof window !== 'undefined') {
     try {
         const state = useAppStore.getState();
@@ -40,7 +41,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
             decimals = state.profile.decimalPlaces ?? 1;
         }
     } catch {
-        // Fallback during initialization
+        // Fallback during initialization if store is not yet accessible
     }
   }
 
