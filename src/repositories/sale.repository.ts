@@ -1,3 +1,4 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { Sale } from "@/lib/types";
 import { v4 as uuidv4 } from 'uuid';
@@ -6,7 +7,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Sovereign Authority - Nuclear Rebuilt)
- * PHASE 16: Enforced deterministic invoice numbering and transactional integrity.
+ * PHASE 17: Enhanced invoice numbering with high-resolution entropy to prevent collisions.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -25,9 +26,10 @@ export class SaleRepository {
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
-        // Use high-resolution performance timer fraction for collision avoidance
-        const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
-        return `INV-${datePart}-${entropy}`;
+        // Micro-timestamp fraction for near-zero collision probability in serverless context
+        const microTime = performance.now().toString().split('.')[1]?.slice(0, 3) || '000';
+        const entropy = Math.random().toString(36).substring(2, 5).toUpperCase();
+        return `INV-${datePart}-${microTime}${entropy}`;
     }
 
     async create(saleData: any): Promise<Sale> {
@@ -71,19 +73,16 @@ export class SaleRepository {
 
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
-            // Rollback main record if items fail
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
             throw new Error(`SALE_ITEMS_SYNC_FAILED: ${iErr.message}`);
         }
 
-        // Atomic Stock Update
         for (const item of saleItems) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
 
-        // Balance Recalculation
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -110,7 +109,6 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
-        // Reverse stock effects
         for (const item of sale.sale_items) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);

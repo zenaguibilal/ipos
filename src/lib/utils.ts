@@ -1,3 +1,4 @@
+
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -21,22 +22,28 @@ export function formatDateToYYYYMMDD(date: Date): string {
     return date.toISOString().split('T')[0];
 }
 
+/**
+ * Global Currency Formatter (Sovereign Authority)
+ * PHASE 17: Hardened against SSR/Hydration mismatches.
+ */
 export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
   
-  // Attempt to get currency and decimals from store (only works in Client Components)
-  // For SSR or cases where store is unavailable, use fallbacks
   let currency = fallbackCurrency;
   let decimals = 1;
 
-  try {
-    const profile = useAppStore.getState().profile;
-    if (profile) {
-        currency = profile.currencySymbol || fallbackCurrency;
-        decimals = profile.decimalPlaces ?? 1;
+  // Only attempt to access store on the client side
+  if (typeof window !== 'undefined') {
+    try {
+        const state = useAppStore.getState();
+        const profile = state.profile;
+        if (profile) {
+            currency = profile.currencySymbol || fallbackCurrency;
+            decimals = profile.decimalPlaces ?? 1;
+        }
+    } catch (e) {
+        // Silent catch for store access during initial boot
     }
-  } catch (e) {
-    // Store access failed (e.g. Server Component), keep defaults
   }
 
   return `${v.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
@@ -55,9 +62,7 @@ export function calculateCartTotals(cart: { items: any[], discount: { type: stri
  */
 export function calculateZakat(data: any) {
     const nisab = (data.goldPrice || 0) * 85;
-    // totalAssets = Stocks + Customer Debts (Active) + Cash
     const totalAssets = (data.inventoryValue || 0) + Math.max(0, (data.customerDebts || 0)) + (data.cashOnHand || 0);
-    // totalLiabilities = Supplier Debts + Other Operational Debts
     const totalLiabilities = (data.supplierDebts || 0) + (data.otherDebts || 0);
     
     const zakatBase = Math.max(0, totalAssets - totalLiabilities);
