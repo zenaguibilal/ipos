@@ -180,6 +180,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             try {
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile, isInitialized: true });
+            } catch (e) {
+                console.error("Profile fetch failed:", e);
             } finally {
                 set({ isSettingsLoading: false });
             }
@@ -236,7 +238,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 const query = params ? `?${new URLSearchParams(params).toString()}` : '';
                 const expenses = await api.get<Expense[]>(`expenses${query}`);
                 set({ expenses });
-            } finally {
+            } catch (e) { set({ expenses: [] }); }
+            finally {
                 set(p => ({ isLoading: { ...p.isLoading, expenses: false } }));
             }
         },
@@ -246,7 +249,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             try {
                 const breadOrders = await api.get<BreadOrder[]>(`bread?date=${date}`);
                 set({ breadOrders });
-            } finally {
+            } catch (e) { set({ breadOrders: [] }); }
+            finally {
                 set(p => ({ isLoading: { ...p.isLoading, bread: false } }));
             }
         },
@@ -256,7 +260,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             try {
                 const recipes = await api.get<Recipe[]>('recipes');
                 set({ recipes });
-            } finally {
+            } catch (e) { set({ recipes: [] }); }
+            finally {
                 set(p => ({ isLoading: { ...p.isLoading, recipes: false } }));
             }
         },
@@ -266,7 +271,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             try {
                 const staff = await api.get<StaffMember[]>('staff');
                 set({ staff });
-            } finally {
+            } catch (e) { set({ staff: [] }); }
+            finally {
                 set(p => ({ isLoading: { ...p.isLoading, staff: false } }));
             }
         },

@@ -4,7 +4,7 @@ import type { CompanyProfile, AppRole } from "@/lib/types";
 /**
  * @fileOverview Company Repository (Absolute Server Authority)
  * PHASE 2, 11 & 13: Deterministic profile & role discovery logic.
- * يدير عملية التعرف على هوية المستخدم وتحديد مستوى سلطته (مالك أم موظف).
+ * المركز السيادي لإدارة ملفات المنشأة وتحديد مستويات السلطة.
  */
 export class CompanyRepository {
     private supabase = createClient();
@@ -31,6 +31,7 @@ export class CompanyRepository {
             .from('staff_profiles')
             .select('*')
             .eq('email', user.email)
+            .eq('is_active', true) // التأكد من أن الحساب نشط
             .maybeSingle();
 
         if (staffError) throw new Error(`STAFF_CHECK_FAILED: ${staffError.message}`);
@@ -43,6 +44,15 @@ export class CompanyRepository {
 
         // 3. حالة طارئة: مستخدم مسجل ولكن ليس له سجل منشأة أو موظف
         return this.initializeDefault(user.id);
+    }
+
+    /**
+     * وظيفة سيادية للتحقق السريع من الدور في الـ API
+     */
+    async checkRole(requiredRoles: AppRole[]): Promise<boolean> {
+        const profile = await this.get();
+        if (!profile) return false;
+        return requiredRoles.includes(profile.role);
     }
 
     private async initializeDefault(userId: string): Promise<CompanyProfile> {
@@ -63,6 +73,10 @@ export class CompanyRepository {
     async update(data: Partial<CompanyProfile>): Promise<CompanyProfile> {
         const { data: { user } } = await this.supabase.auth.getUser();
         if (!user) throw new Error("UNAUTHENTICATED");
+
+        // التأكد من أن القائم بالتعديل هو الأدمن فقط
+        const currentProfile = await this.get();
+        if (currentProfile?.role !== 'admin') throw new Error("UNAUTHORIZED_PROFILE_UPDATE");
 
         const { data: updated, error } = await this.supabase
             .from('company_profile')

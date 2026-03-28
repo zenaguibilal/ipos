@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { ProductRepository } from '@/repositories/product.repository';
+import { CompanyRepository } from '@/repositories/company.repository';
 import { ProductSchema } from '@/lib/schemas';
 
 /**
- * @fileOverview API WALL: Products
+ * @fileOverview API WALL: Products (Role Guarded)
  */
 
 export async function GET(req: Request) {
@@ -23,6 +24,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
+        const companyRepo = new CompanyRepository();
+        const isAuthorized = await companyRepo.checkRole(['admin', 'manager']);
+        if (!isAuthorized) return NextResponse.json({ error: 'FORBIDDEN_AUTHORITY_REQUIRED' }, { status: 403 });
+
         const body = await req.json();
         const validatedData = ProductSchema.parse(body);
         const repo = new ProductRepository();

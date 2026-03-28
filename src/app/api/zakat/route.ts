@@ -1,13 +1,17 @@
-
 import { NextResponse } from 'next/server';
 import { ZakatRepository } from '@/repositories/zakat.repository';
+import { CompanyRepository } from '@/repositories/company.repository';
 
 /**
- * @fileOverview API WALL: Zakat Calculations
+ * @fileOverview API WALL: Zakat Calculations (Manager Guarded)
  */
 
 export async function GET(req: Request) {
     try {
+        const companyRepo = new CompanyRepository();
+        const isAuthorized = await companyRepo.checkRole(['admin', 'manager']);
+        if (!isAuthorized) return NextResponse.json({ error: 'ACCESS_RESTRICTED' }, { status: 403 });
+
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type');
         const repo = new ZakatRepository();
@@ -26,10 +30,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
+        const companyRepo = new CompanyRepository();
+        const isAuthorized = await companyRepo.checkRole(['admin', 'manager']);
+        if (!isAuthorized) return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
+
         const body = await req.json();
         const repo = new ZakatRepository();
         
-        // Final server-side validation/calculation before saving
         const finalResult = ZakatRepository.calculate(body);
         await repo.save(finalResult);
         
