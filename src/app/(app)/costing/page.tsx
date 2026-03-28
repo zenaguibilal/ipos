@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Plus, Calculator, Trash2, Edit, TrendingUp, Target, ShieldAlert, FileText, Info, BarChart3, ArrowRight } from 'lucide-react';
 import { RecipeDialog } from '@/components/costing/RecipeDialog';
+import { PrintRecipeDialog } from '@/components/costing/PrintRecipeDialog';
 import { api } from '@/lib/api-client';
 import type { Recipe } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -54,7 +55,7 @@ export default function CostingPage() {
     useEffect(() => {
         if (profile && !isManagerOrAdmin) {
             toast.error("Accès Souverain Requis", { 
-                description: "L'ingénierie des coûts est réservée aux autorités de gestion.",
+                description: "L'ingénierية des coûts est réservée aux autorités de gestion.",
                 icon: <ShieldAlert className="h-4 w-4 text-destructive" />
             });
             router.replace('/sell');
@@ -113,10 +114,13 @@ export default function CostingPage() {
                 title="Ingénierية des Coûts" 
                 description="Maîtrisez vos marges brutes en calculant le prix de revient exact de vos produits transformés."
             >
-                <Button onClick={() => { setSelectedRecipe(null); setIsFormDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/20 rounded-2xl h-14 px-10 font-black uppercase text-[11px] tracking-[0.2em] group gap-3">
-                    <Plus className="h-5 w-5 group-hover:scale-110 transition-transform" /> 
-                    Nouvelle Fiche
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintRecipeDialog recipes={recipes} />
+                    <Button onClick={() => { setSelectedRecipe(null); setIsFormDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/20 rounded-2xl h-12 px-8 font-black uppercase text-[11px] tracking-[0.2em] group gap-3">
+                        <Plus className="h-5 w-5 group-hover:scale-110 transition-transform" /> 
+                        Nouvelle Fiche
+                    </Button>
+                </div>
             </PageHeader>
 
             {!isInitialLoading && recipes.length > 0 && stats && (

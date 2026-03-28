@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
@@ -53,6 +54,7 @@ export default function ZakatPage() {
     const [historyViewMode, setHistoryViewMode] = useState<'grid' | 'list'>('grid');
     
     const reportRef = useRef<HTMLDivElement>(null);
+    const [printData, setPrintData] = useState<any>(null);
 
     // Absolute Access Guard
     useEffect(() => {
@@ -88,21 +90,24 @@ export default function ZakatPage() {
         const targetCalc = calcToPrint || result;
         if (!targetCalc) return;
 
-        const printableContent = document.getElementById('receipt-for-print');
-        const reportElement = reportRef.current;
-        if (!printableContent || !reportElement) return;
+        // Set the temporary print data to force ZakatReport to render with it
+        setPrintData(targetCalc);
 
-        // If printing from history, we need to temporarily render the report with that data
-        // but since it's a ref to a hidden component in the page using 'result', 
-        // for simplicity we'll assume the user wants to print the current active calculation.
-        // In a more complex setup, ZakatReport would accept data props dynamically.
+        setTimeout(() => {
+            const printableContent = document.getElementById('receipt-for-print');
+            const reportElement = reportRef.current;
+            if (!printableContent || !reportElement) return;
 
-        const clone = reportElement.cloneNode(true) as HTMLDivElement;
-        clone.classList.add('a4-receipt');
-        printableContent.innerHTML = '';
-        printableContent.appendChild(clone);
+            const clone = reportElement.cloneNode(true) as HTMLDivElement;
+            clone.classList.add('a4-receipt');
+            printableContent.innerHTML = '';
+            printableContent.appendChild(clone);
 
-        setTimeout(() => window.print(), 150);
+            setTimeout(() => {
+                window.print();
+                setPrintData(null); // Cleanup
+            }, 150);
+        }, 50);
     };
 
     const handleExport = () => {
@@ -438,7 +443,7 @@ export default function ZakatPage() {
             </Tabs>
 
             <ZakatHistoryDialog isOpen={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen} calculation={selectedHistory} onPrint={handlePrintReport} />
-            <div className="hidden">{result && <ZakatReport ref={reportRef} calculation={result} profile={profile} />}</div>
+            <div className="hidden">{result && <ZakatReport ref={reportRef} calculation={printData || result} profile={profile} />}</div>
         </div>
     );
 }
