@@ -167,7 +167,6 @@ export function ReturnDetailsDialog({
                     </div>
                 </div>
 
-                {/* Hidden printable receipt */}
                 <div className="hidden">
                     <ReturnReceipt ref={receiptRef} productReturn={productReturn} profile={profile} />
                 </div>

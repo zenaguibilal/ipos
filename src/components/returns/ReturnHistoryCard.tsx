@@ -36,13 +36,18 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const impactDebt = Math.max(0, productReturn.totalReturnValue - productReturn.amountRefunded);
 
+    const handleCardClick = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="menu"]')) return;
+        onToggleSelection();
+    };
+
     return (
         <Card 
             className={cn(
-                "flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 relative group luxury-glass border-destructive/10 bg-muted/10 overflow-hidden",
+                "flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 relative group luxury-glass border-destructive/10 bg-muted/10 overflow-hidden cursor-pointer",
                 isSelected && "ring-2 ring-destructive/50 bg-destructive/[0.02] shadow-destructive/10"
             )}
-            onClick={onToggleSelection}
+            onClick={handleCardClick}
         >
             <div className={cn(
                 "absolute top-3 left-3 z-10 transition-opacity",
@@ -73,7 +78,7 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <MoreHorizontal className="h-5 w-5" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -123,7 +128,7 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                 </div>
             </CardContent>
 
-            <CardFooter className="bg-destructive/5 p-5 border-t border-destructive/10 mt-auto relative z-10" onClick={e => { e.stopPropagation(); onViewDetails(productReturn); }} style={{ cursor: 'pointer' }}>
+            <CardFooter className="bg-destructive/5 p-5 border-t border-destructive/10 mt-auto relative z-10" onClick={(e) => { e.stopPropagation(); onViewDetails(productReturn); }}>
                 <div className="flex justify-between items-center w-full">
                     <span className="text-[10px] font-black uppercase tracking-widest text-destructive/70">Valeur Nette Retour</span>
                     <span className="text-2xl font-black text-destructive tracking-tighter">-{formatCurrency(productReturn.totalReturnValue)}</span>

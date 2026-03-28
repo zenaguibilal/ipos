@@ -7,7 +7,7 @@ import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
-    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2
+    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -96,7 +96,7 @@ export default function ReturnsPage() {
             setAllReturns(returnsData);
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
             setVisibleCount(ITEMS_PER_PAGE);
-            setSelectedReturnsUuids(new Set()); // Reset selection on refresh
+            setSelectedReturnsUuids(new Set());
         } catch (error: any) {
             toast.error("Impossible de charger les retours.");
             setAllReturns([]);
@@ -205,8 +205,8 @@ export default function ReturnsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard title="Valeur Retours" value={formatCurrency(stats.totalValue)} icon={Undo2} colorClass="text-destructive" desc="Pertes de revenus bruts" />
-                <StatCard title="Remboursements" value={formatCurrency(stats.totalRefunded)} icon={Archive} colorClass="text-chart-quaternary" desc="Sorties de caisse réelles" />
-                <StatCard title="Correction Dettes" value={formatCurrency(stats.impactDebt)} icon={Archive} colorClass="text-primary" desc="Crédit sur comptes clients" />
+                <StatCard title="Remboursements" value={formatCurrency(stats.totalRefunded)} icon={Banknote} colorClass="text-chart-quaternary" desc="Sorties de caisse réelles" />
+                <StatCard title="Correction Dettes" value={formatCurrency(stats.impactDebt)} icon={HandCoins} colorClass="text-primary" desc="Crédit sur comptes clients" />
                 <StatCard title="Volume Flux" value={`${allReturns?.length || 0} Bons`} icon={Archive} colorClass="text-muted-foreground" desc="Opérations enregistrées" />
             </div>
 

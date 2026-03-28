@@ -47,7 +47,6 @@ export default function NewReturnPage() {
         
         setIsSearching(true);
         try {
-            // Fetch sales and find exact match
             const sales = await api.get<Sale[]>(`sales`);
             const sale = sales.find(s => s.invoiceNumber === targetInv);
             
@@ -141,7 +140,6 @@ export default function NewReturnPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                {/* Search & Items Column */}
                 <div className="lg:col-span-2 space-y-8">
                     <Card className={cn(
                         "luxury-glass border-white/5 bg-muted/10 transition-all duration-500",
@@ -241,7 +239,6 @@ export default function NewReturnPage() {
                     )}
                 </div>
 
-                {/* Financial Summary Column */}
                 <div className="space-y-8">
                     {foundSale ? (
                         <>
