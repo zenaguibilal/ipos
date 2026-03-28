@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
@@ -14,7 +13,7 @@ import {
     Scale, Landmark, Banknote, Target, TrendingUp, Info, 
     CheckCircle2, AlertCircle, ArrowRight, Activity,
     BarChart3, PieChart as PieChartIcon, Clock, FileUp, LayoutGrid, List, X, BookOpen,
-    Zap, HandCoins, AlertTriangle
+    Zap, HandCoins, AlertTriangle, ShieldX
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,8 +30,7 @@ import { fr } from 'date-fns/locale';
 import { CsvImporter } from '@/lib/csv-utils';
 
 /**
- * @fileOverview Zakat Command Center (Finalized Sovereign Edition)
- * المركز السيادي لتقييم الأصول وتتبع حول الحول مع التحليل البصري والتنبيهات الاستراتيجية.
+ * @fileOverview Zakat Command Center (Sovereign Authority - Protected)
  */
 
 export default function ZakatPage() {
@@ -56,20 +54,22 @@ export default function ZakatPage() {
     const reportRef = useRef<HTMLDivElement>(null);
     const [printData, setPrintData] = useState<any>(null);
 
+    const isAllowed = profile?.permissions?.includes('zakat') || isManagerOrAdmin;
+
     // Absolute Access Guard
     useEffect(() => {
-        if (profile && !isManagerOrAdmin) {
-            toast.error("Accès Souverain Requis", { 
-                description: "Le calculateur de Zakat est réservé aux autorités de gestion.",
-                icon: <ShieldAlert className="h-4 w-4 text-destructive" />
+        if (profile && !isAllowed) {
+            toast.error("Module Zakat Restreint", { 
+                description: "L'évaluation patrimoniale est réservée aux autorités de gestion.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
             });
             router.replace('/sell');
         }
-    }, [profile, isManagerOrAdmin, router]);
+    }, [profile, isAllowed, router]);
 
     useEffect(() => { 
-        if (isManagerOrAdmin) refreshZakatData(); 
-    }, [refreshZakatData, isManagerOrAdmin]);
+        if (isAllowed) refreshZakatData(); 
+    }, [refreshZakatData, isAllowed]);
 
     const handleSave = async () => {
         if (!result) return;
@@ -90,7 +90,6 @@ export default function ZakatPage() {
         const targetCalc = calcToPrint || result;
         if (!targetCalc) return;
 
-        // Set the temporary print data to force ZakatReport to render with it
         setPrintData(targetCalc);
 
         setTimeout(() => {
@@ -105,7 +104,7 @@ export default function ZakatPage() {
 
             setTimeout(() => {
                 window.print();
-                setPrintData(null); // Cleanup
+                setPrintData(null);
             }, 150);
         }, 50);
     };
@@ -146,7 +145,7 @@ export default function ZakatPage() {
         return result.zakatAmount > result.cashOnHand;
     }, [result]);
 
-    if (!profile || !isManagerOrAdmin) {
+    if (!profile || !isAllowed) {
         return (
             <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
                 <ShieldAlert className="h-16 w-16 text-primary animate-pulse" />
@@ -174,7 +173,7 @@ export default function ZakatPage() {
                 </PageHeader>
             </div>
 
-            {/* Zakat Anniversary & Liquidity Alerts */}
+            {/* Anniversary & Liquidity Alerts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {anniversaryInfo && (
                     <div className={cn(

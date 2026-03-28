@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { 
     Plus, Search, FileUp, TrendingDown, RefreshCw, 
     RotateCcw, LayoutGrid, List, X, Filter, ChevronDown, 
-    Trash2, Activity, Banknote, Calendar, ArrowRight, Info, ShieldCheck
+    Trash2, Activity, Banknote, Calendar, ArrowRight, Info, ShieldCheck, ShieldX
 } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { ExpenseTable } from '@/components/expenses/ExpenseTable';
@@ -27,6 +26,7 @@ import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/useDebounce';
 import { CsvImporter } from '@/lib/csv-utils';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,13 +39,14 @@ import {
 import { cn } from '@/lib/utils';
 
 /**
- * @fileOverview Expense Ledger (Sovereign Authority - Finalized Perfection)
- * المركز السيادي للتحكم في التدفقات النقدية الخارجة وتدقيق الأعباء التشغيلية.
+ * @fileOverview Expense Ledger (Sovereign Authority - Protected)
  */
 
 export default function ExpensesPage() {
+    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { expenses, isLoading, viewMode, categories } = useAppStore(state => ({
+    const { profile, expenses, isLoading, viewMode, categories } = useAppStore(state => ({
+        profile: state.profile,
         expenses: state.expenses,
         isLoading: state.isLoading.expenses,
         viewMode: state.expenseViewMode,
@@ -65,19 +66,34 @@ export default function ExpensesPage() {
     const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
     const [selectedExpenseUuids, setSelectedExpenseUuids] = useState<Set<string>>(new Set());
 
+    const isAllowed = profile?.permissions?.includes('expenses') || isManagerOrAdmin;
+
+    // Access Guard
+    useEffect(() => {
+        if (profile && !isAllowed) {
+            toast.error("Registre des Charges Restreint", { 
+                description: "L'audit des dépenses est réservé aux autorités de gestion.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
+            router.replace('/sell');
+        }
+    }, [profile, isAllowed, router]);
+
     const fetchExpenses = useCallback(() => {
-        if (!isMounted || !dateRange?.from || !dateRange?.to) return;
+        if (!isMounted || !dateRange?.from || !dateRange?.to || !isAllowed) return;
         refreshExpenses({
             from: dateRange.from.toISOString(),
             to: dateRange.to.toISOString(),
             category: selectedCategory
         });
-    }, [isMounted, dateRange, selectedCategory, refreshExpenses]);
+    }, [isMounted, dateRange, selectedCategory, refreshExpenses, isAllowed]);
     
     useEffect(() => {
-        fetchExpenses();
-        refreshExpenseCategories();
-    }, [fetchExpenses, refreshExpenseCategories]);
+        if (isAllowed) {
+            fetchExpenses();
+            refreshExpenseCategories();
+        }
+    }, [fetchExpenses, refreshExpenseCategories, isAllowed]);
 
     const filteredExpenses = useMemo(() => {
         return expenses.filter(e => 
@@ -106,7 +122,7 @@ export default function ExpensesPage() {
     const handleExport = () => {
         if (!filteredExpenses.length) return;
         CsvImporter.exportExpenses(filteredExpenses);
-        toast.success("Registre des charges exporté vers le terminal local.");
+        toast.success("Registre des charges exporté.");
     };
 
     const handleResetFilters = () => {
@@ -115,6 +131,15 @@ export default function ExpensesPage() {
         setSelectedExpenseUuids(new Set());
         fetchExpenses();
     };
+
+    if (!profile || !isAllowed) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
+                <ShieldCheck className="h-16 w-16 text-primary animate-pulse" />
+                <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 sm:p-6 space-y-10 animate-in fade-in duration-1000 max-w-screen-2xl mx-auto pb-24 md:pb-10">

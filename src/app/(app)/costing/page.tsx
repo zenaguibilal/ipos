@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
-import { Plus, Calculator, Trash2, Edit, TrendingUp, Target, ShieldAlert, FileText, Info, BarChart3, ArrowRight } from 'lucide-react';
+import { Plus, Calculator, Trash2, Edit, TrendingUp, Target, ShieldAlert, FileText, Info, BarChart3, ArrowRight, ShieldX } from 'lucide-react';
 import { RecipeDialog } from '@/components/costing/RecipeDialog';
 import { PrintRecipeDialog } from '@/components/costing/PrintRecipeDialog';
 import { api } from '@/lib/api-client';
@@ -19,6 +18,10 @@ import { Badge } from '@/components/ui/badge';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Separator } from '@/components/ui/separator';
+
+/**
+ * @fileOverview Cost Engineering Page (Sovereign Authority - Protected)
+ */
 
 const StatCard = ({ title, value, icon: Icon, colorClass, desc }: { title: string, value: string, icon: any, colorClass: string, desc: string }) => (
     <Card className="luxury-glass bg-muted/10 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden">
@@ -51,20 +54,22 @@ export default function CostingPage() {
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
 
-    // Role Guard
+    const isAllowed = profile?.permissions?.includes('costing') || isManagerOrAdmin;
+
+    // Access Guard
     useEffect(() => {
-        if (profile && !isManagerOrAdmin) {
-            toast.error("Accès Souverain Requis", { 
-                description: "L'ingénierية des coûts est réservée aux autorités de gestion.",
-                icon: <ShieldAlert className="h-4 w-4 text-destructive" />
+        if (profile && !isAllowed) {
+            toast.error("Unité Coûts Restreinte", { 
+                description: "L'ingénierie des prix est réservée aux autorités de gestion.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
             });
             router.replace('/sell');
         }
-    }, [profile, isManagerOrAdmin, router]);
+    }, [profile, isAllowed, router]);
 
     useEffect(() => {
-        if (isManagerOrAdmin) refreshRecipes();
-    }, [refreshRecipes, isManagerOrAdmin]);
+        if (isAllowed) refreshRecipes();
+    }, [refreshRecipes, isAllowed]);
 
     const stats = useMemo(() => {
         if (!recipes || recipes.length === 0) return null;
@@ -97,7 +102,7 @@ export default function CostingPage() {
         }
     };
 
-    if (!profile || !isManagerOrAdmin) {
+    if (!profile || !isAllowed) {
         return (
             <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <ShieldAlert className="h-16 w-16 text-primary animate-pulse" />
@@ -111,7 +116,7 @@ export default function CostingPage() {
     return (
         <div className="p-4 sm:p-6 space-y-10 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader 
-                title="Ingénierية des Coûts" 
+                title="Ingénierie des Coûts" 
                 description="Maîtrisez vos marges brutes en calculant le prix de revient exact de vos produits transformés."
             >
                 <div className="flex gap-2 w-full sm:w-auto">

@@ -10,14 +10,13 @@ import { BreadDayView } from '@/components/bread/BreadDayView';
 import { BreadStats } from '@/components/bread/BreadStats';
 import { BreadClientList } from '@/components/bread/BreadClientList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert, Lock, Activity } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Calendar, Users, Wheat, ShieldAlert, Lock, Activity, ShieldX } from 'lucide-react';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 /**
- * @fileOverview Bread Management Page (Completed Sovereign Edition)
- * المركز السيادي لإدارة المخبزة: أتمتة، توزيع، وفوترة ذكية.
+ * @fileOverview Bread Management Page (Sovereign Authority - Protected)
  */
 
 export default function BreadPage() {
@@ -33,20 +32,22 @@ export default function BreadPage() {
     }));
     const { refreshBreadOrders } = useAppActions();
 
-    // Absolute Role Guard
+    const isAllowed = profile?.permissions?.includes('bread') || isManagerOrAdmin;
+
+    // Absolute Access Guard
     useEffect(() => {
-        if (profile && !isManagerOrAdmin) {
-            toast.error("Accès Souverain Requis", { 
-                description: "La gestion de la boulangerie est réservée aux profils gestionnaires.",
-                icon: <Lock className="h-4 w-4 text-destructive" />
+        if (profile && !isAllowed) {
+            toast.error("Accès Souverain Refusé", { 
+                description: "Vous ne possédez pas le décret nécessaire pour cette unité.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
             });
             router.replace('/sell');
         }
-    }, [profile, isManagerOrAdmin, router]);
+    }, [profile, isAllowed, router]);
 
     useEffect(() => {
-        if (isManagerOrAdmin) refreshBreadOrders(formattedDate);
-    }, [formattedDate, refreshBreadOrders, isManagerOrAdmin]);
+        if (isAllowed) refreshBreadOrders(formattedDate);
+    }, [formattedDate, refreshBreadOrders, isAllowed]);
 
     const handleDateChange = useCallback((days: number) => {
         setCurrentDate(prev => addDays(prev, days));
@@ -54,16 +55,16 @@ export default function BreadPage() {
 
     const isToday = formatDateToYYYYMMDD(new Date()) === formattedDate;
 
-    if (!profile || !isManagerOrAdmin) {
+    if (!profile || !isAllowed) {
         return (
             <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
-                <div className="p-6 bg-primary/5 rounded-[3rem] border border-primary/10 shadow-2xl relative overflow-hidden group">
-                    <ShieldAlert className="h-16 w-16 text-primary animate-pulse relative z-10" />
-                    <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                <div className="p-6 bg-destructive/5 rounded-[3rem] border border-destructive/10 shadow-2xl relative overflow-hidden group">
+                    <Lock className="h-16 w-16 text-destructive animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-destructive/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Protocole de Sécurité Solaire Actيف Active</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint à l'Unité Boulangerie</p>
                 </div>
             </div>
         );

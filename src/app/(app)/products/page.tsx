@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X, Copy, RotateCcw } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X, Copy, RotateCcw, ShieldX } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -28,8 +28,7 @@ import { CsvImporter } from '@/lib/csv-utils';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Sovereign Product Management (Finalized Perfection)
- * المركز السيادي للتحكم في الكتالوج، الأسعار، والمخزون الاستراتيجي.
+ * @fileOverview Sovereign Product Management (Sovereign Authority - Protected)
  */
 
 export default function ProductsPage() {
@@ -63,26 +62,31 @@ export default function ProductsPage() {
     const [importAnalysis, setImportAnalysis] = useState<ProductImportAnalysis | null>(null);
     const [isImporting, setIsImporting] = useState(false);
 
-    // Absolute Role Guard
+    const isAllowed = profile?.permissions?.includes('products') || isManagerOrAdmin;
+
+    // Absolute Access Guard
     useEffect(() => {
-        if (profile && !isManagerOrAdmin) {
-            toast.error("Accès restreint", { description: "Seuls les gérants peuvent accéder à l'inventaire." });
+        if (profile && !isAllowed) {
+            toast.error("Unité Articles Restreinte", { 
+                description: "La gestion du catalogue est réservée aux autorités habilitées.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
             router.replace('/sell');
         }
-    }, [profile, isManagerOrAdmin, router]);
+    }, [profile, isAllowed, router]);
 
     useEffect(() => {
-        if (isManagerOrAdmin) {
+        if (isAllowed) {
             refreshProducts(debouncedSearchQuery);
         }
-    }, [debouncedSearchQuery, refreshProducts, isManagerOrAdmin]);
+    }, [debouncedSearchQuery, refreshProducts, isAllowed]);
 
     useEffect(() => {
-        if (isManagerOrAdmin) {
+        if (isAllowed) {
             api.get<string[]>('products/categories').then(setCategories).catch(() => {});
             api.get<Supplier[]>('suppliers').then(setSuppliers).catch(() => {});
         }
-    }, [isManagerOrAdmin]);
+    }, [isAllowed]);
 
     const handleToggleSelection = (uuid: string) => {
         setSelectedProducts(prev => {
@@ -109,7 +113,7 @@ export default function ProductsPage() {
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {
-            toast.error("Erreur lors de l'analyse.");
+            toast.error("Erreur lors de l'analyse CSV.");
         } finally {
             e.target.value = '';
         }
@@ -119,7 +123,7 @@ export default function ProductsPage() {
         setIsImporting(true);
         try {
             await api.post('products/bulk-import', confirmedData);
-            toast.success("Importation terminée !");
+            toast.success("Catalogue synchronisé avec succès.");
             setIsImportPreviewOpen(false);
             refreshProducts();
         } catch (error: any) {
@@ -144,7 +148,7 @@ export default function ProductsPage() {
         refreshProducts();
     };
 
-    if (!profile || !isManagerOrAdmin) {
+    if (!profile || !isAllowed) {
         return (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <ShieldAlert className="h-16 w-16 text-primary animate-pulse" />
