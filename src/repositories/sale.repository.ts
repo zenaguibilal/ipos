@@ -26,14 +26,14 @@ export class SaleRepository {
 
     /**
      * Deterministic High-Entropy Invoice Generation
-     * Pattern: INV-[YYMMDD]-[MILLISECONDS]-[RAND_HEX]
+     * Pattern: INV-[YYMMDD]-[UNIX_MICRO]-[RAND_HEX_12]
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
-        const msPart = now.getMilliseconds().toString().padStart(3, '0');
-        const entropy = Math.random().toString(16).substring(2, 8).toUpperCase();
-        return `INV-${datePart}-${msPart}-${entropy}`;
+        const timePart = now.getTime().toString().slice(-6);
+        const entropy = Math.random().toString(16).substring(2, 14).toUpperCase();
+        return `INV-${datePart}-${timePart}-${entropy}`;
     }
 
     async create(saleData: any): Promise<Sale> {
@@ -63,7 +63,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE: ${sErr.message}`);
+        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
@@ -81,7 +81,6 @@ export class SaleRepository {
             throw new Error(`SALE_ITEMS_SYNC_FAILED`);
         }
 
-        // Atomically update inventory
         for (const item of saleItems) {
             if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);
@@ -91,7 +90,6 @@ export class SaleRepository {
             }
         }
 
-        // Sync customer credit status
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -118,7 +116,6 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
-        // Revert inventory changes before purging record
         for (const item of sale.sale_items) {
             if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);

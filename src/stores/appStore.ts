@@ -8,7 +8,7 @@ import type {
 } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
-import { calculateZakat } from '@/lib/utils';
+import { calculateZakat } from '@/lib/calculations';
 
 interface AppState {
     user: any | null;
@@ -207,7 +207,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                 const profile = await api.get<CompanyProfile>('profile');
                 set({ profile, isInitialized: true });
             } catch (e) {
-                // Critical failure handling
+                // Handled by API client
             } finally {
                 set({ isSettingsLoading: false });
             }

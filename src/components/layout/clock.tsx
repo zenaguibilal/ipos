@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * @fileOverview THE SYSTEM CLOCK (NUCLEAR REBUILT)
+ * @fileOverview THE SYSTEM CLOCK (PURE CLIENT RENDER)
  * Eliminates all hydration errors by strictly waiting for client mount validation.
  */
 
@@ -21,13 +21,9 @@ export function Clock() {
       setTime(new Date());
     }, 1000);
 
-    return () => {
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
-  // HYDRATION SHIELD: Return atomic placeholder until client-side handshake is verified.
-  // This prevents "Text content does not match" critical mismatch during SSR.
   if (!isMounted || !time) {
     return (
       <div className="hidden sm:flex items-center h-6 w-[240px]">

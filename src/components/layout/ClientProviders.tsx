@@ -51,13 +51,13 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     });
                 }
             } catch (err) {
-                // Defensive silence for non-critical failures
+                // Defensive silence
             }
         };
 
         // Execute purge immediately and then on an interval
         executeSurgicalPurge();
-        const interval = setInterval(executeSurgicalPurge, 300000); // 5 minutes
+        const interval = setInterval(executeSurgicalPurge, 600000); // Every 10 minutes
         
         return () => clearInterval(interval);
     }, []);
