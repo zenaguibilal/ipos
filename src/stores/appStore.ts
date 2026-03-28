@@ -50,6 +50,7 @@ interface AppState {
     // UI Preferences
     isCompactMode: boolean;
     isMotionEnabled: boolean;
+    interfaceScale: number;
 
     carts: Cart[];
     activeCartId: string;
@@ -94,6 +95,7 @@ interface AppState {
 
         setCompactMode: (enabled: boolean) => void;
         setMotionEnabled: (enabled: boolean) => void;
+        setInterfaceScale: (scale: number) => void;
 
         toggleSellProductSheet: (open: boolean) => void;
         toggleSellDebtPayment: (open: boolean) => void;
@@ -172,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     isCompactMode: false,
     isMotionEnabled: true,
+    interfaceScale: 100,
 
     modals: {
         sell: {
@@ -364,6 +367,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         setCompactMode: (enabled) => set({ isCompactMode: enabled }),
         setMotionEnabled: (enabled) => set({ isMotionEnabled: enabled }),
+        setInterfaceScale: (scale) => set({ interfaceScale: scale }),
 
         toggleSellProductSheet: (open) => set(produce((s: AppState) => { s.modals.sell.isProductSheetOpen = open; })),
         toggleSellDebtPayment: (open) => set(produce((s: AppState) => { s.modals.sell.isDebtPaymentDialogOpen = open; })),
@@ -482,7 +486,8 @@ export const useAppStore = create<AppState>((set, get) => ({
                 result: null
             },
             sellPage: { cartCustomer: null, customerListVersion: 0 },
-            isLoading: {}
+            isLoading: {},
+            interfaceScale: 100
         }),
     }
 }));

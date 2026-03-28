@@ -7,7 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { useTheme } from "next-themes";
 import { 
     Palette, Sun, Moon, Monitor, LayoutGrid, List, 
-    Sparkles, Zap, Maximize2, Minimize2, CheckCircle2 
+    Sparkles, Zap, Maximize2, Minimize2, CheckCircle2,
+    Scaling, ZoomIn, ZoomOut
 } from "lucide-react";
 import { useAppStore, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
@@ -25,13 +26,13 @@ export function DisplaySettings() {
     const { 
         productViewMode, customerViewMode, expenseViewMode, 
         stockViewMode, salesHistoryViewMode, supplierViewMode,
-        isCompactMode, isMotionEnabled
+        isCompactMode, isMotionEnabled, interfaceScale
     } = useAppStore();
     
     const { 
         setProductViewMode, setCustomerViewMode, setExpenseViewMode, 
         setStockViewMode, setSalesHistoryViewMode, setSupplierViewMode,
-        setCompactMode, setMotionEnabled
+        setCompactMode, setMotionEnabled, setInterfaceScale
     } = useAppActions();
 
     // Effect to apply compact mode to body
@@ -100,6 +101,14 @@ export function DisplaySettings() {
         </div>
     );
 
+    const scaleOptions = [
+        { value: 80, label: 'Petit (80%)', desc: 'Max. Données' },
+        { value: 90, label: 'Compact (90%)', desc: 'Haute Densité' },
+        { value: 100, label: 'Standard (100%)', desc: 'Équilibré' },
+        { value: 110, label: 'Grand (110%)', desc: 'Confort Visuel' },
+        { value: 120, label: 'Extra (120%)', desc: 'Tactile Optimisé' },
+    ];
+
     return (
         <div className="space-y-10 animate-in fade-in duration-700">
             <Card className="luxury-glass border-white/5 overflow-hidden shadow-2xl">
@@ -130,11 +139,39 @@ export function DisplaySettings() {
 
                     <Separator className="bg-white/5" />
 
+                    {/* Interface Resolution / Scale */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3">
+                            <Scaling className="h-5 w-5 text-primary" />
+                            <h4 className="text-xs font-black uppercase tracking-[0.2em]">Résolution & Échelle</h4>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            {scaleOptions.map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => setInterfaceScale(opt.value)}
+                                    className={cn(
+                                        "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-300 gap-2",
+                                        interfaceScale === opt.value 
+                                            ? "bg-primary/10 border-primary text-primary shadow-lg" 
+                                            : "bg-white/5 border-white/5 text-muted-foreground hover:bg-white/10 hover:border-white/10"
+                                    )}
+                                >
+                                    {opt.value < 100 ? <ZoomOut className="h-4 w-4" /> : opt.value > 100 ? <ZoomIn className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                    <p className="text-[10px] font-black uppercase tracking-widest">{opt.label}</p>
+                                    <p className="text-[8px] font-bold opacity-50 uppercase">{opt.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Separator className="bg-white/5" />
+
                     {/* View Modes Selection */}
                     <div className="space-y-6">
                         <div className="flex items-center gap-3">
                             <LayoutGrid className="h-5 w-5 text-primary" />
-                            <h4 className="text-xs font-black uppercase tracking-[0.2em]">Anatomie des Registres</h4>
+                            <h4 className="text-xs font-black uppercase tracking-[0.2em]">Anatomية des Registres</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <ViewModeToggle label="Produits" current={productViewMode} onToggle={setProductViewMode} />
