@@ -1,10 +1,11 @@
+
 import { createClient } from "@/utils/supabase/server";
 import type { Product, InventoryLog } from "@/lib/types";
 import { InventoryRepository } from "./inventory.repository";
 
 /**
- * @fileOverview Product Repository (Absolute Data Authority)
- * المسؤول عن إدارة المنتجات وفرض التزامن مع سجلات حركة المخزون.
+ * @fileOverview Product Repository (Absolute Sovereign Authority)
+ * المركز السيادي لإدارة المنتجات، الأسعار، وحركات المخزون التاريخية.
  */
 export class ProductRepository {
     private supabase = createClient();
@@ -25,7 +26,7 @@ export class ProductRepository {
             query = query.eq('category', filters.category);
         }
         if (filters?.query) {
-            query = query.ilike('name', `%${filters.query}%`);
+            query = query.or(`name.ilike.%${filters.query}%, barcodes.cs.{${filters.query}}`);
         }
 
         const { data, error } = await query.order('name', { ascending: true });
@@ -89,7 +90,7 @@ export class ProductRepository {
         
         if (uErr) throw new Error("STOCK_SYNC_FAILURE");
 
-        // فرض التزامن: تسجيل الحركة في سجل المخزون
+        // Sovereign logging
         const inventoryRepo = new InventoryRepository();
         await inventoryRepo.add({
             productUuid: uuid,
@@ -118,14 +119,15 @@ export class ProductRepository {
             .insert([{
                 ...this.mapToDb(product),
                 user_id: user.id,
-                stock_status: status
+                stock_status: status,
+                date_maj_prix: new Date().toISOString()
             }])
             .select()
             .single();
         
         if (error) throw new Error(`PRODUCT_CREATE_FAILURE: ${error.message}`);
 
-        // إذا تم إنشاء المنتج برصيد مخزني، نسجل ذلك كحركة تعديل يدوي
+        // Initial inventory log
         if (quantity > 0) {
             const inventoryRepo = new InventoryRepository();
             await inventoryRepo.add({
@@ -140,22 +142,27 @@ export class ProductRepository {
     }
 
     async update(uuid: string, product: Partial<Product>): Promise<Product> {
-        const { data: existing } = await this.supabase.from('products').select('quantity, min_stock_level').eq('uuid', uuid).single();
+        const { data: existing } = await this.supabase.from('products').select('quantity, min_stock_level, price').eq('uuid', uuid).single();
         
         const updatedQty = product.quantity !== undefined ? product.quantity : existing.quantity;
         const updatedMin = product.minStockLevel !== undefined ? product.minStockLevel : existing.min_stock_level;
         const newStatus = this.calculateStockStatus(updatedQty, updatedMin);
+
+        // Update price timestamp if price changed
+        const priceChanged = product.price !== undefined && Number(product.price) !== existing.price;
 
         const { data, error } = await this.supabase
             .from('products')
             .update({
                 ...this.mapToDb(product),
                 stock_status: newStatus,
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
+                ...(priceChanged && { date_maj_prix: new Date().toISOString() })
             })
             .eq('uuid', uuid)
             .select()
             .single();
+            
         if (error) throw new Error(`PRODUCT_UPDATE_FAILURE: ${error.message}`);
         return this.mapFromDb(data);
     }
@@ -179,6 +186,7 @@ export class ProductRepository {
             imageUrl: p.image_url,
             unite: p.unite,
             dateExpiration: p.date_expiration,
+            dateMajPrix: p.date_maj_prix,
             supplierUuid: p.supplier_uuid,
             createdAt: p.created_at,
             updatedAt: p.updated_at,

@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X, Copy } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -79,8 +79,8 @@ export default function ProductsPage() {
 
     useEffect(() => {
         if (isManagerOrAdmin) {
-            api.get<string[]>('products/categories').then(setCategories);
-            api.get<Supplier[]>('suppliers').then(setSuppliers);
+            api.get<string[]>('products/categories').then(setCategories).catch(() => {});
+            api.get<Supplier[]>('suppliers').then(setSuppliers).catch(() => {});
         }
     }, [isManagerOrAdmin]);
 
@@ -173,7 +173,7 @@ export default function ProductsPage() {
                         <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                         <Input 
-                            placeholder="Rechercher par nom, catégorie ou code-barres..."
+                            placeholder="Scanner ou rechercher (Nom / Barcode)..."
                             className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10"
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
