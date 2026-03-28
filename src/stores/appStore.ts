@@ -1,3 +1,4 @@
+
 'use client';
 
 import { create } from 'zustand';
@@ -8,7 +9,7 @@ import type {
 } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
-import { calculateZakat } from '@/lib/calculations';
+import { calculateZakat, calculateCartTotals } from '@/lib/calculations';
 
 interface AppState {
     user: any | null;

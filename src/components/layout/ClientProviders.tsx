@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ThemeProvider } from '@/components/layout/theme-provider';
