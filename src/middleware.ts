@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 /**
  * iPOS Sovereign Guard Middleware
- * Enforces route protection and session integrity.
+ * Enforce strict session protection and routing authority.
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -22,49 +22,33 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          request.cookies.set({ name, value, ...options })
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          request.cookies.set({ name, value: '', ...options })
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-
   const path = request.nextUrl.pathname
 
-  // 1. Session Protection Logic
-  if (!user && path !== '/login' && !path.startsWith('/api/auth')) {
+  // Public asset exemption
+  if (path.startsWith('/_next') || path.includes('/api/auth') || path === '/icon.svg') {
+    return response
+  }
+
+  // Auth Guard Logic
+  if (!user && path !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -72,16 +56,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // 2. Cloud-Only Headers (Force No-Cache)
-  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-  response.headers.set('Pragma', 'no-cache')
-  response.headers.set('Expires', '0')
-
+  // Force No-Cache for dynamic routes
+  response.headers.set('Cache-Control', 'no-store, max-age=0')
   return response
 }
 
 export const config = {
-  matcher: [
-    '/((?!api|_next/static|_next/image|icon.svg|sw.js|manifest.json).*)'
-  ],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }

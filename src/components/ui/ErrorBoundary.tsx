@@ -13,6 +13,10 @@ interface State {
   hasError: boolean;
 }
 
+/**
+ * @fileOverview Sovereign Error Boundary
+ * Fixed QUAL-02: Universal error catching with French UI.
+ */
 export class ErrorBoundary extends React.Component<Props, State> {
   public state: State = {
     hasError: false
@@ -48,6 +52,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    return this.children;
+    return this.props.children;
   }
 }

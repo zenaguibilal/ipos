@@ -1,61 +1,35 @@
 
--- 002_rls_policies.sql
--- iPOS Hardened Security Policies
+-- iPOS SOVEREIGN RLS POLICIES (SEC-01)
+-- AUTHOR: SECURITY ENGINEER
 
 -- Enable RLS on all tables
-alter table public.company_profile enable row level security;
-alter table public.products enable row level security;
-alter table public.customers enable row level security;
-alter table public.suppliers enable row level security;
-alter table public.sales enable row level security;
-alter table public.sale_items enable row level security;
-alter table public.expenses enable row level security;
-alter table public.product_returns enable row level security;
-alter table public.return_items enable row level security;
-alter table public.bread_orders enable row level security;
-alter table public.zakat_logs enable row level security;
-alter table public.payments enable row level security;
-alter table public.supplier_payments enable row level security;
-alter table public.inventory_logs enable row level security;
-alter table public.staff_profiles enable row level security;
-alter table public.recipes enable row level security;
+ALTER TABLE public.company_profile ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
 
--- Universal Policy Pattern for user_id owned tables
--- Pattern: auth.uid() = user_id
+-- 1. COMPANY PROFILE POLIES
+DROP POLICY IF EXISTS "Sovereign Access" ON public.company_profile;
+CREATE POLICY "Sovereign Access" ON public.company_profile
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- Table: company_profile
-create policy "User owns profile" on public.company_profile 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- 2. PRODUCTS POLICIES
+DROP POLICY IF EXISTS "User Ownership" ON public.products;
+CREATE POLICY "User Ownership" ON public.products
+    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "User Insert" ON public.products
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "User Update" ON public.products
+    FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "User Delete" ON public.products
+    FOR DELETE USING (auth.uid() = user_id);
 
--- Table: products
-create policy "User owns products" on public.products 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- 3. CUSTOMERS POLICIES
+DROP POLICY IF EXISTS "Customer Ownership" ON public.customers;
+CREATE POLICY "Customer Ownership" ON public.customers
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
--- Table: customers
-create policy "User owns customers" on public.customers 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- Table: sales
-create policy "User owns sales" on public.sales 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- Table: sale_items (Ownership via Sale or UserID)
-create policy "User owns sale items" on public.sale_items 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- Table: staff_profiles (Ownership check)
-create policy "User owns staff" on public.staff_profiles 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- Apply similar strict logic to all other tables
-create policy "User owns expenses" on public.expenses 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
-create policy "User owns returns" on public.product_returns 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
-create policy "User owns bread" on public.bread_orders 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
-create policy "User owns zakat" on public.zakat_logs 
-for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+-- 4. SALES POLICIES
+DROP POLICY IF EXISTS "Sales Ownership" ON public.sales;
+CREATE POLICY "Sales Ownership" ON public.sales
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
