@@ -1,4 +1,3 @@
-
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import placeholderImages from '@/lib/placeholder-images.json';
@@ -24,7 +23,7 @@ export function formatDateToYYYYMMDD(date: Date): string {
 
 /**
  * Global Currency Formatter (Sovereign Authority)
- * PHASE 17: Hardened against SSR/Hydration mismatches.
+ * PHASE 18: Optimized for ZERO Hydration Mismatches.
  */
 export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
@@ -32,7 +31,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   let currency = fallbackCurrency;
   let decimals = 1;
 
-  // Only attempt to access store on the client side
+  // STRICT HYDRATION GUARD: Never attempt to read Store during SSR
   if (typeof window !== 'undefined') {
     try {
         const state = useAppStore.getState();
@@ -41,12 +40,15 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
             currency = profile.currencySymbol || fallbackCurrency;
             decimals = profile.decimalPlaces ?? 1;
         }
-    } catch (e) {
-        // Silent catch for store access during initial boot
+    } catch {
+        // Fallback to defaults during boot
     }
   }
 
-  return `${v.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })} ${currency}`;
+  return `${v.toLocaleString('fr-FR', { 
+    minimumFractionDigits: decimals, 
+    maximumFractionDigits: decimals 
+  })} ${currency}`;
 }
 
 export function calculateCartTotals(cart: { items: any[], discount: { type: string, value: number } }) {

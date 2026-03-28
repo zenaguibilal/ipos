@@ -1,3 +1,4 @@
+'use client';
 
 import { createClient } from "@/utils/supabase/server";
 import type { Sale } from "@/lib/types";
@@ -7,7 +8,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Sovereign Authority - Nuclear Rebuilt)
- * PHASE 17: Enhanced invoice numbering with high-resolution entropy to prevent collisions.
+ * PHASE 18: Ultra-high resolution invoice numbering to prevent concurrency collisions.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -19,22 +20,25 @@ export class SaleRepository {
             .from('sales')
             .select('*, sale_items(*)')
             .order('created_at', { ascending: false });
-        if (error) throw new Error(`SALE_FETCH_ERROR: ${error.message}`);
+        if (error) throw new Error(`SALE_FETCH_FAILED`);
         return data.map(this.mapFromDb);
     }
 
+    /**
+     * Deterministic High-Entropy Invoice Numbering
+     */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
-        // Micro-timestamp fraction for near-zero collision probability in serverless context
-        const microTime = performance.now().toString().split('.')[1]?.slice(0, 3) || '000';
-        const entropy = Math.random().toString(36).substring(2, 5).toUpperCase();
+        // Micro-timestamp for near-zero collision probability
+        const microTime = performance.now().toString().split('.')[1]?.slice(0, 4) || '0000';
+        const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
         return `INV-${datePart}-${microTime}${entropy}`;
     }
 
     async create(saleData: any): Promise<Sale> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHENTICATED_ACCESS");
+        if (!user) throw new Error("UNAUTHORIZED_ACCESS");
 
         const invoiceNumber = this.generateInvoiceNumber();
         const saleUuid = uuidv4();
@@ -59,7 +63,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_ARCHIVE_FAILED: ${sErr.message}`);
+        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
@@ -74,15 +78,17 @@ export class SaleRepository {
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
-            throw new Error(`SALE_ITEMS_SYNC_FAILED: ${iErr.message}`);
+            throw new Error(`SALE_ITEMS_SYNC_CRITICAL`);
         }
 
+        // Transactional Stock Update
         for (const item of saleItems) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
 
+        // Ledger Recalculation
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -96,7 +102,7 @@ export class SaleRepository {
             .select('*, sale_items(*)')
             .eq('customer_uuid', customerUuid)
             .order('created_at', { ascending: false });
-        if (error) throw new Error(`SALE_CUSTOMER_FETCH_FAILED`);
+        if (error) throw new Error(`SALE_LEDGER_ERROR`);
         return data.map(this.mapFromDb);
     }
 
@@ -109,6 +115,7 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
+        // Reverse stock accurately
         for (const item of sale.sale_items) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);

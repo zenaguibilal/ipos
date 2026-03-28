@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ThemeProvider } from '@/components/layout/theme-provider';
@@ -6,8 +5,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { useEffect } from 'react';
 
 /**
- * @fileOverview THE SYSTEM PURIFIER (ABSOLUTE EDITION - ZERO FOOTPRINT)
- * PHASE 17: Nuclear reconstruction of the purge logic to spare system-critical keys.
+ * @fileOverview THE SYSTEM PURIFIER (NUCLEAR EDITION)
+ * PHASE 18: Precision purge logic to protect system-critical UX keys.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
@@ -16,48 +15,53 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
 
         const executeTargetedPurge = () => {
             try {
-                // Nuclear Purge with Surgical Precision: 
-                // We keep 'theme' for next-themes and 'ipos-ui-pref' for UX stability
-                const criticalKeys = ['theme', 'ipos-ui-pref'];
+                // SURGICAL PURGE: Protect only what's essential for the UI Stability
+                const whitelistedKeys = ['theme', 'ipos-ui-pref', 'next-themes-system'];
                 
+                // Clear LocalStorage safely
                 Object.keys(localStorage).forEach(key => {
-                    if (!criticalKeys.includes(key)) {
+                    if (!whitelistedKeys.some(w => key.includes(w))) {
                         localStorage.removeItem(key);
                     }
                 });
 
+                // Clear SessionStorage safely
                 Object.keys(sessionStorage).forEach(key => {
-                    if (!criticalKeys.includes(key)) {
+                    if (!whitelistedKeys.some(w => key.includes(w))) {
                         sessionStorage.removeItem(key);
                     }
                 });
                 
+                // Nuclear IndexedDB Purge
                 if (window.indexedDB && window.indexedDB.databases) {
                     window.indexedDB.databases().then(dbs => {
                         dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
                     });
                 }
 
+                // Cache Purge
                 if ('caches' in window) {
                     caches.keys().then((names) => {
                         names.forEach(name => caches.delete(name));
                     });
                 }
 
-                // Service Worker suppression remains absolute
+                // Service Worker Suppression
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.getRegistrations().then(regs => {
                         regs.forEach(reg => reg.unregister());
                     });
                 }
-            } catch {
-                // Purge failure is ignored but monitored
+            } catch (err) {
+                // Failure is silent but the purge must attempt completion
             }
         };
 
+        // Immediate Purge on Mount
         executeTargetedPurge();
-        // Reduced frequency to lower CPU overhead while maintaining authority
-        const interval = setInterval(executeTargetedPurge, 2000);
+        
+        // Cyclic Authority Check
+        const interval = setInterval(executeTargetedPurge, 5000);
         return () => clearInterval(interval);
     }, []);
 

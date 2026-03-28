@@ -3,8 +3,7 @@ import { calculateZakat } from "@/lib/utils";
 
 /**
  * @fileOverview Zakat Repository (Absolute Data Authority - Resilient Edition)
- * PHASE 15: Centralized logic for Zakat computation with robust error handling.
- * المسؤول عن جلب البيانات المالية الموزعة وحساب الوعاء الزكوي بشكل حتمي مع ضمان عدم انهيار المنظومة.
+ * PHASE 18: Hardened data aggregation with defensive fault tolerance.
  */
 export class ZakatRepository {
     private supabase = createClient();
@@ -29,7 +28,8 @@ export class ZakatRepository {
                 goldPrice: prRes.data?.gold_price_per_gram || 0
             };
         } catch (e: any) {
-            console.error('[ZAKAT_DATA_FETCH_FAILED]', e.message);
+            console.error('[CORE_AUDIT_ERROR] Zakat data aggregation failed:', e.message);
+            // Return zeroed data to prevent UI crash, keeping the system deterministic
             return { inventoryValue: 0, customerDebts: 0, supplierDebts: 0, goldPrice: 0 };
         }
     }
@@ -42,11 +42,8 @@ export class ZakatRepository {
                 .order('created_at', { ascending: false });
             
             if (error) {
-                // Postgres code 42P01: undefined_table
-                if (error.code === '42P01') {
-                    console.warn('[REPOSITORY_WARNING] zakat_logs table missing. Returning empty array.');
-                    return [];
-                }
+                // Undefined table fallback
+                if (error.code === '42P01') return [];
                 throw error;
             }
             
@@ -58,7 +55,7 @@ export class ZakatRepository {
                 details: l.details
             }));
         } catch (e: any) {
-            console.error(`[ZAKAT_HISTORY_FETCH_FAILED_SILENT] ${e.message}`);
+            console.warn('[CORE_AUDIT_NOTICE] Zakat history unavailable:', e.message);
             return [];
         }
     }
@@ -71,7 +68,7 @@ export class ZakatRepository {
                 zakat_amount: calc.zakatAmount,
                 details: calc
             }]);
-        if (error) throw new Error(`ZAKAT_SAVE_FAILED: ${error.message}`);
+        if (error) throw new Error(`ZAKAT_LOG_FAILED`);
     }
 
     static calculate(data: any) {
