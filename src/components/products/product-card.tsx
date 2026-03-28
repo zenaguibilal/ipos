@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -40,8 +41,7 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
 
     const handleCardClick = (e: React.MouseEvent) => {
         if (!isManagerOrAdmin) return;
-        // Don't trigger edit if clicking on the checkbox area
-        if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
+        if ((e.target as HTMLElement).closest('[role="checkbox"]') || (e.target as HTMLElement).closest('button')) return;
         onEdit(product);
     };
 
@@ -54,21 +54,23 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
                 isSelected && "ring-2 ring-primary border-primary/50 bg-primary/5 shadow-primary/10"
             )}
         >
-            <div className="absolute top-3 left-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className={cn(
+                "absolute top-3 left-3 z-10 transition-opacity",
+                isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}>
                 <Checkbox 
                     checked={isSelected} 
                     onCheckedChange={onToggleSelection} 
-                    className="h-5 w-5 bg-background shadow-lg" 
+                    className="h-5 w-5 bg-background shadow-lg border-primary/30" 
                 />
             </div>
 
-            <CardHeader className="p-0 relative">
+            <CardHeader className="p-0 relative h-40">
                 <Image
                     src={imageUrl}
                     alt={product.name}
-                    width={placeholder.width}
-                    height={placeholder.height}
-                    className="rounded-t-lg object-cover aspect-[4/3] group-hover:scale-105 transition-transform duration-700"
+                    fill
+                    className="rounded-t-lg object-cover group-hover:scale-105 transition-transform duration-700"
                     data-ai-hint={product.imageUrl ? product.name.split(' ').slice(0, 2).join(' ') : placeholder.hint}
                 />
                  <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
@@ -106,19 +108,16 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass">
-                            <DropdownMenuItem onClick={() => onEdit(product)} className="gap-2">
+                            <DropdownMenuItem onClick={() => onEdit(product)} className="gap-2 font-bold">
                                 <Edit className="h-4 w-4" /> Modifier
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDuplicate(product)} className="gap-2">
+                            <DropdownMenuItem onClick={() => onDuplicate(product)} className="gap-2 font-bold">
                                 <Copy className="h-4 w-4" /> Dupliquer
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onViewHistory(product)} className="gap-2">
+                            <DropdownMenuItem onClick={() => onViewHistory(product)} className="gap-2 font-bold">
                                 <History className="h-4 w-4" /> Historique Flux
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {}} className="gap-2">
-                                <Tag className="h-4 w-4 text-primary" /> Étiquette
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2">
+                            <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 font-bold">
                                 <Trash2 className="h-4 w-4" /> Supprimer
                             </DropdownMenuItem>
                         </DropdownMenuContent>

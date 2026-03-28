@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -24,9 +25,11 @@ import { api } from '@/lib/api-client';
 import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { CsvImporter } from '@/lib/csv-utils';
+import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Sovereign Product Management (Finalized)
+ * @fileOverview Sovereign Product Management (Finalized Perfection)
+ * المركز السيادي للتحكم في الكتالوج، الأسعار، والمخزون الاستراتيجي.
  */
 
 export default function ProductsPage() {
@@ -133,14 +136,9 @@ export default function ProductsPage() {
     if (!profile || !isManagerOrAdmin) {
         return (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="p-6 bg-primary/5 rounded-[3rem] border border-primary/10 shadow-2xl relative overflow-hidden group">
-                    <ShieldAlert className="h-16 w-16 text-primary animate-pulse relative z-10" />
-                    <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
-                </div>
-                <div className="space-y-2">
-                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint • Terminal iPOS</p>
-                </div>
+                <ShieldAlert className="h-16 w-16 text-primary animate-pulse" />
+                <h2 className="text-2xl font-black uppercase tracking-tighter">Accès Restreint</h2>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Vérification des Décrets iPOS</p>
             </div>
         );
     }
@@ -180,6 +178,11 @@ export default function ProductsPage() {
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                         />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20">
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
                     <Button variant="outline" size="icon" className="h-14 w-14 luxury-glass rounded-2xl border-white/10 hover:bg-primary/10 transition-all group" onClick={() => setIsScannerOpen(true)}>
                         <Scan className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
@@ -264,7 +267,6 @@ export default function ProductsPage() {
                )}
             </div>
 
-            {/* Dialogs Integration */}
             <ProductDialog isOpen={isProductDialogOpen} onOpenChange={setIsProductDialogOpen} product={selectedProduct} categories={categories} suppliers={suppliers} onSuccess={() => { refreshProducts(); setSelectedProducts(new Set()); }} />
             <DeleteProductDialog isOpen={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen} product={selectedProduct as Product} onSuccess={() => refreshProducts()} />
             <ProductHistoryDialog isOpen={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen} product={selectedProduct as Product} />

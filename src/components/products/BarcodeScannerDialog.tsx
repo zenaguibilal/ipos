@@ -16,35 +16,37 @@ import { toast } from 'sonner';
 import { Loader2, Camera, CameraOff } from 'lucide-react';
 
 /**
- * @fileOverview Barcode Scanner (Fix: html5-qrcode dependency handling)
+ * @fileOverview Barcode Scanner (Dynamic Import Protection)
+ * يضمن تشغيل ماسح الأكواد في بيئة العميل فقط مع الحماية من أخطاء الـ SSR.
  */
 
 export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: BarcodeScannerDialogProps) {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
-  const scannerRef = useRef<any>(null); // Type 'any' used to avoid build-time issues if module not yet fully loaded
+  const scannerRef = useRef<any>(null);
   const scannerId = "barcode-scanner-viewport";
 
   useEffect(() => {
     if (isOpen) {
-      const getCameraPermission = async () => {
+      const initScanner = async () => {
         try {
+          // Request permissions first
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
           stream.getTracks().forEach(track => track.stop());
           
-          // Dynamic import to avoid SSR errors and ensure package presence
+          // Dynamically import library to ensure client-side only
           const { Html5Qrcode } = await import('html5-qrcode');
           startScanner(Html5Qrcode);
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
           toast.error('Accès caméra refusé', {
-            description: 'Veuillez autoriser l\'accès à la caméra dans les réglages de votre navigateur.'
+            description: 'Veuillez autoriser l\'accès à la caméra pour scanner les articles.'
           });
         }
       };
-      getCameraPermission();
+      initScanner();
     } else {
       stopScanner();
     }
@@ -56,12 +58,18 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
 
   const startScanner = async (Html5QrcodeClass: any) => {
     try {
-      if (scannerRef.current) await scannerRef.current.stop();
+      if (scannerRef.current) {
+        try { await scannerRef.current.stop(); } catch(e) {}
+      }
       
       const html5QrCode = new Html5QrcodeClass(scannerId);
       scannerRef.current = html5QrCode;
       
-      const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+      const config = { 
+        fps: 15, 
+        qrbox: { width: 250, height: 150 },
+        aspectRatio: 1.777778
+      };
       
       await html5QrCode.start(
         { facingMode: "environment" }, 
@@ -70,7 +78,7 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
           onScanSuccess(decodedText);
           onOpenChange(false);
         },
-        () => {} // silent ignore scan failures
+        () => {} // Silent catch scan misses
       );
       setIsScannerReady(true);
     } catch (err) {
@@ -80,9 +88,11 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
   };
 
   const stopScanner = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
+    if (scannerRef.current) {
       try {
-        await scannerRef.current.stop();
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
       } catch (err) {
         console.error("Scanner stop error:", err);
       }
@@ -94,12 +104,12 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md luxury-glass border-primary/20 p-0 overflow-hidden">
         <DialogHeader className="p-6 bg-primary/5 border-b border-white/5">
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-3">
             <Camera className="h-5 w-5 text-primary" />
-            Scanner un Code-barres
+            Scanner iPOS
           </DialogTitle>
           <DialogDescription className="text-xs font-bold uppercase opacity-60">
-            Interface de reconnaissance optique iPOS.
+            Reconnaissance optique des codes-barres articles.
           </DialogDescription>
         </DialogHeader>
 
@@ -109,17 +119,17 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
           {!isScannerReady && hasCameraPermission && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md gap-4">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-[10px] font-black uppercase tracking-widest animate-pulse">Initialisation Optique...</p>
+              <p className="text-[10px] font-black uppercase tracking-widest animate-pulse">Activation du Capteur...</p>
             </div>
           )}
 
           {hasCameraPermission === false && (
             <div className="absolute inset-0 p-8 flex items-center justify-center bg-background/90 backdrop-blur-xl">
-              <Alert variant="destructive" className="rounded-2xl border-destructive/20 bg-destructive/5">
+              <Alert variant="destructive" className="rounded-2xl border-destructive/20 bg-destructive/5 max-w-xs">
                 <CameraOff className="h-5 w-5" />
-                <AlertTitle className="font-black uppercase text-xs tracking-tighter">Accès Caméra Requis</AlertTitle>
+                <AlertTitle className="font-black uppercase text-xs">Accès Bloqué</AlertTitle>
                 <AlertDescription className="text-[10px] uppercase font-bold opacity-70">
-                  Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité souveraine.
+                  La caméra est indispensable pour la reconnaissance optique.
                 </AlertDescription>
               </Alert>
             </div>
@@ -128,7 +138,7 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
 
         <DialogFooter className="p-4 bg-white/5 border-t border-white/5">
           <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-bold uppercase text-[10px] tracking-widest h-10 w-full sm:w-auto">
-            Annuler
+            Fermer
           </Button>
         </DialogFooter>
       </DialogContent>
