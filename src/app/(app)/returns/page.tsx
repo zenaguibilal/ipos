@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
     TrendingDown, Wallet, HandCoins, Archive, 
-    History, ArrowRight, RotateCcw, Filter
+    History, ArrowRight, RotateCcw, Filter, LayoutGrid, List, X
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReturnTable } from '@/components/returns/ReturnTable';
+import { ReturnHistoryCard } from '@/components/returns/ReturnHistoryCard';
 import { ReturnDetailsDialog } from '@/components/returns/ReturnDetailsDialog';
 import { CancelReturnDialog } from '@/components/returns/CancelReturnDialog';
 import { ReturnReceipt } from '@/components/returns/ReturnReceipt';
@@ -23,7 +24,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency, cn } from '@/lib/utils';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useAppActions } from '@/stores/appStore';
 import { api } from '@/lib/api-client';
 import { CsvImporter } from '@/lib/csv-utils';
 import { Input } from '@/components/ui/input';
@@ -33,7 +34,7 @@ import { Input } from '@/components/ui/input';
  * المركز السيادي لتعقب حركات الإرجاع وتصحيح الأرصدة والمخزون.
  */
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 12;
 
 const StatCard = ({ title, value, icon: Icon, colorClass, desc }: { title: string, value: string, icon: any, colorClass: string, desc: string }) => (
     <Card className="luxury-glass bg-muted/10 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden">
@@ -52,7 +53,11 @@ const StatCard = ({ title, value, icon: Icon, colorClass, desc }: { title: strin
 );
 
 export default function ReturnsPage() {
-    const profile = useAppStore(state => state.profile);
+    const { profile, viewMode } = useAppStore(state => ({
+        profile: state.profile,
+        viewMode: state.returnViewMode
+    }));
+    const { setReturnViewMode } = useAppActions();
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 300);
@@ -105,7 +110,7 @@ export default function ReturnsPage() {
             acc.totalValue += r.totalReturnValue;
             acc.totalRefunded += r.amountRefunded;
             acc.itemCount += r.items.length;
-            acc.impactDebt += (r.totalReturnValue - r.amountRefunded);
+            acc.impactDebt += Math.max(0, r.totalReturnValue - r.amountRefunded);
             return acc;
         }, { totalValue: 0, totalRefunded: 0, itemCount: 0, impactDebt: 0 });
     }, [allReturns]);
@@ -191,11 +196,25 @@ export default function ReturnsPage() {
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
+                    {searchQuery && (
+                        <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20">
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <DateRangePicker date={dateRange} setDate={setDate} />
                     
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5 shadow-inner">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setReturnViewMode('grid')}>
+                            <LayoutGrid className="h-4.5 w-4.5"/>
+                        </Button>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setReturnViewMode('list')}>
+                            <List className="h-4.5 w-4.5"/>
+                        </Button>
+                    </div>
+
                     <Button variant="ghost" size="icon" className="h-10 w-10 luxury-glass hover:bg-destructive/10" onClick={handleReset} title="Réinitialiser">
                         <RotateCcw className="h-4 w-4 text-muted-foreground" />
                     </Button>
@@ -226,13 +245,32 @@ export default function ReturnsPage() {
                     </EmptyState>
                 ) : (
                     <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-1000">
-                        <ReturnTable 
-                            returns={visibleReturns} 
-                            customerMap={customerMap} 
-                            onViewDetails={handleViewDetails} 
-                            onCancelReturn={handleCancelReturn} 
-                            onPrint={handlePrint} 
-                        />
+                        {viewMode === 'grid' ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-10">
+                                {visibleReturns.map(pr => {
+                                    const customer = pr.customerUuid ? customerMap.get(pr.customerUuid) : null;
+                                    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
+                                    return (
+                                        <ReturnHistoryCard 
+                                            key={pr.uuid} 
+                                            productReturn={pr}
+                                            customerName={customerName}
+                                            onViewDetails={handleViewDetails}
+                                            onCancelReturn={handleCancelReturn}
+                                            onPrint={handlePrint}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <ReturnTable 
+                                returns={visibleReturns} 
+                                customerMap={customerMap} 
+                                onViewDetails={handleViewDetails} 
+                                onCancelReturn={handleCancelReturn} 
+                                onPrint={handlePrint} 
+                            />
+                        )}
                         
                         {allReturns.length > visibleCount && (
                             <div className="flex justify-center pt-10 pb-20">
@@ -242,7 +280,7 @@ export default function ReturnsPage() {
                                     onClick={() => setVisibleCount(v => v + ITEMS_PER_PAGE)}
                                     className="min-w-[240px] h-14 rounded-2xl luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-widest hover:bg-primary/10 transition-all shadow-xl gap-3 group"
                                 >
-                                    Extraire plus d'archives
+                                    Extraire plus d'archives ({visibleCount} / {allReturns.length})
                                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                                 </Button>
                             </div>

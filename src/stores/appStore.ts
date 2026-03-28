@@ -47,6 +47,7 @@ interface AppState {
     salesHistoryViewMode: 'grid' | 'list';
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
+    returnViewMode: 'grid' | 'list';
 
     // UI Preferences
     isCompactMode: boolean;
@@ -94,6 +95,7 @@ interface AppState {
         setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
         setSupplierViewMode: (mode: 'grid' | 'list') => void;
         setStockViewMode: (mode: 'grid' | 'list') => void;
+        setReturnViewMode: (mode: 'grid' | 'list') => void;
 
         setCompactMode: (enabled: boolean) => void;
         setMotionEnabled: (enabled: boolean) => void;
@@ -175,6 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     salesHistoryViewMode: 'list',
     supplierViewMode: 'grid',
     stockViewMode: 'list',
+    returnViewMode: 'list',
 
     isCompactMode: false,
     isMotionEnabled: true,
@@ -375,6 +378,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
         setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
         setStockViewMode: (mode) => set({ stockViewMode: mode }),
+        setReturnViewMode: (mode) => set({ returnViewMode: mode }),
 
         setCompactMode: (enabled) => set({ isCompactMode: enabled }),
         setMotionEnabled: (enabled) => set({ isMotionEnabled: enabled }),
@@ -484,6 +488,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             salesHistoryViewMode: 'list',
             supplierViewMode: 'grid',
             stockViewMode: 'list',
+            returnViewMode: 'list',
         }),
 
         resetStore: () => set({
