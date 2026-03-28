@@ -76,7 +76,7 @@ export class SaleRepository {
             product_uuid: item.productUuid || item.uuid || null,
             name: item.name,
             price: item.price,
-            purchase_price: item.purchasePrice || 0,
+            purchase_price: item.purchase_price || 0,
             quantity: item.cartQuantity || item.quantity,
         }));
 
