@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -9,7 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, cn } from '@/lib/utils';
-import { Printer, RefreshCw, Save, Loader2, ShieldAlert, Coins, History, Scale, Landmark, Banknote, Target, TrendingUp, Info, CheckCircle2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { 
+    Printer, RefreshCw, Save, Loader2, ShieldAlert, Coins, History, 
+    Scale, Landmark, Banknote, Target, TrendingUp, Info, 
+    CheckCircle2, AlertCircle, ArrowRight, Sparkles, Activity,
+    BarChart3, PieChart as PieChartIcon
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
@@ -18,10 +23,11 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ZakatReport } from '@/components/zakat/ZakatReport';
 import { ZakatHistoryDialog } from '@/components/zakat/ZakatHistoryDialog';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 /**
  * @fileOverview Zakat Command Center (Finalized Sovereign Edition)
- * المركز السيادي لتقييم الأصول النقدية وتقدير فريضة الزكاة بدقة حتمية.
+ * المركز السيادي لتقييم الأصول النقدية وتقدير فريضة الزكاة بدقة حتمية حتمية.
  */
 
 export default function ZakatPage() {
@@ -87,9 +93,19 @@ export default function ZakatPage() {
         setTimeout(() => window.print(), 150);
     };
 
+    // Chart Data Preparation
+    const chartData = useMemo(() => {
+        if (!result) return [];
+        return [
+            { name: 'Stocks', value: result.inventoryValue, color: 'hsl(var(--primary))' },
+            { name: 'Créances', value: result.customerDebts, color: '#10b981' },
+            { name: 'Liquidités', value: result.cashOnHand, color: '#3b82f6' },
+        ].filter(item => item.value > 0);
+    }, [result]);
+
     if (!profile || !isManagerOrAdmin) {
         return (
-            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
                 <ShieldAlert className="h-16 w-16 text-primary animate-pulse" />
                 <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
             </div>
@@ -265,23 +281,72 @@ export default function ZakatPage() {
                         )}
                     </div>
 
-                    <div className="p-8 rounded-[3rem] bg-emerald-500/5 border border-emerald-500/10 flex flex-col md:flex-row items-center justify-between gap-8 shadow-inner">
-                        <div className="flex items-center gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <Card className="luxury-glass border-white/5 bg-muted/10 overflow-hidden shadow-2xl">
+                            <CardHeader className="bg-white/5 border-b border-white/5 py-6 px-8 flex flex-row items-center justify-between">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-3">
+                                        <PieChartIcon className="h-5 w-5 text-primary" />
+                                        Composition des Actifs
+                                    </CardTitle>
+                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Répartition relative des ressources imposables</p>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="h-80 w-full pt-8">
+                                {chartData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={chartData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={100}
+                                                paddingAngle={8}
+                                                dataKey="value"
+                                                animationDuration={1500}
+                                            >
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                                ))}
+                                            </Pie>
+                                            <RechartsTooltip 
+                                                contentStyle={{ 
+                                                    backgroundColor: 'rgba(26, 18, 12, 0.95)', 
+                                                    border: '1px solid rgba(255,255,255,0.1)', 
+                                                    borderRadius: '15px',
+                                                    fontSize: '12px'
+                                                }}
+                                                formatter={(val: number) => formatCurrency(val)}
+                                            />
+                                            <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}/>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="h-full flex items-center justify-center opacity-20 grayscale">
+                                        <BarChart3 className="h-16 w-16" />
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <div className="p-8 rounded-[3rem] bg-emerald-500/5 border border-emerald-500/10 flex flex-col items-center justify-center text-center space-y-6 shadow-inner">
                             <div className="p-4 bg-emerald-500/10 rounded-2xl">
-                                <Info className="h-6 w-6 text-emerald-500" />
+                                <Info className="h-8 w-8 text-emerald-500" />
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-2">
                                 <p className="text-sm font-black uppercase tracking-tight italic">Audit de Conformité Deterministe</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-                                    Le calcul est effectué en soustrayant vos dettes fournisseurs de vos actifs (stocks + cash + créances clients). Le prix de l'or servant de référence هو {formatCurrency(zakatData.goldPrice)}/g.
+                                <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
+                                    Le calcul est effectué en soustrayant vos dettes fournisseurs و charges de vos actifs (stocks + cash + créances clients). 
+                                    Le prix de l'or servant de référence هو <span className="font-black text-emerald-500">{formatCurrency(zakatData.goldPrice)}/g</span>.
                                 </p>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="h-10 px-6 rounded-xl border-emerald-500/20 text-emerald-500 font-black uppercase text-[9px] tracking-widest bg-background/40">
-                                <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
-                                iPOS Islamic Audit Active
-                            </Badge>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className="h-10 px-6 rounded-xl border-emerald-500/20 text-emerald-500 font-black uppercase text-[9px] tracking-widest bg-background/40">
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-2" />
+                                    iPOS Islamic Audit Active
+                                </Badge>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>
