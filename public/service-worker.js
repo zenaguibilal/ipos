@@ -1,19 +1,22 @@
 /**
- * iPOS Service Worker
+ * iPOS Sovereign Service Worker
  * Strategy: Network-First, App-Shell-Only
- * Strictly bypasses all /api/ calls to maintain Cloud Sovereignty.
+ * API Bypassing: Strict
  */
 
 const CACHE_NAME = 'ipos-app-shell-v1';
-const URLS_TO_CACHE = ['/', '/offline.html'];
+const ASSETS_TO_CACHE = [
+  '/',
+  '/offline.html'
+];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(URLS_TO_CACHE);
+      return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -32,16 +35,25 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // RULE A: API calls are sacred and must bypass the service worker
-  if (event.request.url.includes('/api/')) {
+  const url = event.request.url;
+
+  // RULE A: API CALLS ARE SACRED - ALWAYS BYPASS SERVICE WORKER
+  if (url.includes('/api/')) {
     return;
   }
 
-  // RULE C: Network-First strategy
+  // RULE C: FETCH STRATEGY IS NETWORK-FIRST
   event.respondWith(
-    fetch(event.request).catch(() => {
-      // Fallback to offline page only if network fails
-      return caches.match('/offline.html') || caches.match('/');
-    })
+    fetch(event.request)
+      .then((response) => {
+        // Return network response immediately
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try to serve from cache or offline page
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match('/offline.html');
+        });
+      })
   );
 });

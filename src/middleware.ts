@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 /**
  * iPOS Sovereign Guard Middleware
- * [SEC-02] Protection rigoureuse des routes et gestion des sessions.
+ * Updated to allow PWA assets (manifest, sw.js) while maintaining Auth security.
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
