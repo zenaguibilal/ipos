@@ -6,7 +6,8 @@ import { useEffect } from 'react';
 
 /**
  * @fileOverview THE SYSTEM PURIFIER (NUCLEAR RECONSTRUCTION)
- * NUCLEAR MODE: Enforces Cloud-Only architecture while protecting system-critical UX keys.
+ * NUCLEAR MODE: Enforces Cloud-Only architecture while protecting system-critical session keys.
+ * Ensures data cleanliness without sabotaging user experience.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
@@ -15,13 +16,14 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
 
         const executeSurgicalPurge = () => {
             try {
-                // WHITELIST: Protect only essential stability keys to prevent UI flickering or state loss
+                // WHITELIST: Protect only essential stability keys to prevent session loss or UI sabotage
                 const whitelistedKeys = [
                     'theme', 
                     'ipos-ui-pref', 
                     'next-themes-system', 
                     'supabase.auth.token',
-                    'zustand-app-store' 
+                    'zustand-app-store',
+                    'sb-' // Supabase internal auth keys
                 ];
                 
                 const purgeStorage = (storage: Storage) => {
@@ -32,37 +34,41 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     });
                 };
 
-                // Surgical cleaning of transient data
+                // Surgical cleaning of transient local data
                 purgeStorage(localStorage);
                 purgeStorage(sessionStorage);
                 
-                // Nuclear IndexedDB Purge (Ensures no local DB leakage)
+                // Nuclear IndexedDB Purge (Ensures no local database persistence leaks)
                 if (window.indexedDB && window.indexedDB.databases) {
                     window.indexedDB.databases().then(dbs => {
                         dbs.forEach(db => { 
-                            if(db.name && !whitelistedKeys.includes(db.name)) {
+                            if(db.name && !whitelistedKeys.some(w => db.name!.includes(w))) {
                                 window.indexedDB.deleteDatabase(db.name); 
                             }
                         });
                     });
                 }
 
-                // Cache Purge
+                // Cloud-Only Cache Enforcement
                 if ('caches' in window) {
                     caches.keys().then((names) => {
-                        names.forEach(name => caches.delete(name));
+                        names.forEach(name => {
+                            if (!whitelistedKeys.some(w => name.includes(w))) {
+                                caches.delete(name);
+                            }
+                        });
                     });
                 }
             } catch (err) {
-                // Fail silently to prevent UI crash in restricted environments
+                // Defensive silence to prevent UI crash in restricted environments
             }
         };
 
-        // Immediate Execution
+        // Immediate Execution on Handshake
         executeSurgicalPurge();
         
-        // Authority Reinforcement Cycle (Balanced for performance)
-        const interval = setInterval(executeSurgicalPurge, 60000); 
+        // Authority Reinforcement Cycle (Balanced interval for cloud authority)
+        const interval = setInterval(executeSurgicalPurge, 300000); // 5 minutes
         return () => clearInterval(interval);
     }, []);
 

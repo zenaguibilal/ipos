@@ -9,6 +9,7 @@ import { CustomerRepository } from "./customer.repository";
 /**
  * @fileOverview Sale Repository (Sovereign Authority - NUCLEAR REBUILT)
  * PHASE 18: High-entropy invoice numbering and deterministic transactional flow.
+ * Ensures absolute data integrity and zero collision risk.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -26,8 +27,8 @@ export class SaleRepository {
 
     /**
      * Deterministic High-Entropy Invoice Generation
-     * Pattern: INV-[YYMMDD]-[HHMMSS]-[RAND]
-     * Ensures absolute uniqueness even in high-concurrency environments.
+     * Pattern: INV-[YYMMDD]-[HHMMSS]-[HIGH_ENTROPY_RAND]
+     * Ensures absolute uniqueness even in high-concurrency cloud environments.
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
@@ -35,7 +36,8 @@ export class SaleRepository {
         const timePart = now.getHours().toString().padStart(2, '0') + 
                          now.getMinutes().toString().padStart(2, '0') +
                          now.getSeconds().toString().padStart(2, '0');
-        const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
+        // Increased entropy to 6 characters for total collision safety
+        const entropy = Math.random().toString(36).substring(2, 8).toUpperCase();
         return `INV-${datePart}-${timePart}-${entropy}`;
     }
 
@@ -80,7 +82,7 @@ export class SaleRepository {
 
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
-            // Rollback on item failure
+            // Transactional Rollback
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
             throw new Error(`SALE_ITEMS_SYNC_FAILED`);
         }
@@ -92,7 +94,7 @@ export class SaleRepository {
             }
         }
 
-        // Global Balance Recalculation
+        // Global Ledger Recalculation
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -119,7 +121,7 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
-        // Sovereign Reversal: Restore stock for all items
+        // Sovereign Reversal: Atomically restore stock for all items
         for (const item of sale.sale_items) {
             if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);

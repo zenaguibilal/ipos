@@ -23,7 +23,7 @@ export function formatDateToYYYYMMDD(date: Date): string {
 
 /**
  * Global Currency Formatter (Absolute SSR Guarded)
- * NUCLEAR RECONSTRUCTION: Eliminates all hydration mismatches by strictly checking window context.
+ * NUCLEAR RECONSTRUCTION: Eliminates all hydration mismatches by strictly checking window context and store availability.
  */
 export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
