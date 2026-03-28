@@ -2,9 +2,9 @@ import { createClient } from "@/utils/supabase/server";
 import { calculateZakat } from "@/lib/utils";
 
 /**
- * @fileOverview Zakat Repository (Absolute Data Authority)
- * Phase 4 & 7: Centralized logic for Zakat computation.
- * المسؤول عن جلب البيانات المالية الموزعة وحساب الوعاء الزكوي بشكل حتمي.
+ * @fileOverview Zakat Repository (Absolute Data Authority - Resilient Edition)
+ * PHASE 4, 7 & 15: Centralized logic for Zakat computation with robust error handling.
+ * المسؤول عن جلب البيانات المالية الموزعة وحساب الوعاء الزكوي بشكل حتمي مع ضمان عدم انهيار المنظومة عند نقص الجداول.
  */
 export class ZakatRepository {
     private supabase = createClient();
@@ -18,7 +18,7 @@ export class ZakatRepository {
                 this.supabase.from('company_profile').select('gold_price_per_gram').maybeSingle()
             ]);
 
-            // Ensure data is treated as array and use fallback values to prevent calculation errors
+            // التحقق من البيانات واستخدام القيم الافتراضية لمنع الأخطاء الحسابية
             const inventoryValue = (pRes.data || []).reduce((sum, p) => sum + ((p.quantity || 0) * (p.purchase_price || 0)), 0);
             const customerDebts = (cRes.data || []).reduce((sum, c) => sum + (c.outstanding_balance || 0), 0);
             const supplierDebts = (sRes.data || []).reduce((sum, s) => sum + (s.balance || 0), 0);
@@ -48,8 +48,7 @@ export class ZakatRepository {
                 .order('created_at', { ascending: false });
             
             if (error) {
-                // Handle missing table error gracefully (Postgres code 42P01)
-                // This prevents the whole page from crashing if migrations haven't been run yet
+                // التعامل مع خطأ الجدول المفقود (Postgres code 42P01) بمرونة
                 if (error.code === '42P01') {
                     console.warn('[REPOSITORY_WARNING] Table zakat_logs not found. Returning empty history.');
                     return [];
@@ -62,11 +61,11 @@ export class ZakatRepository {
                 zakatBase: l.zakat_base,
                 zakatAmount: l.zakat_amount,
                 createdAt: l.created_at,
-                details: l.details // Return full details for the history dialog
+                details: l.details
             }));
         } catch (e: any) {
-            console.error(`[ZAKAT_HISTORY_FETCH_FAILED] ${e.message}`);
-            // Return empty array instead of throwing to allow UI to render empty state gracefully
+            // منع انهيار الواجهة عند فشل استرجاع الأرشيف
+            console.error(`[ZAKAT_HISTORY_FETCH_FAILED_SILENT] ${e.message}`);
             return [];
         }
     }
@@ -77,14 +76,11 @@ export class ZakatRepository {
             .insert([{
                 zakat_base: calc.zakatBase,
                 zakat_amount: calc.zakatAmount,
-                details: calc // Store the entire calculation snapshot
+                details: calc
             }]);
         if (error) throw new Error(`ZAKAT_SAVE_FAILED: ${error.message}`);
     }
 
-    /**
-     * Proxies the unified calculation logic from utils.
-     */
     static calculate(data: any) {
         return calculateZakat(data);
     }

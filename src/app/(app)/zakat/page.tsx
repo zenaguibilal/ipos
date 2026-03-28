@@ -12,7 +12,7 @@ import {
     Printer, RefreshCw, Save, Loader2, ShieldAlert, Coins, History, 
     Scale, Landmark, Banknote, Target, TrendingUp, Info, 
     CheckCircle2, AlertCircle, ArrowRight, Activity,
-    BarChart3, PieChart as PieChartIcon, Clock, FileUp, LayoutGrid, List, X
+    BarChart3, PieChart as PieChartIcon, Clock, FileUp, LayoutGrid, List, X, BookOpen
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -330,25 +330,31 @@ export default function ZakatPage() {
                                 ) : <div className="h-full flex items-center justify-center opacity-20 grayscale"><BarChart3 className="h-16 w-16" /></div>}
                             </CardContent>
                         </Card>
-                        <div className="p-8 rounded-[3rem] bg-emerald-500/5 border border-emerald-500/10 flex flex-col items-center justify-center text-center space-y-6 shadow-inner">
-                            <div className="p-4 bg-emerald-500/10 rounded-2xl"><Info className="h-8 w-8 text-emerald-500" /></div>
-                            <div className="space-y-2">
-                                <p className="text-sm font-black uppercase tracking-tight italic">Audit de Conformité Deterministe</p>
-                                <p className="text-xs text-muted-foreground leading-relaxed max-w-md">Le calcul soustrait vos dettes fournisseurs و charges de vos actifs (stocks + cash + créances). Prix Or Ref: <span className="font-black text-emerald-500">{formatCurrency(zakatData.goldPrice)}/g</span>.</p>
+                        
+                        <div className="space-y-8">
+                            <div className="p-8 rounded-[3rem] bg-emerald-500/5 border border-emerald-500/10 flex flex-col items-center justify-center text-center space-y-6 shadow-inner h-full">
+                                <div className="p-4 bg-emerald-500/10 rounded-2xl"><BookOpen className="h-8 w-8 text-emerald-500" /></div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-black uppercase tracking-tight italic">Principes de Souveraineté Zakátique</p>
+                                    <p className="text-[10px] text-muted-foreground leading-relaxed max-w-md uppercase font-bold opacity-70">
+                                        Le calcul déterministe soustrait vos passifs exigibles (dettes fournisseurs و charges) de vos actifs circulants (stocks + cash + créances actives). 
+                                        Référence Or Marché: <span className="font-black text-emerald-500">{formatCurrency(zakatData.goldPrice)}/g</span>.
+                                    </p>
+                                </div>
+                                <Badge variant="outline" className="h-10 px-6 rounded-xl border-emerald-500/20 text-emerald-500 font-black uppercase text-[9px] tracking-widest bg-background/40"><CheckCircle2 className="h-3.5 w-3.5 mr-2" />Audit iPOS Deterministe Active</Badge>
                             </div>
-                            <Badge variant="outline" className="h-10 px-6 rounded-xl border-emerald-500/20 text-emerald-500 font-black uppercase text-[9px] tracking-widest bg-background/40"><CheckCircle2 className="h-3.5 w-3.5 mr-2" />iPOS Islamic Audit Active</Badge>
                         </div>
                     </div>
                 </TabsContent>
 
                 <TabsContent value="history" className="animate-in slide-in-from-bottom-4 duration-700 outline-none space-y-8">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 luxury-glass p-2 bg-muted/20 border-white/5">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                         <div className="flex items-center gap-2 px-4 py-2 bg-background/40 rounded-xl border border-white/10">
                             <History className="h-4 w-4 text-emerald-500" />
                             <span className="text-[10px] font-black uppercase tracking-widest">{zakatHistory.length} Points de calcul archivés</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={handleExport} disabled={zakatHistory.length === 0} className="h-10 rounded-xl border-white/5 font-black uppercase text-[10px] tracking-widest gap-2">
+                            <Button variant="outline" onClick={handleExport} disabled={zakatHistory.length === 0} className="h-10 rounded-xl border-white/5 font-black uppercase text-[10px] tracking-widest gap-2 hover:bg-white/5 transition-all">
                                 <FileUp className="h-4 w-4" /> 
                                 Exporter CSV
                             </Button>
