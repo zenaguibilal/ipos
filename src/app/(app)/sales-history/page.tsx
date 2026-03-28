@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,8 @@ import {
     Search, History, FileUp, Filter, TrendingUp, ShoppingBag, 
     LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
     DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
-    AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown
+    AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
+    Target, Activity, TrendingUpDown, Zap
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -84,6 +85,20 @@ export default function SalesHistoryPage() {
     const [visibleSalesCount, setVisibleSalesCount] = useState(ITEMS_PER_PAGE);
     const [customerMap, setCustomerMap] = useState<Map<string, Customer>>(new Map());
     const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     const fetchSalesAndCustomers = useCallback(async (manual = false) => {
         if (!isMounted || !dateRange) return;
@@ -327,7 +342,10 @@ export default function SalesHistoryPage() {
                     icon={CheckCircle2} 
                     colorClass="text-blue-400"
                     extra={
-                        <Progress value={stats.collectionRate} className="h-1.5 mt-3 bg-white/10 [&>div]:bg-blue-400" />
+                        <div className="mt-3 space-y-1.5">
+                            <Progress value={stats.collectionRate} className="h-1.5 bg-white/10 [&>div]:bg-blue-400" />
+                            <p className="text-[8px] font-black uppercase text-blue-400/60 tracking-widest text-right">Efficacité de Caisse</p>
+                        </div>
                     }
                 />
             </div>
@@ -337,6 +355,7 @@ export default function SalesHistoryPage() {
                     <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
+                        ref={searchInputRef}
                         placeholder="N° Facture ou Identité Client... (F1)"
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10"
                         value={searchQuery}
