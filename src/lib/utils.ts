@@ -32,6 +32,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   let decimals = 1;
 
   // SSR SHIELD: Do not attempt to access state on the server.
+  // This avoids "Text content does not match" errors.
   if (typeof window !== 'undefined') {
     try {
         const state = useAppStore.getState();
@@ -40,7 +41,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
             decimals = state.profile.decimalPlaces ?? 1;
         }
     } catch {
-        // Silent fallback during boot
+        // Silent fallback during boot sequence
     }
   }
 

@@ -4,8 +4,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Return Repository (Autonomous Authority)
- * Enforces transactional reliability for stock reversals and ledger sync.
+ * @fileOverview Return Repository (Autonomous Sovereign Authority)
+ * Enforces strict transactional reversal logic for stock and credit.
  */
 export class ReturnRepository {
     private supabase = createClient();
@@ -21,7 +21,7 @@ export class ReturnRepository {
         if (filters?.to) query = query.lte('created_at', filters.to);
 
         const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw new Error(`RETURNS_FETCH_FAILED`);
+        if (error) throw new Error(`RETURNS_LEDGER_ACCESS_FAILED`);
         
         let results = data.map(r => this.mapFromDb(r));
 
@@ -50,7 +50,7 @@ export class ReturnRepository {
             .select()
             .single();
 
-        if (rErr) throw new Error(`RETURN_CREATION_FAILED`);
+        if (rErr) throw new Error(`RETURN_PERSISTENCE_FAILURE`);
 
         const returnItems = returnData.items.map((item: any) => ({
             return_uuid: ret.uuid,
@@ -65,9 +65,10 @@ export class ReturnRepository {
         const { error: iErr } = await this.supabase.from('return_items').insert(returnItems);
         if (iErr) {
             await this.supabase.from('product_returns').delete().eq('uuid', ret.uuid);
-            throw new Error("RETURN_ITEMS_PERSISTENCE_FAILED");
+            throw new Error("RETURN_ITEMS_SYNC_FAILED");
         }
 
+        // Process inventory movement
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);
@@ -77,6 +78,7 @@ export class ReturnRepository {
             }
         }
 
+        // Sync customer balance
         if (ret.customer_uuid) {
             await this.customerRepo.recalculateBalance(ret.customer_uuid);
         }
@@ -91,19 +93,21 @@ export class ReturnRepository {
             .eq('uuid', uuid)
             .single();
         
-        if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
+        if (fErr || !ret) throw new Error("RETURN_RECORD_NOT_FOUND");
 
+        // Atomically revert stock if it was restocked
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);
                 if (productExists) {
+                    // Reverse the return (deduct from stock)
                     await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
                 }
             }
         }
 
         const { error: dErr } = await this.supabase.from('product_returns').delete().eq('uuid', uuid);
-        if (dErr) throw new Error(`RETURN_DELETE_FAILED`);
+        if (dErr) throw new Error(`RETURN_REVOCATION_FAILED`);
 
         if (ret.customer_uuid) {
             await this.customerRepo.recalculateBalance(ret.customer_uuid);

@@ -27,9 +27,13 @@ export function Clock() {
   }, []);
 
   // HYDRATION SHIELD: Return atomic placeholder until client-side handshake is verified.
-  // This prevents "Text content does not match" critical mismatch.
+  // This prevents "Text content does not match" critical mismatch during SSR.
   if (!isMounted || !time) {
-    return <div className="h-6 w-[240px] flex items-center"><Skeleton className="h-4 w-full bg-muted/20" /></div>;
+    return (
+      <div className="hidden sm:flex items-center h-6 w-[240px]">
+        <Skeleton className="h-3 w-full bg-muted/20 rounded-full" />
+      </div>
+    );
   }
 
   return (

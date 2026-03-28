@@ -13,6 +13,9 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
+        /**
+         * Surgically purges non-essential local storage to maintain Cloud Sovereignty.
+         */
         const executeSurgicalPurge = () => {
             try {
                 // WHITELIST: Protect only essential stability keys
@@ -21,11 +24,12 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     'ipos-ui-pref', 
                     'next-themes-system', 
                     'zustand-app-store',
-                    'sb-' // Supabase critical auth keys
+                    'sb-' // Supabase critical auth keys (Wildcard)
                 ];
                 
                 const purgeStorage = (storage: Storage) => {
-                    Object.keys(storage).forEach(key => {
+                    const keys = Object.keys(storage);
+                    keys.forEach(key => {
                         const isWhitelisted = whitelistedKeys.some(w => key === w || key.startsWith(w));
                         if (!isWhitelisted) {
                             storage.removeItem(key);
@@ -36,7 +40,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                 purgeStorage(localStorage);
                 purgeStorage(sessionStorage);
                 
-                // Nuclear IndexedDB Purge
+                // Nuclear IndexedDB Purge (Ensures no offline data persistence)
                 if (window.indexedDB && window.indexedDB.databases) {
                     window.indexedDB.databases().then(dbs => {
                         dbs.forEach(db => { 
@@ -47,12 +51,14 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                     });
                 }
             } catch (err) {
-                // Defensive silence
+                // Defensive silence for non-critical failures
             }
         };
 
+        // Execute purge immediately and then on an interval
         executeSurgicalPurge();
-        const interval = setInterval(executeSurgicalPurge, 600000); // Surgical cleaning every 10 mins
+        const interval = setInterval(executeSurgicalPurge, 300000); // 5 minutes
+        
         return () => clearInterval(interval);
     }, []);
 

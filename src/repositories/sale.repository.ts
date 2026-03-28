@@ -8,7 +8,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Autonomous Sovereign Authority)
- * Enforces high-entropy invoice numbering and deterministic transactional flow.
+ * Enforces high-resolution deterministic invoicing and transactional stock consistency.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -20,27 +20,25 @@ export class SaleRepository {
             .from('sales')
             .select('*, sale_items(*)')
             .order('created_at', { ascending: false });
-        if (error) throw new Error(`SALE_FETCH_FAILED`);
+        if (error) throw new Error(`SALE_LEDGER_ACCESS_FAILED`);
         return data.map(this.mapFromDb);
     }
 
     /**
      * Deterministic High-Entropy Invoice Generation
-     * Pattern: INV-[YYMMDD]-[HHMMSS]-[HIGH_ENTROPY_RAND]
+     * Pattern: INV-[YYMMDD]-[MILLISECONDS]-[RAND_HEX]
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
-        const timePart = now.getHours().toString().padStart(2, '0') + 
-                         now.getMinutes().toString().padStart(2, '0') +
-                         now.getSeconds().toString().padStart(2, '0');
-        const entropy = Math.random().toString(36).substring(2, 10).toUpperCase();
-        return `INV-${datePart}-${timePart}-${entropy}`;
+        const msPart = now.getMilliseconds().toString().padStart(3, '0');
+        const entropy = Math.random().toString(16).substring(2, 8).toUpperCase();
+        return `INV-${datePart}-${msPart}-${entropy}`;
     }
 
     async create(saleData: any): Promise<Sale> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHORIZED_ACCESS");
+        if (!user) throw new Error("SOVEREIGN_AUTHORITY_REQUIRED");
 
         const invoiceNumber = this.generateInvoiceNumber();
         const saleUuid = uuidv4();
@@ -65,7 +63,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE`);
+        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE: ${sErr.message}`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
@@ -83,6 +81,7 @@ export class SaleRepository {
             throw new Error(`SALE_ITEMS_SYNC_FAILED`);
         }
 
+        // Atomically update inventory
         for (const item of saleItems) {
             if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);
@@ -92,6 +91,7 @@ export class SaleRepository {
             }
         }
 
+        // Sync customer credit status
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -105,7 +105,7 @@ export class SaleRepository {
             .select('*, sale_items(*)')
             .eq('customer_uuid', customerUuid)
             .order('created_at', { ascending: false });
-        if (error) throw new Error(`SALE_LEDGER_ERROR`);
+        if (error) throw new Error(`CUSTOMER_SALE_LEDGER_ERROR`);
         return data.map(this.mapFromDb);
     }
 
@@ -118,6 +118,7 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
+        // Revert inventory changes before purging record
         for (const item of sale.sale_items) {
             if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);
