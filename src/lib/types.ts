@@ -19,6 +19,7 @@ export interface Product {
     imageUrl?: string;
     unite: 'Pièce' | 'Kg' | 'Litre' | 'Boîte' | 'Carton' | 'Sachet' | 'Bouteille';
     dateExpiration?: string;
+    dateMajPrix?: string;
     supplierUuid?: string;
     stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
     createdAt: string;

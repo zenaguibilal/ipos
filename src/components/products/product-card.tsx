@@ -5,12 +5,13 @@ import type { Product } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, CalendarClock, Copy, History } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, CalendarClock, Copy, History, Tag } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatCurrency, getPlaceholder } from '@/lib/utils';
 import { differenceInDays } from 'date-fns';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface ProductCardProps {
     product: Product;
@@ -18,9 +19,11 @@ interface ProductCardProps {
     onDelete: (product: Product) => void;
     onDuplicate: (product: Product) => void;
     onViewHistory: (product: Product) => void;
+    isSelected: boolean;
+    onToggleSelection: () => void;
 }
 
-const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHistory }: ProductCardProps) => {
+const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHistory, isSelected, onToggleSelection }: ProductCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const placeholder = getPlaceholder(product.category);
     const imageUrl = product.imageUrl || placeholder.url;
@@ -35,8 +38,10 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
         return null;
     }, [product.dateExpiration]);
 
-    const handleCardClick = () => {
+    const handleCardClick = (e: React.MouseEvent) => {
         if (!isManagerOrAdmin) return;
+        // Don't trigger edit if clicking on the checkbox area
+        if ((e.target as HTMLElement).closest('[role="checkbox"]')) return;
         onEdit(product);
     };
 
@@ -44,65 +49,77 @@ const ProductCardComponent = ({ product, onEdit, onDelete, onDuplicate, onViewHi
         <Card
             onClick={handleCardClick}
             className={cn(
-                "flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative",
-                isManagerOrAdmin && "cursor-pointer"
+                "flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 relative group luxury-glass border-white/5 overflow-hidden",
+                isManagerOrAdmin && "cursor-pointer",
+                isSelected && "ring-2 ring-primary border-primary/50 bg-primary/5 shadow-primary/10"
             )}
         >
+            <div className="absolute top-3 left-3 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Checkbox 
+                    checked={isSelected} 
+                    onCheckedChange={onToggleSelection} 
+                    className="h-5 w-5 bg-background shadow-lg" 
+                />
+            </div>
+
             <CardHeader className="p-0 relative">
                 <Image
                     src={imageUrl}
                     alt={product.name}
                     width={placeholder.width}
                     height={placeholder.height}
-                    className="rounded-t-lg object-cover aspect-[4/3]"
+                    className="rounded-t-lg object-cover aspect-[4/3] group-hover:scale-105 transition-transform duration-700"
                     data-ai-hint={product.imageUrl ? product.name.split(' ').slice(0, 2).join(' ') : placeholder.hint}
                 />
                  <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                     {product.quantity <= 0 ? (
-                        <Badge variant="destructive">En Rupture</Badge>
+                        <Badge variant="destructive" className="font-black uppercase text-[9px] tracking-widest">Rupture</Badge>
                     ) : product.quantity <= product.minStockLevel ? (
-                        <Badge variant="outline" className="border-chart-secondary text-chart-secondary bg-chart-secondary/10">Stock Faible</Badge>
+                        <Badge variant="outline" className="border-orange-500 text-orange-500 bg-orange-500/10 font-black uppercase text-[9px] tracking-widest">Faible</Badge>
                     ) : null}
                      {expirationStatus && (
-                        <Badge className={expirationStatus.color}>
+                        <Badge className={cn("font-black uppercase text-[9px] tracking-widest", expirationStatus.color)}>
                             <CalendarClock className="h-3 w-3 mr-1" />
                             {expirationStatus.text}
                         </Badge>
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="p-4 flex-grow">
+            <CardContent className="p-4 flex-grow space-y-2">
                 <div className="flex gap-2 justify-between items-start">
-                    <div className="flex-grow">
-                        <CardTitle className="text-lg leading-tight">{product.name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{product.category || 'Non classé'}</p>
+                    <div className="flex-grow overflow-hidden">
+                        <CardTitle className="text-sm font-black uppercase tracking-tight truncate">{product.name}</CardTitle>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold opacity-60">{product.category || 'Non classé'}</p>
                     </div>
                 </div>
             </CardContent>
             <CardFooter className="p-4 pt-0 flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
                  <div>
-                    <p className="text-lg font-bold text-primary">{formatCurrency(product.price)}</p>
-                    <p className="text-xs font-semibold">Stock: {product.quantity} {product.unite || ''}</p>
+                    <p className="text-xl font-black text-primary tracking-tighter">{formatCurrency(product.price)}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Stock: <span className="text-foreground">{product.quantity} {product.unite || ''}</span></p>
                 </div>
                 {isManagerOrAdmin && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-primary/10">
                                 <MoreHorizontal className="h-5 w-5" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => onEdit(product)}>
-                                <Edit className="mr-2 h-4 w-4" /> Modifier
+                        <DropdownMenuContent align="end" className="luxury-glass">
+                            <DropdownMenuItem onClick={() => onEdit(product)} className="gap-2">
+                                <Edit className="h-4 w-4" /> Modifier
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDuplicate(product)}>
-                                <Copy className="mr-2 h-4 w-4" /> Dupliquer
+                            <DropdownMenuItem onClick={() => onDuplicate(product)} className="gap-2">
+                                <Copy className="h-4 w-4" /> Dupliquer
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onViewHistory(product)}>
-                                <History className="mr-2 h-4 w-4" /> Historique Stock
+                            <DropdownMenuItem onClick={() => onViewHistory(product)} className="gap-2">
+                                <History className="h-4 w-4" /> Historique Flux
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                            <DropdownMenuItem onClick={() => {}} className="gap-2">
+                                <Tag className="h-4 w-4 text-primary" /> Étiquette
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2">
+                                <Trash2 className="h-4 w-4" /> Supprimer
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
