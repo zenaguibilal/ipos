@@ -11,7 +11,7 @@ import {
     LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
     DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
     AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
-    Target, Activity, TrendingUpDown, Zap, ArrowRight
+    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -43,6 +43,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { fr } from 'date-fns/locale';
+import { format } from 'date-fns';
 
 /**
  * @fileOverview Sales Sovereign Ledger (Finalized Perfection)
@@ -559,6 +561,3 @@ export default function SalesHistoryPage() {
         </div>
     );
 }
-
-// Fixed missing icon imports
-import { Lock } from 'lucide-react';

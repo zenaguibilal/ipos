@@ -65,7 +65,7 @@ export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails,
                             </DropdownMenuItem>
                             {onRecordPayment && (
                                 <DropdownMenuItem onClick={onRecordPayment} className="rounded-lg font-black text-primary bg-primary/5 gap-3 py-2.5">
-                                    <HandCoins className="h-4 w-4" /> Encaisser solde
+                                    <HandCoins className="h-4 w-4" /> Encaisser solده
                                 </DropdownMenuItem>
                             )}
                             {isManagerOrAdmin && (
