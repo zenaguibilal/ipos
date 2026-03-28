@@ -35,7 +35,7 @@ export default function ExpensesPage() {
         viewMode: state.expenseViewMode,
         categories: state.expenseCategories
     }));
-    const { refreshExpenses, refreshCategories, setExpenseViewMode } = useAppActions();
+    const { refreshExpenses, refreshExpenseCategories, setExpenseViewMode } = useAppActions();
 
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearch = useDebounce(searchQuery, 300);
@@ -54,8 +54,8 @@ export default function ExpensesPage() {
     
     useEffect(() => {
         fetchExpenses();
-        refreshCategories();
-    }, [fetchExpenses, refreshCategories]);
+        refreshExpenseCategories();
+    }, [fetchExpenses, refreshExpenseCategories]);
 
     const filteredExpenses = useMemo(() => {
         return expenses.filter(e => e.description.toLowerCase().includes(debouncedSearch.toLowerCase()));
@@ -101,7 +101,7 @@ export default function ExpensesPage() {
 
             <div className="min-h-[400px]">
                {isLoading && expenses.length === 0 ? (
-                   <div className="grid grid-cols-3 gap-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}</div>
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl" />)}</div>
                ) : filteredExpenses.length === 0 ? (
                    <EmptyState icon={TrendingDown} title="Aucune dépense" description="Enregistrez vos frais pour un suivi comptable précis." />
                ) : (

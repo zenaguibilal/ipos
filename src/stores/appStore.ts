@@ -22,6 +22,7 @@ interface AppState {
     customers: Customer[];
     suppliers: Supplier[];
     expenses: Expense[];
+    expenseCategories: string[];
     breadOrders: BreadOrder[];
     recipes: Recipe[];
     staff: StaffMember[];
@@ -75,6 +76,7 @@ interface AppState {
         refreshCustomers: () => Promise<void>;
         refreshSuppliers: () => Promise<void>;
         refreshExpenses: (params?: any) => Promise<void>;
+        refreshExpenseCategories: () => Promise<void>;
         refreshBreadOrders: (date: string) => Promise<void>;
         refreshRecipes: () => Promise<void>;
         refreshStaff: () => Promise<void>;
@@ -123,6 +125,7 @@ interface AppState {
         incrementCustomerListVersion: () => void;
 
         resetStore: () => void;
+        resetUIPreferences: () => void;
     };
 }
 
@@ -145,6 +148,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     customers: [],
     suppliers: [],
     expenses: [],
+    expenseCategories: [],
     breadOrders: [],
     recipes: [],
     staff: [],
@@ -255,6 +259,13 @@ export const useAppStore = create<AppState>((set, get) => ({
             finally {
                 set(p => ({ isLoading: { ...p.isLoading, expenses: false } }));
             }
+        },
+
+        refreshExpenseCategories: async () => {
+            try {
+                const data = await api.get<string[]>('expenses/categories');
+                set({ expenseCategories: data });
+            } catch (e) { set({ expenseCategories: [] }); }
         },
 
         refreshBreadOrders: async (date) => {
@@ -463,6 +474,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
         incrementCustomerListVersion: () => set(produce((s: AppState) => { s.sellPage.customerListVersion += 1; })),
 
+        resetUIPreferences: () => set({
+            interfaceScale: 100,
+            isCompactMode: false,
+            isMotionEnabled: true,
+            productViewMode: 'grid',
+            customerViewMode: 'grid',
+            expenseViewMode: 'list',
+            salesHistoryViewMode: 'list',
+            supplierViewMode: 'grid',
+            stockViewMode: 'list',
+        }),
+
         resetStore: () => set({
             user: null,
             profile: null,
@@ -472,6 +495,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             customers: [],
             suppliers: [],
             expenses: [],
+            expenseCategories: [],
             breadOrders: [],
             recipes: [],
             staff: [],
