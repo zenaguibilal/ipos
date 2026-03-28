@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview LA SINGULARITÉ DES CALCULS
- * Centre souverain pour les opérations mathématiques et la logique financière 
- * afin de briser les dépendances circulaires et garantir le déterminisme.
+ * @fileOverview LA SINGULARITÉ DES CALCULS (Purifié)
+ * Centre souverain pour les opérations mathématiques et la logique financière.
+ * Garantit le déterminisme absolu sans dépendances circulaires.
  */
 
 import type { Cart } from './types';

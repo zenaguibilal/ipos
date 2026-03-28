@@ -5,8 +5,8 @@ import { ExpenseRepository } from './expense.repository';
 import { format, eachDayOfInterval, subDays, differenceInDays } from 'date-fns';
 
 /**
- * @fileOverview Dashboard Repository (Absolute Data Authority)
- * Responsible for aggregating deterministic statistics and calculating Business Health Score.
+ * @fileOverview Référentiel du Tableau de Bord (Autorité de Données Absolue)
+ * Responsable de l'agrégation des statistiques déterministes et du calcul du score de santé.
  */
 export class DashboardRepository {
     private productRepo = new ProductRepository();
@@ -112,15 +112,10 @@ export class DashboardRepository {
             profit: val.profit
         }));
 
-        // --- Business Health Score Calculation (Sovereign Logic) ---
-        // Weights: Margin (40%), Growth (30%), Debt Control (30%)
+        // Score de santé commerciale (Logique Souveraine)
         const netMargin = current.revenue > 0 ? (current.profit / current.revenue) * 100 : 0;
-        const marginScore = Math.min(100, Math.max(0, netMargin * 2.5)); // 40% margin = 100 pts
-        
-        const growthScore = Math.min(100, Math.max(0, totalRevenueChange + 50)); // -50% to +50% range
-        
-        // Debt control: ratio of outstanding debt vs total revenue. 
-        // Ideal is debt < 20% of period revenue.
+        const marginScore = Math.min(100, Math.max(0, netMargin * 2.5));
+        const growthScore = Math.min(100, Math.max(0, totalRevenueChange + 50));
         const debtRatio = current.revenue > 0 ? totalOutstandingDebt / current.revenue : 0;
         const debtScore = Math.max(0, 100 - (debtRatio * 100));
         
@@ -129,8 +124,8 @@ export class DashboardRepository {
         const getInsight = () => {
             if (healthScore > 80) return "Architecture robuste. Expansion recommandée.";
             if (healthScore > 60) return "Performance stable. Optimisez vos marges.";
-            if (healthScore > 40) return "Flux tendu. Surveillez vos charges et les encours clients.";
-            return "Alerte critique. Restructuration immédiate de la stratégie de crédit nécessaire.";
+            if (healthScore > 40) return "Flux tendu. Surveillez vos charges et encours.";
+            return "Alerte critique. Restructuration immédiate requise.";
         };
 
         return {

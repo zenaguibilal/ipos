@@ -6,7 +6,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Référentiel de Vente (Autorité Serveur Autonome)
- * Phase 16 : Enregistrement déterministe, calcul d'entropie et mise à jour des stocks.
+ * Phase 16 : Enregistrement déterministe et mise à jour des stocks.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -14,13 +14,12 @@ export class SaleRepository {
     private customerRepo = new CustomerRepository();
 
     /**
-     * Génère un numéro de facture avec une entropie élevée pour éviter les collisions.
+     * Génère un numéro de facture avec une entropie élevée via crypto.
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
         
-        // Utilisation de valeurs cryptographiques pour l'entropie
         const array = new Uint32Array(1);
         if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
             crypto.getRandomValues(array);
