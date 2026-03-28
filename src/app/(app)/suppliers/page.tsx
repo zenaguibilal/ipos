@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { 
     Plus, Search, Building, LayoutGrid, List, RefreshCw, 
     Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, 
-    Loader2, ChevronDown, Activity, RotateCcw
+    Loader2, ChevronDown, Activity, RotateCcw, ShieldX, Lock
 } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
@@ -50,13 +51,14 @@ const sortOptions: { [key: string]: string } = {
 };
 
 /**
- * @fileOverview Sovereign Supplier Management (Finalized Perfection)
- * المركز السيادي للتحكم في الموردين والديون اللوجستية.
+ * @fileOverview Sovereign Supplier Management (Finalized with Granular Permission)
  */
 
 export default function SuppliersPage() {
+    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { viewMode } = useAppStore(state => ({
+    const { profile, viewMode } = useAppStore(state => ({
+        profile: state.profile,
         viewMode: state.supplierViewMode
     }));
     const { setSupplierViewMode } = useAppActions();
@@ -80,7 +82,21 @@ export default function SuppliersPage() {
     const [isImportPreviewOpen, setIsImportPreviewOpen] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
 
+    const isAllowed = profile?.permissions?.includes('suppliers') || isManagerOrAdmin;
+
+    // Access Guard
+    useEffect(() => {
+        if (profile && !isAllowed) {
+            toast.error("Unité Fournisseurs Restreinte", { 
+                description: "L'accès au registre des partenaires est limité.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
+            router.replace('/sell');
+        }
+    }, [profile, isAllowed, router]);
+
     const fetchSuppliers = useCallback(async (manual = false) => {
+        if (!isAllowed) return;
         if (manual) setIsRefreshing(true);
         try {
             const data = await api.get<Supplier[]>('suppliers');
@@ -91,11 +107,11 @@ export default function SuppliersPage() {
         } finally {
             if (manual) setIsRefreshing(false);
         }
-    }, []);
+    }, [isAllowed]);
 
     useEffect(() => {
-        fetchSuppliers();
-    }, [fetchSuppliers]);
+        if (isAllowed) fetchSuppliers();
+    }, [fetchSuppliers, isAllowed]);
 
     const filteredAndSortedSuppliers = useMemo(() => {
         if (!suppliers) return [];
@@ -169,9 +185,7 @@ export default function SuppliersPage() {
         setIsImporting(true);
         try {
             await api.post('suppliers/bulk-import', data);
-            toast.success("Opération d'importation terminée.", {
-                description: `${data.toAdd.length} nouveaux et ${data.toUpdate.length} mises à jour.`
-            });
+            toast.success("Opération d'importation terminée.");
             setIsImportPreviewOpen(false);
             fetchSuppliers();
         } catch (error: any) {
@@ -194,61 +208,17 @@ export default function SuppliersPage() {
         setSelectedSuppliers(new Set());
     };
 
-    const renderContent = () => {
-        if (suppliers === undefined) {
-            return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-[2.5rem]" />)}
-                </div>
-            );
-        }
-
-        if (filteredAndSortedSuppliers.length === 0) {
-            return (
-                <EmptyState
-                    icon={Building}
-                    title="Aucun partenaire détecté"
-                    description={searchQuery ? "La recherche n'a retourné aucun résultat." : "Commencez par référencer votre premier fournisseur."}
-                    className="py-32 luxury-glass border-white/5 bg-muted/5"
-                >
-                     {!searchQuery ? (
-                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
-                            <Plus className="mr-2 h-4 w-4" /> Ajouter un fournisseur
-                        </Button>
-                     ) : (
-                        <Button variant="outline" onClick={handleResetFilters} className="rounded-xl font-bold uppercase text-[10px] tracking-widest">
-                            <RotateCcw className="h-4 w-4 mr-2" /> Effacer les filtres
-                        </Button>
-                     )}
-                </EmptyState>
-            );
-        }
-        
-        if (viewMode === 'list') {
-            return (
-                <SupplierTable 
-                    suppliers={filteredAndSortedSuppliers}
-                    onEdit={(s) => { setSelectedSupplier(s); setIsSupplierDialogOpen(true); }}
-                    onDelete={(s) => { setSelectedSupplier(s); setIsDeleteDialogOpen(true); }}
-                    selectedSuppliers={selectedSuppliers}
-                    onToggleSelection={handleToggleSelection}
-                    onToggleAll={handleSelectAll}
-                />
-            );
-        }
-
+    if (!profile || !isAllowed) {
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredAndSortedSuppliers.map(s => (
-                    <SupplierCard 
-                        key={s.uuid} 
-                        supplier={s} 
-                        onEdit={(s) => { setSelectedSupplier(s); setIsSupplierDialogOpen(true); }}
-                        onDelete={(s) => { setSelectedSupplier(s); setIsDeleteDialogOpen(true); }}
-                        isSelected={selectedSuppliers.has(s.uuid)}
-                        onToggleSelection={() => handleToggleSelection(s.uuid)}
-                    />
-                ))}
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
+                <div className="p-6 bg-destructive/5 rounded-[3rem] border border-destructive/10 shadow-2xl relative overflow-hidden group">
+                    <Lock className="h-16 w-16 text-destructive animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-destructive/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint à l'Unité Fournisseurs</p>
+                </div>
             </div>
         );
     }
@@ -343,7 +313,7 @@ export default function SuppliersPage() {
                     />
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[180px] justify-between">
@@ -406,15 +376,56 @@ export default function SuppliersPage() {
                         </Badge>
                         <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Actions sur la sélection</p>
                     </div>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6">
-                        <Trash2 className="h-4 w-4" /> 
-                        Révocation Collective
-                    </Button>
+                    {isManagerOrAdmin && (
+                        <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6">
+                            <Trash2 className="h-4 w-4" /> 
+                            Révocation Collective
+                        </Button>
+                    )}
                 </div>
             )}
             
             <div className="min-h-[500px]">
-               {renderContent()}
+               {suppliers === undefined ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-[2.5rem]" />)}
+                    </div>
+                ) : filteredAndSortedSuppliers.length === 0 ? (
+                    <EmptyState
+                        icon={Building}
+                        title="Aucun partenaire détecté"
+                        description={searchQuery ? "La recherche n'a retourné aucun résultat." : "Commencez par référencer votre premier fournisseur."}
+                        className="py-32 luxury-glass border-white/5 bg-muted/5"
+                    >
+                         {!searchQuery && isManagerOrAdmin && (
+                            <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
+                                <Plus className="mr-2 h-4 w-4" /> Ajouter un fournisseur
+                            </Button>
+                         )}
+                    </EmptyState>
+                ) : viewMode === 'list' ? (
+                    <SupplierTable 
+                        suppliers={filteredAndSortedSuppliers}
+                        onEdit={(s) => { setSelectedSupplier(s); setIsSupplierDialogOpen(true); }}
+                        onDelete={(s) => { setSelectedSupplier(s); setIsDeleteDialogOpen(true); }}
+                        selectedSuppliers={selectedSuppliers}
+                        onToggleSelection={handleToggleSelection}
+                        onToggleAll={handleSelectAll}
+                    />
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {filteredAndSortedSuppliers.map(s => (
+                            <SupplierCard 
+                                key={s.uuid} 
+                                supplier={s} 
+                                onEdit={(s) => { setSelectedSupplier(s); setIsSupplierDialogOpen(true); }}
+                                onDelete={(s) => { setSelectedSupplier(s); setIsDeleteDialogOpen(true); }}
+                                isSelected={selectedSuppliers.has(s.uuid)}
+                                onToggleSelection={() => handleToggleSelection(s.uuid)}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             <SupplierDialog isOpen={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen} supplier={selectedSupplier} onSuccess={fetchSuppliers} />

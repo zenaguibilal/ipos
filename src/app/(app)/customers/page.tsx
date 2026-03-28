@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Customer, ImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { 
     Plus, Search, RefreshCw, LayoutGrid, List, FileUp, 
     FileDown, Trash2, RotateCcw, X, Filter, ChevronDown, 
-    SortAsc, UserPlus, Users, Wallet, AlertTriangle, UserCheck, Activity
+    SortAsc, UserPlus, Users, Wallet, AlertTriangle, UserCheck, Activity, ShieldX, Lock
 } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * @fileOverview Customers Sovereign Ledger (Finalized Perfection)
+ * @fileOverview Customers Sovereign Ledger (Finalized with Granular Permission)
  */
 
 const sortOptions = {
@@ -55,8 +56,10 @@ const sortOptions = {
 type DebtFilter = 'all' | 'debtors' | 'overlimit';
 
 export default function CustomersPage() {
+    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { customers, isLoading, viewMode } = useAppStore(state => ({
+    const { profile, customers, isLoading, viewMode } = useAppStore(state => ({
+        profile: state.profile,
         customers: state.customers,
         isLoading: state.isLoading.customers,
         viewMode: state.customerViewMode
@@ -84,10 +87,25 @@ export default function CustomersPage() {
     const [importAnalysis, setImportAnalysis] = useState<ImportAnalysis | null>(null);
     const [isImporting, setIsImporting] = useState(false);
 
+    const isAllowed = profile?.permissions?.includes('customers') || isManagerOrAdmin;
+
+    // Access Guard
     useEffect(() => {
-        refreshCustomers();
-        api.get<string[]>('customers/categories').then(setCategories).catch(() => {});
-    }, [refreshCustomers]);
+        if (profile && !isAllowed) {
+            toast.error("Unité Clientèle Restreinte", { 
+                description: "Vous ne possédez pas le décret nécessaire pour accéder au registre.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
+            router.replace('/sell');
+        }
+    }, [profile, isAllowed, router]);
+
+    useEffect(() => {
+        if (isAllowed) {
+            refreshCustomers();
+            api.get<string[]>('customers/categories').then(setCategories).catch(() => {});
+        }
+    }, [refreshCustomers, isAllowed]);
 
     const filteredAndSortedCustomers = useMemo(() => {
         let result = customers.filter(c => {
@@ -153,9 +171,7 @@ export default function CustomersPage() {
         setIsImporting(true);
         try {
             await api.post('customers/bulk', confirmedData);
-            toast.success("Opération d'importation réussie.", {
-                description: `${confirmedData.toAdd.length} nouveaux زبائن و ${confirmedData.toUpdate.length} mises à jour.`
-            });
+            toast.success("Opération d'importation réussie.");
             setIsImportPreviewOpen(false);
             refreshCustomers();
         } catch (error: any) {
@@ -173,6 +189,21 @@ export default function CustomersPage() {
         setSelectedCustomerUuids(new Set());
         refreshCustomers();
     };
+
+    if (!profile || !isAllowed) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
+                <div className="p-6 bg-destructive/5 rounded-[3rem] border border-destructive/10 shadow-2xl relative overflow-hidden group">
+                    <Lock className="h-16 w-16 text-destructive animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-destructive/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint à l'Unité Clientèle</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
@@ -220,7 +251,7 @@ export default function CustomersPage() {
                     )}
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
@@ -259,27 +290,6 @@ export default function CustomersPage() {
                                 <DropdownMenuRadioItem value="all" className="font-bold py-2">Toutes</DropdownMenuRadioItem>
                                 {categories.map(cat => (
                                     <DropdownMenuRadioItem key={cat} value={cat} className="font-bold py-2">{cat}</DropdownMenuRadioItem>
-                                ))}
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[200px] justify-between">
-                                <span className="flex items-center gap-2">
-                                    <SortAsc className="h-3.5 w-3.5 text-primary" />
-                                    {sortOptions[sortBy as keyof typeof sortOptions]}
-                                </span>
-                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px]">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2">Ordre d'Affichage</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                                {Object.entries(sortOptions).map(([key, label]) => (
-                                    <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2">{label}</DropdownMenuRadioItem>
                                 ))}
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>

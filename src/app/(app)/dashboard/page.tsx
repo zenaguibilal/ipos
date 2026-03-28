@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -11,7 +13,7 @@ import {
     TrendingUp, TrendingDown, DollarSign, Receipt, CreditCard, 
     Archive, RefreshCw, ShieldCheck, Lock, AlertTriangle, ArrowRight,
     ShoppingBag, Package, Plus, Wallet, Zap, Star, Activity,
-    Target, LayoutDashboard, HandCoins, BarChart3, TrendingUpDown
+    Target, LayoutDashboard, HandCoins, BarChart3, TrendingUpDown, ShieldX
 } from 'lucide-react';
 import { formatCurrency, cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -84,12 +86,28 @@ const QuickAction = ({ href, icon: Icon, label, colorClass }: { href: string, ic
 );
 
 export default function DashboardPage() {
+    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const { profile } = useAppStore();
     const { dateRange, setDate, isMounted } = useDateRange(29);
     const [data, setData] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const isAllowed = profile?.permissions?.includes('dashboard') || isManagerOrAdmin;
+
+    // Access Guard
+    useEffect(() => {
+        if (profile && !isAllowed) {
+            toast.error("Unité Dashboard Restreinte", { 
+                description: "Vous n'avez pas l'autorisation de consulter les statistiques globales.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
+            router.replace('/sell');
+        }
+    }, [profile, isAllowed, router]);
     
     const fetchData = useCallback(async (from: Date, to: Date) => {
+        if (!isAllowed) return;
         setIsLoading(true);
         try {
             const query = `from=${from.toISOString()}&to=${to.toISOString()}`;
@@ -100,13 +118,28 @@ export default function DashboardPage() {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [isAllowed]);
 
     useEffect(() => {
-        if (isMounted && dateRange?.from && dateRange?.to) {
+        if (isMounted && dateRange?.from && dateRange?.to && isAllowed) {
             fetchData(dateRange.from, dateRange.to);
         }
-    }, [dateRange, isMounted, fetchData]);
+    }, [dateRange, isMounted, fetchData, isAllowed]);
+
+    if (!profile || !isAllowed) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
+                <div className="p-6 bg-destructive/5 rounded-[3rem] border border-destructive/10 shadow-2xl relative overflow-hidden group">
+                    <Lock className="h-16 w-16 text-destructive animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-destructive/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint au Dashboard</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 pb-24 md:pb-10 max-w-screen-2xl mx-auto">
@@ -130,7 +163,6 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Sovereign Health Header */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <Card className="lg:col-span-3 luxury-glass border-white/5 bg-gradient-to-br from-primary/10 via-transparent to-transparent overflow-hidden group">
                         <div className="p-8 flex flex-col md:flex-row items-center gap-8 relative">
@@ -143,13 +175,7 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                                 <svg className="absolute top-0 left-0 h-full w-full -rotate-90 pointer-events-none">
-                                    <circle
-                                        cx="64" cy="64" r="60"
-                                        stroke="currentColor"
-                                        strokeWidth="8"
-                                        fill="transparent"
-                                        className="text-white/5"
-                                    />
+                                    <circle cx="64" cy="64" r="60" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-white/5" />
                                     <circle
                                         cx="64" cy="64" r="60"
                                         stroke="currentColor"
@@ -184,62 +210,16 @@ export default function DashboardPage() {
                 </div>
             </div>
             
-            {/* Stats Grid */}
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                <StatCard 
-                    title="Volume Ventes" 
-                    value={formatCurrency(data?.stats.totalRevenue ?? 0)} 
-                    icon={TrendingUp} 
-                    isLoading={isLoading} 
-                    href="/sales-history" 
-                    change={data?.stats.totalRevenueChange} 
-                />
-                <StatCard 
-                    title="Bénéfice Net" 
-                    value={formatCurrency(data?.stats.netProfit ?? 0)} 
-                    icon={DollarSign} 
-                    isLoading={isLoading} 
-                    change={data?.stats.netProfitChange} 
-                    restricted={!isManagerOrAdmin} 
-                />
-                <StatCard 
-                    title="Charges Globales" 
-                    value={formatCurrency(data?.stats.totalExpenses ?? 0)} 
-                    icon={TrendingDown} 
-                    isLoading={isLoading} 
-                    href="/expenses" 
-                    change={data?.stats.totalExpensesChange} 
-                    positiveIsGood={false} 
-                    restricted={!isManagerOrAdmin} 
-                />
-                <StatCard 
-                    title="Encours Clients" 
-                    value={formatCurrency(data?.stats.totalOutstandingDebt ?? 0)} 
-                    icon={CreditCard} 
-                    isLoading={isLoading} 
-                    href="/customers" 
-                    restricted={!isManagerOrAdmin} 
-                />
-                <StatCard 
-                    title="Valorisation Stock" 
-                    value={formatCurrency(data?.stats.totalInventoryValue ?? 0)} 
-                    icon={Archive} 
-                    isLoading={isLoading} 
-                    href="/products" 
-                    restricted={!isManagerOrAdmin} 
-                />
-                <StatCard 
-                    title="Transactions" 
-                    value={String(data?.stats.saleCount ?? 0)} 
-                    icon={Receipt} 
-                    isLoading={isLoading} 
-                    href="/sales-history" 
-                    change={data?.stats.saleCountChange} 
-                />
+                <StatCard title="Volume Ventes" value={formatCurrency(data?.stats.totalRevenue ?? 0)} icon={TrendingUp} isLoading={isLoading} href="/sales-history" change={data?.stats.totalRevenueChange} />
+                <StatCard title="Bénéfice Net" value={formatCurrency(data?.stats.netProfit ?? 0)} icon={DollarSign} isLoading={isLoading} change={data?.stats.netProfitChange} restricted={!isManagerOrAdmin} />
+                <StatCard title="Charges Globales" value={formatCurrency(data?.stats.totalExpenses ?? 0)} icon={TrendingDown} isLoading={isLoading} href="/expenses" change={data?.stats.totalExpensesChange} positiveIsGood={false} restricted={!isManagerOrAdmin} />
+                <StatCard title="Encours Clients" value={formatCurrency(data?.stats.totalOutstandingDebt ?? 0)} icon={CreditCard} isLoading={isLoading} href="/customers" restricted={!isManagerOrAdmin} />
+                <StatCard title="Valorisation Stock" value={formatCurrency(data?.stats.totalInventoryValue ?? 0)} icon={Archive} isLoading={isLoading} href="/products" restricted={!isManagerOrAdmin} />
+                <StatCard title="Transactions" value={String(data?.stats.saleCount ?? 0)} icon={Receipt} isLoading={isLoading} href="/sales-history" change={data?.stats.saleCountChange} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Performance Chart */}
                 <div className="lg:col-span-2 space-y-8">
                     <Card className="luxury-glass border-white/5 bg-muted/5 overflow-hidden shadow-2xl">
                         <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 bg-white/5 px-8 py-6">
@@ -248,80 +228,30 @@ export default function DashboardPage() {
                                     <Activity className="h-5 w-5 text-primary animate-pulse" />
                                     Courbe Stratégique des Flux
                                 </CardTitle>
-                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Analyse temporelle du rendement et de la rentabilité</p>
+                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">Analyse temporelle du rendement</p>
                             </div>
                             {!isManagerOrAdmin && <Lock className="h-4 w-4 text-muted-foreground opacity-50" />}
                         </CardHeader>
                         <CardContent className="h-[450px] w-full p-8">
                             {!isManagerOrAdmin ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center space-y-6 opacity-40">
-                                    <div className="p-6 bg-primary/10 rounded-full shadow-inner">
-                                        <ShieldCheck className="h-16 w-16 text-primary" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-black uppercase tracking-[0.2em]">Données Restreintes</p>
-                                        <p className="text-xs italic max-w-xs mx-auto">L'analyse visuelle des bénéfices est réservée aux autorités de gestion.</p>
-                                    </div>
+                                    <ShieldCheck className="h-16 w-16 text-primary" />
+                                    <p className="text-sm font-black uppercase tracking-[0.2em]">Analyse Visuelle Restreinte</p>
                                 </div>
                             ) : isLoading ? <Skeleton className="h-full w-full rounded-2xl" /> : (
                                 <ResponsiveContainer>
-                                    <AreaChart data={data?.salesByDay ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <AreaChart data={data?.salesByDay ?? []}>
                                         <defs>
                                             <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
                                                 <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
                                             </linearGradient>
-                                            <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="hsl(var(--chart-quaternary))" stopOpacity={0.4}/>
-                                                <stop offset="95%" stopColor="hsl(var(--chart-quaternary))" stopOpacity={0}/>
-                                            </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                                        <XAxis 
-                                            dataKey="date" 
-                                            tickFormatter={(s) => format(new Date(s), 'd MMM', { locale: fr })} 
-                                            tick={{fontSize: 10, fill: 'gray', fontWeight: 'bold'}} 
-                                            axisLine={false} 
-                                            tickLine={false}
-                                        />
-                                        <YAxis 
-                                            tickFormatter={(val) => `${val}`} 
-                                            tick={{fontSize: 10, fill: 'gray', fontWeight: 'bold'}} 
-                                            axisLine={false} 
-                                            tickLine={false}
-                                        />
-                                        <Tooltip 
-                                            contentStyle={{ 
-                                                backgroundColor: 'rgba(26, 18, 12, 0.95)', 
-                                                border: '1px solid rgba(255,255,255,0.1)', 
-                                                borderRadius: '20px',
-                                                backdropFilter: 'blur(15px)',
-                                                fontSize: '12px',
-                                                boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
-                                            }} 
-                                            formatter={(value: any, name: string) => [
-                                                <span className="font-black">{formatCurrency(value)}</span>, 
-                                                <span className="uppercase tracking-widest text-[9px] font-bold">{name === 'total' ? 'Recettes' : 'Profit Brut'}</span>
-                                            ]}
-                                        />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="total" 
-                                            stroke="hsl(var(--primary))" 
-                                            strokeWidth={4}
-                                            fill="url(#colorRev)" 
-                                            animationDuration={2000}
-                                            strokeLinecap="round"
-                                        />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="profit" 
-                                            stroke="hsl(var(--chart-quaternary))" 
-                                            strokeWidth={3}
-                                            fill="url(#colorProfit)" 
-                                            animationDuration={2000}
-                                            strokeLinecap="round"
-                                        />
+                                        <XAxis dataKey="date" tickFormatter={(s) => format(new Date(s), 'd MMM', { locale: fr })} tick={{fontSize: 10, fill: 'gray'}} axisLine={false} tickLine={false} />
+                                        <YAxis tick={{fontSize: 10, fill: 'gray'}} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={{ backgroundColor: '#1a120c', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px' }} />
+                                        <Area type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={4} fill="url(#colorRev)" />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             )}
@@ -329,10 +259,9 @@ export default function DashboardPage() {
                     </Card>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Top Products */}
                         <Card className="luxury-glass border-white/5 bg-muted/5 shadow-xl">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 bg-white/5 px-6 py-5">
-                                <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-chart-secondary flex items-center gap-3">
+                            <CardHeader className="border-b border-white/5 bg-white/5 px-6 py-5">
+                                <CardTitle className="text-[11px] font-black uppercase text-chart-secondary flex items-center gap-3">
                                     <Star className="h-4 w-4 text-chart-secondary" />
                                     Elite Performance (Top 5)
                                 </CardTitle>
@@ -340,113 +269,63 @@ export default function DashboardPage() {
                             <CardContent className="p-0">
                                 <div className="divide-y divide-white/5">
                                     {isLoading ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />) : 
-                                     data?.topProducts.length > 0 ? data.topProducts.map((p: any, i: number) => (
-                                        <div key={i} className="flex items-center justify-between p-5 px-8 hover:bg-white/5 transition-all group">
-                                            <div className="flex items-center gap-5">
-                                                <div className="h-11 w-11 rounded-2xl bg-chart-secondary/10 flex items-center justify-center font-black text-chart-secondary text-lg shadow-inner group-hover:scale-110 transition-transform">
-                                                    #{i+1}
-                                                </div>
-                                                <div>
-                                                    <p className="font-black text-sm uppercase truncate max-w-[140px] tracking-tight">{p.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground uppercase font-black opacity-60">{p.quantity} unités</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-sm font-black text-chart-secondary">{formatCurrency(p.revenue)}</p>
-                                            </div>
+                                     data?.topProducts.map((p: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between p-5 px-8 hover:bg-white/5 transition-all">
+                                            <p className="font-black text-xs uppercase truncate max-w-[140px]">{p.name}</p>
+                                            <p className="text-sm font-black text-chart-secondary">{formatCurrency(p.revenue)}</p>
                                         </div>
-                                    )) : (
-                                        <div className="p-16 text-center text-muted-foreground italic text-xs uppercase font-bold opacity-30">
-                                            Aucun flux à ce jour.
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Stock Alerts */}
                         <Card className="luxury-glass border-white/5 bg-muted/5 shadow-xl">
-                            <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 bg-white/5 px-6 py-5">
-                                <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-destructive flex items-center gap-3">
+                            <CardHeader className="border-b border-white/5 bg-white/5 px-6 py-5">
+                                <CardTitle className="text-[11px] font-black uppercase text-destructive flex items-center gap-3">
                                     <AlertTriangle className="h-4 w-4" />
-                                    État de Stock Critique
+                                    Stock Critique
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="divide-y divide-white/5">
                                     {isLoading ? [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />) : 
-                                     data?.lowStockProducts.length > 0 ? data.lowStockProducts.slice(0, 5).map((p: any) => (
-                                        <div key={p.uuid} className="flex items-center justify-between p-5 px-8 hover:bg-destructive/5 transition-all group">
-                                            <div className="flex items-center gap-5">
-                                                <div className="h-11 w-11 rounded-2xl bg-destructive/10 flex items-center justify-center group-hover:rotate-12 transition-all">
-                                                    <Package className="h-5 w-5 text-destructive" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-black text-sm uppercase truncate max-w-[140px] tracking-tight">{p.name}</p>
-                                                    <p className="text-[10px] text-muted-foreground uppercase font-black opacity-60">Actuel: <span className="text-destructive font-bold">{p.quantity} {p.unite}</span></p>
-                                                </div>
-                                            </div>
-                                            <Badge variant="outline" className="border-destructive/30 text-destructive bg-destructive/10 text-[9px] h-6 px-3 font-black uppercase tracking-widest">Urgent</Badge>
+                                     data?.lowStockProducts.slice(0, 5).map((p: any) => (
+                                        <div key={p.uuid} className="flex items-center justify-between p-5 px-8 hover:bg-destructive/5 transition-all">
+                                            <p className="font-black text-xs uppercase truncate max-w-[140px]">{p.name}</p>
+                                            <Badge variant="destructive" className="text-[8px] font-black">{p.quantity} {p.unite}</Badge>
                                         </div>
-                                    )) : (
-                                        <div className="p-16 text-center text-muted-foreground italic text-xs uppercase font-bold opacity-30">
-                                            Architecture stock équilibrée.
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
                 </div>
 
-                {/* Side Section: Recent Sales Journal */}
                 <div className="space-y-8">
                     <Card className="luxury-glass border-white/5 bg-muted/5 h-full flex flex-col min-h-[600px] shadow-2xl">
                         <CardHeader className="border-b border-white/5 bg-white/5 px-6 py-5">
-                            <CardTitle className="text-[11px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-3">
+                            <CardTitle className="text-[11px] font-black uppercase text-primary flex items-center gap-3">
                                 <ShoppingBag className="h-4 w-4" />
-                                Journal des Opérations Live
+                                Journal Live
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 flex-grow">
                             <div className="divide-y divide-white/5">
                                 {isLoading ? [...Array(10)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />) : 
-                                 data?.recentSales.length > 0 ? data.recentSales.map((s: any) => (
-                                    <div key={s.uuid} className="flex items-center justify-between p-5 px-8 hover:bg-white/5 transition-all group">
-                                        <div className="flex items-center gap-5">
-                                            <div className="h-11 w-11 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                                                {s.remainingBalance > 0 ? <HandCoins className="h-5 w-5 text-primary" /> : <Receipt className="h-5 w-5 text-primary" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-black uppercase tracking-tight truncate max-w-[120px]">
-                                                    {s.customerUuid ? 'Compte Client' : 'Vente Passage'}
-                                                </p>
-                                                <p className="text-[9px] text-muted-foreground font-mono font-bold opacity-60">#{s.invoiceNumber} • {format(new Date(s.createdAt), 'HH:mm')}</p>
-                                            </div>
+                                 data?.recentSales.map((s: any) => (
+                                    <div key={s.uuid} className="flex items-center justify-between p-5 px-8 hover:bg-white/5 transition-all">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase">{s.customerUuid ? 'Client iPOS' : 'Passage'}</p>
+                                            <p className="text-[8px] font-mono opacity-40">#{s.invoiceNumber}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-black text-primary">{formatCurrency(s.total)}</p>
-                                            <Badge className={cn(
-                                                "h-4 text-[8px] font-black uppercase border-0 px-2 rounded-lg mt-1",
-                                                s.paymentStatus === 'paid' ? "bg-green-500/20 text-green-500" : "bg-destructive/20 text-destructive"
-                                            )}>
-                                                {s.paymentStatus === 'paid' ? 'Réglée' : 'Impayée'}
-                                            </Badge>
-                                        </div>
+                                        <p className="text-sm font-black text-primary">{formatCurrency(s.total)}</p>
                                     </div>
-                                )) : (
-                                    <div className="p-32 text-center text-muted-foreground italic text-xs uppercase font-bold opacity-30">
-                                        Aucun flux détecté.
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </CardContent>
-                        <div className="p-6 border-t border-white/5 bg-white/5">
-                            <Button variant="ghost" className="w-full h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] group hover:bg-primary/10 hover:text-primary transition-all" asChild>
-                                <Link href="/sales-history">
-                                    Grand Livre des Ventes
-                                    <ArrowRight className="ml-3 h-4 w-4 group-hover:translate-x-2 transition-transform" />
-                                </Link>
+                        <div className="p-6 border-t border-white/5 bg-white/5 text-center">
+                            <Button variant="ghost" asChild className="text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 transition-all">
+                                <Link href="/sales-history">Voir tout le journal <ArrowRight className="ml-2 h-3 w-3" /></Link>
                             </Button>
                         </div>
                     </Card>

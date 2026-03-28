@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { Sale, Customer } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import {
     LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
     DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
     AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
-    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock, Printer
+    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock, Printer, ShieldX
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -48,8 +49,7 @@ import { fr } from 'date-fns/locale';
 import { format } from 'date-fns';
 
 /**
- * @fileOverview Sales Sovereign Ledger (Finalized Perfection)
- * المركز السيادي لتعقب المبيعات، تحليل الأرباح، وإدارة التحصيلات.
+ * @fileOverview Sales Sovereign Ledger (Finalized with Granular Permission)
  */
 
 type PaymentFilter = 'all' | 'paid' | 'partial' | 'unpaid';
@@ -63,8 +63,10 @@ const sortOptions = {
 };
 
 export default function SalesHistoryPage() {
+    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
-    const { viewMode } = useAppStore(state => ({
+    const { profile, viewMode } = useAppStore(state => ({
+        profile: state.profile,
         viewMode: state.salesHistoryViewMode
     }));
     const { setSalesHistoryViewMode } = useAppActions();
@@ -90,20 +92,21 @@ export default function SalesHistoryPage() {
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Keyboard Shortcuts
+    const isAllowed = profile?.permissions?.includes('sales-history') || isManagerOrAdmin;
+
+    // Access Guard
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'F1') {
-                e.preventDefault();
-                searchInputRef.current?.focus();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+        if (profile && !isAllowed) {
+            toast.error("Unité Journal Restreinte", { 
+                description: "L'audit des ventes nécessite une autorisation souveraine.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
+            router.replace('/sell');
+        }
+    }, [profile, isAllowed, router]);
 
     const fetchSalesAndCustomers = useCallback(async (manual = false) => {
-        if (!isMounted || !dateRange) return;
+        if (!isMounted || !dateRange || !isAllowed) return;
         if (manual) setIsRefreshing(true);
         
         try {
@@ -121,16 +124,16 @@ export default function SalesHistoryPage() {
             setCustomerMap(new Map(customersData.map(c => [c.uuid, c])));
             setVisibleSalesCount(ITEMS_PER_PAGE);
         } catch (error: any) {
-            toast.error("Impossible de synchroniser le Grand Livre des ventes.");
+            toast.error("Impossible de synchroniser le Grand Livre.");
             setAllSales([]);
         } finally {
             if (manual) setIsRefreshing(false);
         }
-    }, [isMounted, debouncedSearchQuery, dateRange]);
+    }, [isMounted, debouncedSearchQuery, dateRange, isAllowed]);
 
     useEffect(() => {
-        fetchSalesAndCustomers();
-    }, [fetchSalesAndCustomers]);
+        if (isAllowed) fetchSalesAndCustomers();
+    }, [fetchSalesAndCustomers, isAllowed]);
 
     const filteredAndSortedSales = useMemo(() => {
         if (!allSales) return [];
@@ -188,7 +191,6 @@ export default function SalesHistoryPage() {
         });
 
         const totalProfit = totalRevenue - totalCost;
-        const avgBasket = count > 0 ? totalRevenue / count : 0;
         const collectionRate = totalRevenue > 0 ? (totalCollected / totalRevenue) * 100 : 0;
         
         return { 
@@ -196,7 +198,6 @@ export default function SalesHistoryPage() {
             totalCollected, 
             totalDebt, 
             count, 
-            avgBasket, 
             totalProfit,
             cashCollected,
             cardCollected,
@@ -221,7 +222,7 @@ export default function SalesHistoryPage() {
 
     const handleRecordPayment = (sale: Sale) => {
         if (!sale.customerUuid) {
-            toast.error("Impossible d'encaisser un solde pour un client de passage.");
+            toast.error("Impossible d'encaisser un solde pour un passage.");
             return;
         }
         const customer = customerMap.get(sale.customerUuid);
@@ -236,39 +237,31 @@ export default function SalesHistoryPage() {
     };
 
     const handleExport = () => {
-        if (!filteredAndSortedSales.length) {
-            toast.info("Aucune donnée à exporter.");
-            return;
-        }
+        if (!filteredAndSortedSales.length) return;
         CsvImporter.exportSales(filteredAndSortedSales);
         toast.success("Registre exporté au format CSV.");
-    };
-
-    const setDateShortcut = (type: 'today' | 'yesterday' | 'week' | 'month') => {
-        const now = new Date();
-        switch (type) {
-            case 'today':
-                setDate({ from: startOfDay(now), to: endOfDay(now) });
-                break;
-            case 'yesterday':
-                const yesterday = subDays(now, 1);
-                setDate({ from: startOfDay(yesterday), to: endOfDay(yesterday) });
-                break;
-            case 'week':
-                setDate({ from: startOfDay(subDays(now, 6)), to: endOfDay(now) });
-                break;
-            case 'month':
-                setDate({ from: startOfMonth(now), to: endOfDay(now) });
-                break;
-        }
     };
 
     const resetFilters = () => {
         setSearchQuery('');
         setPaymentFilter('all');
         setSortBy('createdAt_desc');
-        toast.info("Filtres réinitialisés.");
     };
+
+    if (!profile || !isAllowed) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
+                <div className="p-6 bg-destructive/5 rounded-[3rem] border border-destructive/10 shadow-2xl relative overflow-hidden group">
+                    <Lock className="h-16 w-16 text-destructive animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-destructive/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint au Journal</p>
+                </div>
+            </div>
+        );
+    }
 
     const StatCard = ({ title, value, icon: Icon, colorClass, sub, extra, restricted = false }: any) => (
         <Card className={cn(
@@ -318,53 +311,20 @@ export default function SalesHistoryPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                <StatCard 
-                    title="Volume Recettes" 
-                    value={formatCurrency(stats.totalRevenue)} 
-                    icon={TrendingUp} 
-                    colorClass="text-primary"
-                    sub={`${stats.count} opérations de vente`}
-                />
-                <StatCard 
-                    title="Liquidités & Flux" 
-                    value={formatCurrency(stats.totalCollected)} 
-                    icon={Wallet} 
-                    colorClass="text-chart-quaternary"
-                    extra={
-                        <div className="mt-3 flex items-center gap-3">
-                            <Badge variant="outline" className="text-[8px] h-4 bg-chart-quaternary/5 border-chart-quaternary/20 text-chart-quaternary">💵 {formatCurrency(stats.cashCollected)}</Badge>
-                            <Badge variant="outline" className="text-[8px] h-4 bg-blue-500/5 border-blue-500/20 text-blue-400">💳 {formatCurrency(stats.cardCollected)}</Badge>
-                        </div>
-                    }
-                />
-                <StatCard 
-                    title="Créances Clients" 
-                    value={formatCurrency(stats.totalDebt)} 
-                    icon={HandCoins} 
-                    colorClass="text-destructive"
-                    sub="Restant à percevoir"
-                    restricted={!isManagerOrAdmin}
-                />
-                <StatCard 
-                    title="Bénéfice Brut" 
-                    value={formatCurrency(stats.totalProfit)} 
-                    icon={DollarSign} 
-                    colorClass="text-chart-secondary"
-                    sub="Marge sur prix d'achat"
-                    restricted={!isManagerOrAdmin}
-                />
-                <StatCard 
-                    title="Indice de Recouvrement" 
-                    value={`${Math.round(stats.collectionRate)}%`} 
-                    icon={CheckCircle2} 
-                    colorClass="text-blue-400"
-                    extra={
-                        <div className="mt-3 space-y-1.5">
-                            <Progress value={stats.collectionRate} className="h-1.5 bg-white/10 [&>div]:bg-blue-400" />
-                            <p className="text-[8px] font-black uppercase text-blue-400/60 tracking-widest text-right">Efficacité de Caisse</p>
-                        </div>
-                    }
-                />
+                <StatCard title="Volume Recettes" value={formatCurrency(stats.totalRevenue)} icon={TrendingUp} colorClass="text-primary" sub={`${stats.count} opérations`} />
+                <StatCard title="Liquidités & Flux" value={formatCurrency(stats.totalCollected)} icon={Wallet} colorClass="text-chart-quaternary" extra={
+                    <div className="mt-3 flex items-center gap-2">
+                        <Badge variant="outline" className="text-[8px] h-4 bg-chart-quaternary/5 border-chart-quaternary/20 text-chart-quaternary">💵 {formatCurrency(stats.cashCollected)}</Badge>
+                        <Badge variant="outline" className="text-[8px] h-4 bg-blue-500/5 border-blue-500/20 text-blue-400">💳 {formatCurrency(stats.cardCollected)}</Badge>
+                    </div>
+                } />
+                <StatCard title="Créances Clients" value={formatCurrency(stats.totalDebt)} icon={HandCoins} colorClass="text-destructive" sub="Restant à percevoir" restricted={!isManagerOrAdmin} />
+                <StatCard title="Bénéfice Brut" value={formatCurrency(stats.totalProfit)} icon={DollarSign} colorClass="text-chart-secondary" sub="Marge sur achat" restricted={!isManagerOrAdmin} />
+                <StatCard title="Indice de Recouvrement" value={`${Math.round(stats.collectionRate)}%`} icon={CheckCircle2} colorClass="text-blue-400" extra={
+                    <div className="mt-3 space-y-1.5">
+                        <Progress value={stats.collectionRate} className="h-1.5 bg-white/10 [&>div]:bg-blue-400" />
+                    </div>
+                } />
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4">
@@ -373,29 +333,17 @@ export default function SalesHistoryPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
                         ref={searchInputRef}
-                        placeholder="N° Facture ou Identité Client... (F1)"
+                        placeholder="N° Facture ou Identité Client..."
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10 shadow-inner"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
                     />
-                    {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20">
-                            <X className="h-4 w-4" />
-                        </button>
-                    )}
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
-                    <div className="flex items-center gap-1 rounded-xl bg-background/40 p-1 border border-white/10 shadow-inner">
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('today')}>Today</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('yesterday')}>Hier</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('week')}>7 J</Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-[9px] font-black uppercase px-3 rounded-lg hover:bg-primary/10" onClick={() => setDateShortcut('month')}>Mois</Button>
-                    </div>
-
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[140px] justify-between shadow-sm">
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[140px] justify-between">
                                 <span className="flex items-center gap-2">
                                     <Filter className="h-3.5 w-3.5 text-primary" />
                                     {paymentFilter === 'all' ? 'Tous statuts' : paymentFilter === 'paid' ? 'Payé' : paymentFilter === 'partial' ? 'Partiel' : 'Impayé'}
@@ -404,39 +352,15 @@ export default function SalesHistoryPage() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass min-w-[200px] p-2">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Filtrer par Règlement</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuRadioGroup value={paymentFilter} onValueChange={(val) => setPaymentFilter(val as PaymentFilter)}>
                                 <DropdownMenuRadioItem value="all" className="font-bold py-2.5 rounded-lg">Toutes les ventes</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="paid" className="font-bold py-2.5 rounded-lg text-chart-quaternary">Réglées uniquement</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="partial" className="font-bold py-2.5 rounded-lg text-chart-secondary">Paiements partiels</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="unpaid" className="font-bold py-2.5 rounded-lg text-destructive">Ventes à crédit (Impayées)</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="paid" className="font-bold py-2.5 rounded-lg text-chart-quaternary">Réglées</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="unpaid" className="font-bold py-2.5 rounded-lg text-destructive">À crédit</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <DateRangePicker date={dateRange} setDate={setDate} />
-
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between shadow-sm">
-                                <span className="flex items-center gap-2">
-                                    <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
-                                    {sortOptions[sortBy as keyof typeof sortOptions]}
-                                </span>
-                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass min-w-[200px] p-2">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Tri du Journal</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/5" />
-                            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
-                                {Object.entries(sortOptions).map(([key, label]) => (
-                                    <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2.5 rounded-lg">{label}</DropdownMenuRadioItem>
-                                ))}
-                            </DropdownMenuRadioGroup>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
 
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5 shadow-inner">
                         <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setSalesHistoryViewMode('grid')}>
@@ -461,18 +385,7 @@ export default function SalesHistoryPage() {
                        </div>
                    ) : <SalesHistoryTableSkeleton />
                ) : filteredAndSortedSales.length === 0 ? (
-                   <EmptyState
-                        icon={History}
-                        title="Aucun flux détecté"
-                        description={debouncedSearchQuery || paymentFilter !== 'all' ? "Aucune vente ne correspond à vos filtres actuels." : "Le Grand Livre est vide. Réalisez votre première vente au terminal."}
-                        className="py-32 luxury-glass border-white/5 bg-muted/5"
-                    >
-                        {(debouncedSearchQuery || paymentFilter !== 'all') && (
-                            <Button variant="outline" onClick={resetFilters} className="rounded-xl font-bold uppercase text-[10px] tracking-widest mt-4">
-                                Effacer les filtres
-                            </Button>
-                        )}
-                    </EmptyState>
+                   <EmptyState icon={History} title="Aucun flux détecté" description="La recherche n'a retourné aucun résultat." className="py-32 luxury-glass border-white/5 bg-muted/5" />
                ) : (
                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-1000">
                         {viewMode === 'grid' ? (
@@ -508,9 +421,8 @@ export default function SalesHistoryPage() {
                             <div className="flex justify-center pt-10 pb-20">
                                 <Button 
                                     variant="outline" 
-                                    size="lg" 
                                     onClick={handleLoadMore} 
-                                    className="min-w-[240px] h-14 rounded-2xl luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-widest hover:bg-primary/10 hover:text-primary transition-all shadow-xl gap-3 group"
+                                    className="min-w-[240px] h-14 rounded-2xl luxury-glass border-primary/20 font-black uppercase text-[11px] tracking-widest hover:bg-primary/10 transition-all gap-3 group"
                                 >
                                     Extraire plus d'archives ({visibleSales.length} / {filteredAndSortedSales.length})
                                     <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />

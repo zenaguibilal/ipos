@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Filter, Building, FileUp, Trash2, Printer } from 'lucide-react';
+import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Filter, Building, FileUp, Trash2, Printer, ShieldX, Lock } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * @fileOverview Sovereign Stock & Intake Ledger (Finalized)
+ * @fileOverview Sovereign Stock & Intake Ledger (Finalized with Granular Permission)
  */
 
 export default function StockPage() {
@@ -65,18 +65,21 @@ export default function StockPage() {
     const [selectedIntakes, setSelectedIntakes] = useState<Set<string>>(new Set());
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Role Guard
+    const isAllowed = profile?.permissions?.includes('stock') || isManagerOrAdmin;
+
+    // Granular Access Guard
     useEffect(() => {
-        if (profile && !isManagerOrAdmin) {
-            toast.error("Accès Souverain Requis", { 
-                description: "La gestion des stocks est réservée aux autorités de gestion." 
+        if (profile && !isAllowed) {
+            toast.error("Unité Réceptions Restreinte", { 
+                description: "Vous ne possédez pas le décret nécessaire pour cette unité.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
             });
             router.replace('/sell');
         }
-    }, [profile, isManagerOrAdmin, router]);
+    }, [profile, isAllowed, router]);
 
     const fetchStockIntakesAndSuppliers = useCallback(async (manual = false) => {
-        if (!isMounted || !dateRange?.from || !isManagerOrAdmin) return;
+        if (!isMounted || !dateRange?.from || !isAllowed) return;
         if (manual) setIsRefreshing(true);
         
         try {
@@ -95,18 +98,18 @@ export default function StockPage() {
             setStockIntakes(intakesData);
             setSuppliers(suppliersData);
             setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
-            setSelectedIntakes(new Set()); // Reset selection on refresh
+            setSelectedIntakes(new Set()); 
         } catch (error: any) {
-            toast.error("Impossible de synchroniser le registre des réceptions.");
+            toast.error("Impossible de synchroniser le registre.");
             setStockIntakes([]);
         } finally {
             if (manual) setIsRefreshing(false);
         }
-    }, [isMounted, debouncedSearchQuery, dateRange, isManagerOrAdmin, selectedSupplierUuid]);
+    }, [isMounted, debouncedSearchQuery, dateRange, isAllowed, selectedSupplierUuid]);
 
     useEffect(() => {
-        fetchStockIntakesAndSuppliers();
-    }, [fetchStockIntakesAndSuppliers]);
+        if (isAllowed) fetchStockIntakesAndSuppliers();
+    }, [fetchStockIntakesAndSuppliers, isAllowed]);
 
     const handleToggleSelection = (uuid: string) => {
         setSelectedIntakes(prev => {
@@ -144,16 +147,16 @@ export default function StockPage() {
         CsvImporter.exportStockIntakes(stockIntakes, supplierMap);
     };
 
-    if (!profile || !isManagerOrAdmin) {
+    if (!profile || !isAllowed) {
         return (
-            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
-                <div className="p-6 bg-primary/5 rounded-[3rem] border border-primary/10 shadow-2xl relative overflow-hidden group">
-                    <ShieldAlert className="h-16 w-16 text-primary animate-pulse relative z-10" />
-                    <div className="absolute inset-0 bg-primary/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
+            <div className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-4 bg-background">
+                <div className="p-6 bg-destructive/5 rounded-[3rem] border border-destructive/10 shadow-2xl relative overflow-hidden group">
+                    <Lock className="h-16 w-16 text-destructive animate-pulse relative z-10" />
+                    <div className="absolute inset-0 bg-destructive/5 translate-y-full group-hover:translate-y-0 transition-transform duration-700" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-2xl font-black uppercase tracking-tighter italic">Vérification des Décrets...</h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint • Terminal iPOS</p>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter">Vérification des Décrets...</h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50">Accès Restreint à l'Unité Stock</p>
                 </div>
             </div>
         );
@@ -165,7 +168,7 @@ export default function StockPage() {
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader
                 title="Registre de Tissage Stock"
-                description="Suivi souverain des réceptions de marchandises et ingénierية des coûts de revient."
+                description="Suivi souverain des réceptions de marchandises et ingénierie des coûts de revient."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <PrintStockListDialog intakes={stockIntakes || []} supplierMap={supplierMap} />
@@ -173,12 +176,14 @@ export default function StockPage() {
                         <FileUp className="h-4 w-4" /> 
                         Exporter CSV
                     </Button>
-                    <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest gap-2">
-                        <Link href="/stock/intake">
-                            <Plus className="h-4 w-4" /> 
-                            Nouvelle Réception
-                        </Link>
-                    </Button>
+                    {isManagerOrAdmin && (
+                        <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black uppercase text-[10px] tracking-widest gap-2">
+                            <Link href="/stock/intake">
+                                <Plus className="h-4 w-4" /> 
+                                Nouvelle Réception
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </PageHeader>
 
@@ -223,12 +228,12 @@ export default function StockPage() {
 
                     <DateRangePicker date={dateRange} setDate={setDate} />
                     
-                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-10 w-10 rounded-lg" onClick={() => setStockViewMode('grid')}>
-                            <LayoutGrid className="h-4.5 w-4.5"/>
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5 shadow-inner">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setStockViewMode('grid')}>
+                            <LayoutGrid className="h-4 w-4"/>
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-10 w-10 rounded-lg" onClick={() => setStockViewMode('list')}>
-                            <List className="h-4.5 w-4.5"/>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setStockViewMode('list')}>
+                            <List className="h-4 w-4"/>
                         </Button>
                     </div>
 
@@ -262,7 +267,7 @@ export default function StockPage() {
                         description={selectedSupplierUuid !== 'all' || searchQuery ? "Aucun bon ne correspond à vos filtres actuels." : "Commencez par enregistrez une réception de marchandise pour alimenter votre inventaire."}
                         className="py-32 luxury-glass border-white/5 bg-muted/5"
                     >
-                         {selectedSupplierUuid === 'all' && !searchQuery && (
+                         {selectedSupplierUuid === 'all' && !searchQuery && isManagerOrAdmin && (
                             <Button asChild className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
                                 <Link href="/stock/intake">Initialiser le Flux</Link>
                             </Button>
