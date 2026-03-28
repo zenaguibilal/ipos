@@ -16,20 +16,25 @@ export function DeleteMultipleSuppliersDialog({ isOpen, onOpenChange, supplierUu
 
     const handleDelete = async () => {
         if (supplierUuids.length === 0) return;
-        // Updated to use direct API Wall
-        await api.post('suppliers/bulk-delete', { uuids: supplierUuids });
-        toast.success(`${supplierUuids.length} مورد(ين) تم حذفهم بنجاح.`);
-        onSuccess();
+        
+        try {
+            await api.post('suppliers/bulk-delete', { uuids: supplierUuids });
+            toast.success(`${supplierUuids.length} fournisseur(s) supprimé(s) avec succès.`);
+            onSuccess();
+        } catch (error: any) {
+            toast.error("Échec de la suppression groupée.");
+        }
     };
 
     return (
         <ConfirmAlertDialog
             isOpen={isOpen}
             onOpenChange={onOpenChange}
-            title='Suppression groupée'
-            description={`Êtes-vous sûr de vouloir supprimer les ${supplierUuids.length} fournisseurs sélectionnés ? Cette action est irréversible.`}
+            title='Suppression massive'
+            description={`Êtes-vous absolument sûr de vouloir supprimer ces ${supplierUuids.length} fournisseurs ? Cette action est irréversible و supprimera tout l'historique associé.`}
             onConfirm={handleDelete}
             confirmText="Oui, supprimer"
+            cancelText="Annuler"
         />
     );
 }

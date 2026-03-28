@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
     Plus, Search, Building, LayoutGrid, List, RefreshCw, 
     Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, 
-    Loader2, Printer, ChevronDown, Activity, Phone, Star, RotateCcw
+    Loader2, ChevronDown, Activity, RotateCcw
 } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
@@ -183,7 +184,7 @@ export default function SuppliersPage() {
     const handleExport = () => {
         if (!filteredAndSortedSuppliers.length) return;
         CsvImporter.exportSuppliers(filteredAndSortedSuppliers);
-        toast.success("Sujet exporté avec succès.");
+        toast.success("Registre exporté avec succès.");
     };
 
     const handleResetFilters = () => {
