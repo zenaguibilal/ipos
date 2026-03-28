@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -129,7 +130,7 @@ export function AppHeader() {
 
         <div className="flex-grow flex justify-center">
             <TooltipProvider>
-                <nav className="hidden xl:flex items-center gap-1 rounded-3xl border bg-black/5 dark:bg-black/20 p-1.5 luxury-glass border-white/5 shadow-inner">
+                <nav className="hidden md:flex items-center gap-1 rounded-3xl border bg-black/5 dark:bg-black/20 p-1.5 luxury-glass border-white/5 shadow-inner">
                     {currentMainActions.map(link => (
                          <Tooltip key={link.href} delayDuration={0}>
                             <TooltipTrigger asChild>

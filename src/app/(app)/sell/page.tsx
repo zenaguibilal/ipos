@@ -9,14 +9,16 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { CustomerCombobox } from '@/components/sell/CustomerCombobox';
 import { DraftsDropdown } from '@/components/sell/DraftsDropdown';
-import { PackageSearch, UserPlus, HelpCircle, Keyboard } from 'lucide-react';
+import { PackageSearch, UserPlus, HelpCircle, Keyboard, ShieldX, Loader2 } from 'lucide-react';
 import { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddPaymentDialog } from '@/components/payments/AddPaymentDialog';
 import { CartTotalBar } from '@/components/sell/CartTotalBar';
-import { useAppStore, useAppActions } from '@/stores/appStore';
+import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { PrintReceiptDialog } from '@/components/sales/PrintReceiptDialog';
 import { CustomerDialog } from '@/components/customers/customer-dialog';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -31,9 +33,12 @@ import {
  */
 
 export default function SellPage() {
+    const router = useRouter();
+    const isManagerOrAdmin = useIsManagerOrAdmin();
     const { 
-        activeCartId, carts, modals, actions, sellPage 
+        profile, activeCartId, carts, modals, actions, sellPage 
     } = useAppStore(state => ({
+        profile: state.profile,
         activeCartId: state.activeCartId,
         carts: state.carts,
         modals: state.modals.sell,
@@ -46,6 +51,19 @@ export default function SellPage() {
         toggleSellProductSheet, toggleSellDebtPayment, toggleSellCustomerDialog,
         refreshSellCustomer, incrementCustomerListVersion
     } = actions;
+
+    const isAllowed = profile?.permissions?.includes('sell') || isManagerOrAdmin;
+
+    // Absolute Access Guard
+    useEffect(() => {
+        if (profile && !isAllowed) {
+            toast.error("Accès Caisse Refusé", { 
+                description: "Vous ne possédez pas le décret nécessaire pour cette unité.",
+                icon: <ShieldX className="h-4 w-4 text-destructive" />
+            });
+            router.replace('/dashboard');
+        }
+    }, [profile, isAllowed, router]);
     
     const productSearchRef = useRef<{ focus: () => void; openCustomProductDialog: () => void; }>(null);
     const customerComboboxRef = useRef<HTMLButtonElement>(null);
@@ -88,6 +106,17 @@ export default function SellPage() {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [handleKeyDown]);
+
+    if (!profile || !isAllowed) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-background">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">
+                    Vérification des Décrets...
+                </p>
+            </div>
+        );
+    }
 
     if (!activeCart) {
         return <div className="p-4"><Skeleton className="h-12 w-full mb-4" /><div className="grid grid-cols-3 gap-4 h-96"><Skeleton className="col-span-2"/><Skeleton /></div></div>;
