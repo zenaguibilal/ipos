@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { BreadOrder } from '@/lib/types';
 import { BreadOrderCard } from './BreadOrderCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,12 +12,25 @@ import { ManualAddDialog } from './ManualAddDialog';
 import { PrintBreadListDialog } from './PrintBreadListDialog';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
-import { Loader2, Wheat, ShoppingCart, Trash2, Sparkles, PackageCheck, AlertCircle, ShieldAlert } from 'lucide-react';
+import { 
+    Loader2, Wheat, ShoppingCart, Trash2, Sparkles, 
+    PackageCheck, AlertCircle, Search, Filter, X, 
+    CheckCircle2, Clock, Banknote, ListFilter
+} from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
 import { Badge } from '../ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
 
 interface BreadDayViewProps {
     orders: BreadOrder[];
@@ -24,15 +38,32 @@ interface BreadDayViewProps {
     onOrdersChange: () => void;
 }
 
+type OrderStatusFilter = 'all' | 'pending' | 'delivered' | 'billed';
+
 export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayViewProps) {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const [selectedOrders, setSelectedOrders] = useState(new Set<string>());
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>('all');
+    
     const [isConverting, setIsConverting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
+
+    const filteredOrders = useMemo(() => {
+        return orders.filter(order => {
+            const matchesSearch = order.orderName.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus = 
+                statusFilter === 'all' ? true :
+                statusFilter === 'pending' ? (!order.est_livre && !order.venteUuid) :
+                statusFilter === 'delivered' ? (order.est_livre && !order.venteUuid) :
+                statusFilter === 'billed' ? !!order.venteUuid : true;
+            return matchesSearch && matchesStatus;
+        });
+    }, [orders, searchQuery, statusFilter]);
 
     const handleToggleSelection = (orderUuid: string) => {
         setSelectedOrders(prev => {
@@ -47,11 +78,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
     };
 
     const handleSelectAll = () => {
-        const unbilledOrders = orders.filter(o => !o.venteUuid);
-        if (selectedOrders.size === unbilledOrders.length && unbilledOrders.length > 0) {
+        const selectables = filteredOrders.filter(o => !o.venteUuid);
+        if (selectedOrders.size === selectables.length && selectables.length > 0) {
             setSelectedOrders(new Set());
         } else {
-            setSelectedOrders(new Set(unbilledOrders.map(o => o.uuid)));
+            setSelectedOrders(new Set(selectables.map(o => o.uuid)));
         }
     };
     
@@ -61,10 +92,10 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         try {
             const result = await api.post<{ count: number }>('bread/generate', { date: currentDate });
             if (result.count > 0) {
-                toast.success(`${result.count} commande(s) générée(s) avec succès.`);
+                toast.success(`${result.count} commande(s) générée(s) مع النجاح.`);
                 onOrdersChange();
             } else {
-                toast.info("Aucune commande à générer. Tous les clients programmés ont déjà une commande.");
+                toast.info("Aucune commande à générer. Tous les clients programmés sont déjà enregistrés.");
             }
         } catch (error: any) {
             toast.error("Échec de la génération automatique.");
@@ -80,18 +111,18 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             return;
         }
         if (breadPrice <= 0) {
-            toast.error("Le prix du pain n'est pas configuré.", { description: "Veuillez le régler dans Profil > Paramètres." });
+            toast.error("Prix du pain non configuré.", { description: "Veuillez le régler dans Profil > Paramètres." });
             return;
         }
         
         setIsConverting(true);
         try {
             await api.post('bread/convert-to-sales', { orderUuids: Array.from(selectedOrders), breadPrice });
-            toast.success(`${selectedOrders.size} commande(s) transformée(s) en factures.`);
+            toast.success(`${selectedOrders.size} commande(s) transformée(s) en factures m.a.c.`);
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur lors de la facturation.");
+            toast.error("Erreur lors de la facturation souveraine.");
         } finally {
             setIsConverting(false);
         }
@@ -103,11 +134,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             for (const uuid of Array.from(selectedOrders)) {
                 await api.put(`bread/${uuid}`, { est_livre: true });
             }
-            toast.success("Commandes marquées comme livrées.");
+            toast.success("Statut de livraison mis à jour.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error) {
-            toast.error("Erreur de mise à jour.");
+            toast.error("Erreur de mise à jour des flux.");
         }
     };
 
@@ -127,13 +158,13 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         }
     };
 
-    const unbilledOrdersCount = orders.filter(o => !o.venteUuid).length;
+    const unbilledOrdersCount = filteredOrders.filter(o => !o.venteUuid).length;
     const isAllSelected = unbilledOrdersCount > 0 && selectedOrders.size === unbilledOrdersCount;
 
     return (
-        <>
+        <div className="space-y-6">
             <Card className="flex flex-col h-full min-h-[600px] luxury-glass border-white/5 overflow-hidden shadow-2xl">
-                <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5 p-6 sm:p-8">
+                <CardHeader className="flex-shrink-0 border-b border-white/5 bg-white/5 p-6 sm:p-8 space-y-6">
                     <div className="flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
                         <div className="flex items-center space-x-4">
                             <Checkbox 
@@ -145,7 +176,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                             />
                             <div className="flex flex-col gap-1">
                                 <label htmlFor="select-all-bread" className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground cursor-pointer select-none">
-                                    {selectedOrders.size > 0 ? `${selectedOrders.size} flux sélectionné(s)` : 'Sélection collective'}
+                                    {selectedOrders.size > 0 ? `${selectedOrders.size} flux sélectionné(s)` : 'Sélection Collective'}
                                 </label>
                                 {breadPrice === 0 && (
                                     <Badge variant="destructive" className="h-5 text-[8px] font-black uppercase animate-pulse gap-1.5 px-3">
@@ -203,22 +234,68 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                             <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
                                         </>
                                     )}
-                                    <PrintBreadListDialog orders={orders} currentDate={currentDate}/>
+                                    <PrintBreadListDialog orders={filteredOrders} currentDate={currentDate}/>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative flex-grow group w-full">
+                            <div className="absolute inset-0 bg-primary/5 blur-lg opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
+                            <Input 
+                                placeholder="Rechercher une livraison (Client, Lieu...)"
+                                className="pl-11 h-12 luxury-glass rounded-xl bg-background/40 border-white/10 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                            />
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto luxury-glass p-1.5 bg-muted/20 border-white/5 shrink-0">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-[10px] gap-3 px-5 uppercase tracking-widest">
+                                        <ListFilter className="h-3.5 w-3.5 text-primary" />
+                                        {statusFilter === 'all' ? 'Tous les flux' : statusFilter === 'pending' ? 'À livrer' : statusFilter === 'delivered' ? 'Livré / Non M.A.C' : 'Facturé'}
+                                        <X className="h-3 w-3 opacity-20" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="luxury-glass min-w-[200px] p-2">
+                                    <DropdownMenuLabel className="text-[9px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Audit par État</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-white/5" />
+                                    <DropdownMenuRadioGroup value={statusFilter} onValueChange={(v) => setStatusFilter(v as OrderStatusFilter)}>
+                                        <DropdownMenuRadioItem value="all" className="font-bold py-2.5 rounded-lg text-xs">Vue Panoramique (Tout)</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="pending" className="font-bold py-2.5 rounded-lg text-xs flex items-center gap-2">
+                                            <Clock className="h-3 w-3 text-orange-400" /> Flux en attente
+                                        </DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="delivered" className="font-bold py-2.5 rounded-lg text-xs flex items-center gap-2">
+                                            <PackageCheck className="h-3 w-3 text-blue-400" /> Livré • Non encaissé
+                                        </DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="billed" className="font-bold py-2.5 rounded-lg text-xs flex items-center gap-2">
+                                            <Banknote className="h-3 w-3 text-chart-quaternary" /> Archivé • Facturé
+                                        </DropdownMenuRadioItem>
+                                    </DropdownMenuRadioGroup>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="flex-grow min-h-0 p-0 bg-muted/5">
                     <ScrollArea className="h-full">
-                        {orders.length === 0 ? (
+                        {filteredOrders.length === 0 ? (
                             <EmptyState
                                 icon={Wheat}
-                                title="Registre de distribution vierge"
-                                description="Aucune commande n'est programmée pour cette date. Lanceز la génération automatique أو أضف طلبيات يدوياً."
+                                title={searchQuery || statusFilter !== 'all' ? "Aucun résultat trouvé" : "Registre de distribution vierge"}
+                                description={searchQuery || statusFilter !== 'all' ? "Ajustez vos filtres ou votre recherche pour explorer le planning." : "Aucune commande n'est programmée pour cette date. Lancez la génération automatique."}
                                 className="py-32"
                             >
-                                {isManagerOrAdmin && (
+                                {isManagerOrAdmin && !searchQuery && statusFilter === 'all' && (
                                     <Button 
                                         onClick={handleGenerate} 
                                         disabled={isGenerating} 
@@ -231,7 +308,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                             </EmptyState>
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 p-8 pb-20">
-                                {orders.map(order => (
+                                {filteredOrders.map(order => (
                                     <BreadOrderCard 
                                         key={order.uuid} 
                                         order={order}
@@ -249,11 +326,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             <ConfirmAlertDialog 
                 isOpen={isDeleteConfirmOpen} 
                 onOpenChange={setIsDeleteConfirmOpen} 
-                title="Supprimer les commandes sélectionnées ?" 
-                description={`Cette action est irréversible. Vous allez révoquer définitivement ${selectedOrders.size} bon(s) de distribution du registre iPOS.`} 
+                title="Révocation Définitive" 
+                description={`Êtes-vous certain de vouloir supprimer ces ${selectedOrders.size} bon(s) de distribution ? Cette action est irréversible و ستختفي من سجل التوزيع السحابي.`} 
                 onConfirm={handleDeleteSelected} 
-                confirmText="Confirmer la révocation" 
+                confirmText="Révoker définitivement" 
             />
-        </>
+        </div>
     );
 }

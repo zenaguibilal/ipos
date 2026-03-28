@@ -3,21 +3,48 @@
 import { useMemo } from 'react';
 import type { BreadOrder } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Package, Truck, ShoppingBag, TrendingUp } from 'lucide-react';
+import { Package, Truck, ShoppingBag, TrendingUp, Banknote, Clock, Wheat } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useAppStore } from '@/stores/appStore';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 
 interface BreadStatsProps {
     orders?: BreadOrder[];
     isLoading: boolean;
 }
 
+const StatCard = ({ title, value, icon: Icon, colorClass, desc, subValue, trend }: any) => (
+    <Card className="luxury-glass bg-muted/10 border-white/5 hover:border-primary/20 transition-all group relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+            <Icon className="h-24 w-24 rotate-12" />
+        </div>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
+            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{title}</CardTitle>
+            <Icon className={cn("h-4 w-4 opacity-50", colorClass)} />
+        </CardHeader>
+        <CardContent className="relative z-10">
+            <div className={cn("text-2xl font-black tracking-tight", colorClass)}>{value}</div>
+            <div className="flex items-center justify-between mt-1">
+                <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{desc}</p>
+                {subValue && <span className="text-[10px] font-black text-foreground/40">{subValue}</span>}
+            </div>
+            {trend && (
+                <div className="mt-3 h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                        className={cn("h-full transition-all duration-1000", colorClass.replace('text-', 'bg-'))}
+                        style={{ width: `${trend}%` }}
+                    />
+                </div>
+            )}
+        </CardContent>
+    </Card>
+);
+
 export function BreadStats({ orders, isLoading }: BreadStatsProps) {
     const breadPrice = useAppStore((state) => state.profile?.prix_pain) || 0;
 
     const stats = useMemo(() => {
-        if (!orders) return { ordered: 0, delivered: 0, billed: 0, potentialRevenue: 0, billedRevenue: 0 };
+        if (!orders) return { ordered: 0, delivered: 0, billed: 0, potentialRevenue: 0, billedRevenue: 0, deliveryRate: 0 };
         const ordered = orders.reduce((sum, o) => sum + o.quantite, 0);
         const delivered = orders.filter(o => o.est_livre).reduce((sum, o) => sum + o.quantite, 0);
         const billedOrders = orders.filter(o => !!o.venteUuid);
@@ -28,63 +55,56 @@ export function BreadStats({ orders, isLoading }: BreadStatsProps) {
             delivered,
             billed,
             potentialRevenue: ordered * breadPrice,
-            billedRevenue: billed * breadPrice
+            billedRevenue: billed * breadPrice,
+            deliveryRate: ordered > 0 ? (delivered / ordered) * 100 : 0
         };
     }, [orders, breadPrice]);
 
     if(isLoading && !orders) {
         return (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-[2rem]" />)}
             </div>
         )
     }
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="luxury-glass border-primary/10 bg-primary/5 hover:bg-primary/10 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary/70">Total Commandé</CardTitle>
-                    <Package className="h-4 w-4 text-primary" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-3xl font-black">{stats.ordered} <span className="text-xs font-medium text-muted-foreground uppercase">pains</span></div>
-                    <p className="text-[10px] text-muted-foreground mt-1">Volume total attendu</p>
-                </CardContent>
-            </Card>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard 
+                title="Volume Total Attendu" 
+                value={`${stats.ordered} Pains`} 
+                icon={Wheat} 
+                colorClass="text-primary"
+                desc="Flux théorique du jour"
+                subValue={`${orders?.length || 0} Bons`}
+            />
+            
+            <StatCard 
+                title="Indice de Livraison" 
+                value={`${Math.round(stats.deliveryRate)}%`} 
+                icon={Truck} 
+                colorClass="text-blue-400"
+                desc={`${stats.delivered} unités expédiées`}
+                trend={stats.deliveryRate}
+            />
 
-            <Card className="luxury-glass border-chart-quaternary/10 bg-chart-quaternary/5 hover:bg-chart-quaternary/10 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-chart-quaternary/70">Livraison</CardTitle>
-                    <Truck className="h-4 w-4 text-chart-quaternary" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-3xl font-black text-chart-quaternary">{stats.delivered}</div>
-                    <p className="text-[10px] text-muted-foreground mt-1">{stats.ordered - stats.delivered} restant à livrer</p>
-                </CardContent>
-            </Card>
+            <StatCard 
+                title="Facturation M.A.C" 
+                value={`${stats.billed} Un.`} 
+                icon={ShoppingBag} 
+                colorClass="text-chart-quaternary"
+                desc={`${stats.ordered - stats.billed} en attente MAC`}
+                subValue={formatCurrency(stats.billedRevenue)}
+            />
 
-            <Card className="luxury-glass border-blue-500/10 bg-blue-500/5 hover:bg-blue-500/10 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-400/70">Volume M.A.C</CardTitle>
-                    <ShoppingBag className="h-4 w-4 text-blue-400" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-3xl font-black text-blue-400">{stats.billed}</div>
-                    <p className="text-[10px] text-muted-foreground mt-1">{stats.ordered - stats.billed} en attente de facture</p>
-                </CardContent>
-            </Card>
-
-            <Card className="luxury-glass border-chart-secondary/10 bg-chart-secondary/5 hover:bg-chart-secondary/10 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-chart-secondary/70">C.A du Jour</CardTitle>
-                    <TrendingUp className="h-4 w-4 text-chart-secondary" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-3xl font-black text-chart-secondary">{formatCurrency(stats.potentialRevenue)}</div>
-                    <p className="text-[10px] text-muted-foreground mt-1">Dont {formatCurrency(stats.billedRevenue)} déjà facturé</p>
-                </CardContent>
-            </Card>
+            <StatCard 
+                title="C.A Prévisionnel" 
+                value={formatCurrency(stats.potentialRevenue)} 
+                icon={TrendingUp} 
+                colorClass="text-chart-secondary"
+                desc="Valeur brute du planning"
+                subValue={`P.U: ${breadPrice} DA`}
+            />
         </div>
     );
 }

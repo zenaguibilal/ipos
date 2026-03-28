@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDebounce } from '@/hooks/useDebounce';
-import { User, Package, CheckCircle2, Clock, AlertCircle, ShoppingBag, Truck } from 'lucide-react';
+import { User, Package, CheckCircle2, Clock, AlertCircle, ShoppingBag, Truck, DollarSign } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
@@ -62,12 +62,16 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
     
     return (
         <Card className={cn(
-            "flex flex-col transition-all duration-500 border-2 overflow-hidden luxury-glass", 
+            "flex flex-col transition-all duration-500 border-2 overflow-hidden luxury-glass group/card", 
             isSelected ? "border-primary shadow-2xl scale-[1.03] bg-primary/10 z-10" : "border-white/5 bg-muted/10 hover:border-white/20",
-            isPaid && "border-chart-quaternary/30 opacity-90 grayscale-[0.3]",
+            isPaid && "border-chart-quaternary/30 opacity-90",
             !isDelivered && !isPaid && "border-primary/5"
         )}>
-            <CardHeader className="flex-row items-center justify-between p-5 pb-4">
+            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover/card:opacity-[0.03] transition-opacity pointer-events-none duration-700">
+                <ShoppingCart className="h-20 w-20 rotate-12" />
+            </div>
+
+            <CardHeader className="flex-row items-center justify-between p-5 pb-4 relative z-10">
                 <div className="flex items-center gap-4 overflow-hidden">
                     <div className={cn(
                         "h-12 w-12 rounded-2xl shrink-0 transition-all duration-500 shadow-inner flex items-center justify-center font-black text-lg",
@@ -75,8 +79,8 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                     )}>
                         {order.orderName.substring(0, 1).toUpperCase()}
                     </div>
-                    <div className="min-w-0">
-                        <CardTitle className="text-sm truncate font-black uppercase tracking-tight" title={order.orderName}>
+                    <div className="min-w-0 space-y-0.5">
+                        <CardTitle className="text-sm truncate font-black uppercase tracking-tight group-hover/card:text-primary transition-colors" title={order.orderName}>
                             {order.orderName}
                         </CardTitle>
                         {order.customerUuid ? (
@@ -86,19 +90,22 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    {!isPaid && (
+                {!isPaid && (
+                    <div className={cn(
+                        "transition-opacity duration-300",
+                        isSelected ? "opacity-100" : "opacity-0 group-hover/card:opacity-100"
+                    )}>
                         <Checkbox 
                             checked={isSelected} 
                             onCheckedChange={() => onToggleSelection(order.uuid)} 
                             disabled={!isManagerOrAdmin} 
                             className="h-6 w-6 rounded-lg border-primary/30 data-[state=checked]:bg-primary shadow-lg"
                         />
-                    )}
-                </div>
+                    </div>
+                )}
             </CardHeader>
-            <CardContent className="p-5 pt-0">
-                <div className="flex items-center justify-between bg-background/40 p-4 rounded-2xl mt-1 border border-white/5 shadow-inner group/input">
+            <CardContent className="p-5 pt-0 relative z-10 flex-grow">
+                <div className="flex items-center justify-between bg-background/40 p-4 rounded-2xl mt-1 border border-white/5 shadow-inner group/input hover:border-primary/20 transition-all">
                     <Label htmlFor={`qty-${order.uuid}`} className="flex items-center gap-2.5 text-[10px] uppercase font-black tracking-widest text-muted-foreground select-none">
                         <Package className="h-3.5 w-3.5 text-primary/40 group-hover/input:text-primary transition-colors"/> Volume
                     </Label>
@@ -108,7 +115,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                             type="number"
                             value={quantity}
                             onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                            className="w-20 h-10 text-center text-lg font-black bg-muted/50 border-white/10 focus:border-primary/50 rounded-xl"
+                            className="w-20 h-10 text-center text-lg font-black bg-muted/50 border-white/10 focus:border-primary/50 rounded-xl shadow-sm"
                             disabled={isPaid || !isManagerOrAdmin}
                         />
                         {order.quantite_origine !== undefined && order.quantite !== order.quantite_origine && (
@@ -128,7 +135,7 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="p-0 border-t border-white/5 bg-white/[0.02]">
+            <CardFooter className="p-0 border-t border-white/5 bg-white/[0.02] mt-auto">
                 <div className="grid grid-cols-2 w-full divide-x divide-white/5 h-16">
                     <button 
                         onClick={() => !isPaid && isManagerOrAdmin && handleDeliveryToggle(!isDelivered)}
@@ -139,15 +146,24 @@ export function BreadOrderCard({ order, isSelected, onToggleSelection, onUpdate 
                             !isManagerOrAdmin && "cursor-not-allowed"
                         )}
                     >
-                        {isDelivered ? <CheckCircle2 className="h-4.5 w-4.5 animate-in zoom-in-50" /> : <Truck className="h-4.5 w-4.5 group-hover/btn:translate-x-1 transition-transform" />}
+                        {isDelivered ? <CheckCircle2 className="h-4 w-4 animate-in zoom-in-50" /> : <Truck className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />}
                         <span className="text-[9px] font-black uppercase tracking-widest">{isDelivered ? 'Livré' : 'À Livrer'}</span>
                     </button>
                     <div className={cn(
                         "flex flex-col items-center justify-center gap-1.5 transition-all",
                         isPaid ? "bg-chart-quaternary/10 text-chart-quaternary" : "text-muted-foreground opacity-40"
                     )}>
-                        {isPaid ? <ShoppingBag className="h-4.5 w-4.5 animate-in zoom-in-50" /> : <Clock className="h-4.5 w-4.5" />}
-                        <span className="text-[9px] font-black uppercase tracking-widest">{isPaid ? 'M.A.C' : 'En attente'}</span>
+                        {isPaid ? (
+                            <>
+                                <Banknote className="h-4 w-4 animate-in zoom-in-50" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">M.A.C (Soldé)</span>
+                            </>
+                        ) : (
+                            <>
+                                <Clock className="h-4 w-4" />
+                                <span className="text-[9px] font-black uppercase tracking-widest">En attente</span>
+                            </>
+                        )}
                     </div>
                 </div>
             </CardFooter>
