@@ -100,7 +100,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                                 <MoreHorizontal className="h-5 w-5" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px]">
+                        <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px] shadow-2xl border-white/10">
                             <DropdownMenuItem asChild className="rounded-lg font-bold py-2.5">
                                 <Link href={`/customers/${customer.uuid}`} className="gap-2">
                                     <FileText className="h-4 w-4" /> Dossier Client
@@ -186,17 +186,30 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                 customer.outstandingBalance > 0 ? "bg-destructive/5 border-destructive/10" : "bg-primary/5 border-primary/10"
             )}>
                 <div className="flex justify-between items-center w-full">
-                    <div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-0.5 opacity-60">Solde Impayé</span>
-                        <div className="flex items-center gap-2">
-                            <span className={cn(
-                                "text-2xl font-black tracking-tighter",
-                                customer.outstandingBalance > 0 ? "text-destructive" : "text-chart-quaternary"
-                            )}>
-                                {formatCurrency(customer.outstandingBalance)}
-                            </span>
-                            {isOverdue && <Badge variant="destructive" className="h-4 px-1.5 text-[7px] font-black uppercase animate-pulse">Retard</Badge>}
+                    <div className="flex items-center gap-3">
+                        <div className="space-y-0.5">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block opacity-60">Solde Impayé</span>
+                            <div className="flex items-center gap-2">
+                                <span className={cn(
+                                    "text-2xl font-black tracking-tighter",
+                                    customer.outstandingBalance > 0 ? "text-destructive" : "text-chart-quaternary"
+                                )}>
+                                    {formatCurrency(customer.outstandingBalance)}
+                                </span>
+                                {isOverdue && <Badge variant="destructive" className="h-4 px-1.5 text-[7px] font-black uppercase animate-pulse">Retard</Badge>}
+                            </div>
                         </div>
+                        {customer.phone && customer.outstandingBalance > 0 && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-10 w-10 rounded-xl text-green-600 hover:bg-green-500/10 shadow-sm border border-green-500/10" 
+                                onClick={handleWhatsAppReminder}
+                                title="Rappel WhatsApp"
+                            >
+                                <MessageSquare className="h-5 w-5" />
+                            </Button>
+                        )}
                     </div>
                     <div className="flex gap-2">
                         <Button 
@@ -210,7 +223,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                         >
                             <HandCoins className="mr-2 h-4 w-4" /> Encaisser
                         </Button>
-                        <Button variant="ghost" size="icon" asChild className="h-11 w-11 rounded-xl hover:bg-white/10 shrink-0">
+                        <Button variant="ghost" size="icon" asChild className="h-11 w-11 rounded-xl hover:bg-white/10 shrink-0 border border-white/5">
                             <Link href={`/customers/${customer.uuid}`} onClick={(e) => e.stopPropagation()}>
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </Link>

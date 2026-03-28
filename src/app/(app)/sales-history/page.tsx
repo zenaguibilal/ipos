@@ -391,6 +391,7 @@ export default function SalesHistoryPage() {
                                             key={s.uuid} 
                                             sale={s}
                                             customerName={customerName}
+                                            customerPhone={customer?.phone}
                                             onViewDetails={handleViewDetails}
                                             onCancelSale={handleCancelSale}
                                             onPrint={handlePrintSale}
