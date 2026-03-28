@@ -277,7 +277,7 @@ export default function ExpensesPage() {
                     <div className="space-y-1">
                         <p className="text-sm font-black uppercase tracking-tight italic">Optimisation des Flux</p>
                         <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
-                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministe.
+                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministه حتمي.
                         </p>
                     </div>
                 </div>
