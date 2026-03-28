@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { 
     Plus, Search, Building, LayoutGrid, List, RefreshCw, 
     Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, 
-    Loader2, Printer, ChevronDown 
+    Loader2, Printer, ChevronDown, Activity, Phone, Star, RotateCcw
 } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
@@ -30,11 +30,14 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ImportSuppliersPreviewDialog } from '@/components/suppliers/ImportSuppliersPreviewDialog';
 import { DeleteMultipleSuppliersDialog } from '@/components/suppliers/DeleteMultipleSuppliersDialog';
 import { PrintSupplierListDialog } from '@/components/suppliers/PrintSupplierListDialog';
 import { CsvImporter } from '@/lib/csv-utils';
+import { Badge } from '@/components/ui/badge';
 
 const sortOptions: { [key: string]: string } = {
     'name_asc': 'Nom (A-Z)',
@@ -44,6 +47,11 @@ const sortOptions: { [key: string]: string } = {
     'createdAt_desc': 'Plus récents',
     'createdAt_asc': 'Plus anciens',
 };
+
+/**
+ * @fileOverview Sovereign Supplier Management (Finalized Perfection)
+ * المركز السيادي للتحكم في الموردين والديون اللوجستية.
+ */
 
 export default function SuppliersPage() {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -93,7 +101,8 @@ export default function SuppliersPage() {
         
         let result = suppliers.filter(s => {
             const matchesSearch = s.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || 
-                                 (s.phone && s.phone.includes(debouncedSearch));
+                                 (s.phone && s.phone.includes(debouncedSearch)) ||
+                                 (s.contactPerson && s.contactPerson.toLowerCase().includes(debouncedSearch.toLowerCase()));
             const matchesDebt = filterDebtOnly ? s.balance > 0 : true;
             return matchesSearch && matchesDebt;
         });
@@ -132,10 +141,10 @@ export default function SuppliersPage() {
 
     const handleSelectAll = () => {
         if (!suppliers) return;
-        if (selectedSuppliers.size === suppliers.length) {
+        if (selectedSuppliers.size === filteredAndSortedSuppliers.length) {
             setSelectedSuppliers(new Set());
         } else {
-            setSelectedSuppliers(new Set(suppliers.map(s => s.uuid)));
+            setSelectedSuppliers(new Set(filteredAndSortedSuppliers.map(s => s.uuid)));
         }
     };
 
@@ -148,7 +157,7 @@ export default function SuppliersPage() {
             setImportAnalysis(analysis);
             setIsImportPreviewOpen(true);
         } catch (error: any) {
-            toast.error("Erreur d'analyse.");
+            toast.error("Erreur d'analyse du fichier CSV.");
         } finally {
             setIsAnalyzing(false);
             e.target.value = '';
@@ -159,11 +168,13 @@ export default function SuppliersPage() {
         setIsImporting(true);
         try {
             await api.post('suppliers/bulk-import', data);
-            toast.success("Importation terminée.");
+            toast.success("Opération d'importation terminée.", {
+                description: `${data.toAdd.length} nouveaux et ${data.toUpdate.length} mises à jour.`
+            });
             setIsImportPreviewOpen(false);
             fetchSuppliers();
         } catch (error: any) {
-            toast.error("Erreur d'importation.");
+            toast.error("Échec de l'importation collective.");
         } finally {
             setIsImporting(false);
         }
@@ -172,13 +183,21 @@ export default function SuppliersPage() {
     const handleExport = () => {
         if (!filteredAndSortedSuppliers.length) return;
         CsvImporter.exportSuppliers(filteredAndSortedSuppliers);
+        toast.success("Sujet exporté avec succès.");
+    };
+
+    const handleResetFilters = () => {
+        setSearchQuery('');
+        setFilterDebtOnly(false);
+        setSortBy('name_asc');
+        setSelectedSuppliers(new Set());
     };
 
     const renderContent = () => {
         if (suppliers === undefined) {
             return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-3xl" />)}
+                    {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-[2.5rem]" />)}
                 </div>
             );
         }
@@ -187,12 +206,17 @@ export default function SuppliersPage() {
             return (
                 <EmptyState
                     icon={Building}
-                    title="Aucun fournisseur trouvé"
-                    description={searchQuery ? "Aucun résultat pour cette recherche." : "Commencez par ajouter votre premier fournisseur partenaire."}
+                    title="Aucun partenaire détecté"
+                    description={searchQuery ? "La recherche n'a retourné aucun résultat." : "Commencez par référencer votre premier fournisseur."}
+                    className="py-32 luxury-glass border-white/5 bg-muted/5"
                 >
-                     {!searchQuery && (
-                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-xl luxury-glass bg-primary/10 border-primary/20 text-primary">
+                     {!searchQuery ? (
+                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="rounded-2xl px-10 h-14 bg-primary shadow-2xl shadow-primary/20 font-black uppercase text-[11px] tracking-widest">
                             <Plus className="mr-2 h-4 w-4" /> Ajouter un fournisseur
+                        </Button>
+                     ) : (
+                        <Button variant="outline" onClick={handleResetFilters} className="rounded-xl font-bold uppercase text-[10px] tracking-widest">
+                            <RotateCcw className="h-4 w-4 mr-2" /> Effacer les filtres
                         </Button>
                      )}
                 </EmptyState>
@@ -213,7 +237,7 @@ export default function SuppliersPage() {
         }
 
         return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredAndSortedSuppliers.map(s => (
                     <SupplierCard 
                         key={s.uuid} 
@@ -232,32 +256,32 @@ export default function SuppliersPage() {
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader
                 title="Souveraineté des Partenaires"
-                description="Suivez vos partenaires commerciaux و maîtrisez l'état de vos dettes fournisseurs."
+                description="Contrôle absolu du catalogue fournisseurs et maîtrise des encours de dettes."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <PrintSupplierListDialog suppliers={filteredAndSortedSuppliers} />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" disabled={isAnalyzing} className="border-primary/20 luxury-glass h-11 rounded-xl px-6 font-black uppercase text-[10px] tracking-widest gap-2">
+                            <Button variant="outline" disabled={isAnalyzing} className="border-primary/20 luxury-glass h-12 rounded-2xl px-6 font-black uppercase text-[10px] tracking-widest gap-2">
                                 {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                                 Importer
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="luxury-glass">
-                            <DropdownMenuItem asChild>
-                                <label className="cursor-pointer w-full flex items-center gap-2 p-3 font-bold">
+                        <DropdownMenuContent align="end" className="luxury-glass p-2">
+                            <DropdownMenuItem asChild className="cursor-pointer focus:bg-primary/10">
+                                <label className="w-full flex items-center gap-3 p-3 font-bold">
                                     <FileDown className="h-4 w-4 text-primary" />
-                                    <span>Fichier CSV</span>
+                                    <span className="text-xs uppercase tracking-tight">Fichier CSV Standard</span>
                                     <input type="file" className="hidden" accept=".csv" onChange={handleFileSelected} />
                                 </label>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="outline" onClick={handleExport} disabled={!filteredAndSortedSuppliers.length} className="border-primary/20 luxury-glass h-11 rounded-xl px-6 font-black uppercase text-[10px] tracking-widest gap-2">
+                    <Button variant="outline" onClick={handleExport} disabled={!filteredAndSortedSuppliers.length} className="border-primary/20 luxury-glass h-12 rounded-2xl px-6 font-black uppercase text-[10px] tracking-widest gap-2">
                         <FileUp className="h-4 w-4" /> Exporter
                     </Button>
                     {isManagerOrAdmin && (
-                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-11 px-8 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-12 px-8 rounded-2xl font-black uppercase text-[10px] tracking-widest gap-2">
                             <Plus className="h-4 w-4" /> Nouveau
                         </Button>
                     )}
@@ -265,17 +289,17 @@ export default function SuppliersPage() {
             </PageHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <Card className="luxury-glass bg-primary/5 border-white/5 group overflow-hidden">
+                <Card className="luxury-glass bg-muted/10 border-white/5 group overflow-hidden">
                     <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
                         <Building className="h-24 w-24 rotate-12" />
                     </div>
                     <CardHeader className="py-4 px-6 flex flex-row items-center justify-between space-y-0 relative z-10">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Partenaires Référencés</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Registre Actif</span>
                         <Building className="h-4 w-4 text-primary opacity-50" />
                     </CardHeader>
                     <CardContent className="px-6 pb-6 relative z-10">
                         <p className="text-4xl font-black tracking-tighter">{stats.total}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">Catalogue Partenaires</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">Entités Référencées</p>
                     </CardContent>
                 </Card>
                 <Card className="luxury-glass bg-destructive/5 border-white/5 group overflow-hidden">
@@ -288,20 +312,20 @@ export default function SuppliersPage() {
                     </CardHeader>
                     <CardContent className="px-6 pb-6 relative z-10">
                         <p className="text-4xl font-black tracking-tighter text-destructive">{formatCurrency(stats.totalDebt)}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">À solder aux fournisseurs</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">À solder aux partenaires</p>
                     </CardContent>
                 </Card>
                 <Card className="luxury-glass bg-chart-quaternary/5 border-white/5 group overflow-hidden">
                     <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
-                        <RefreshCw className="h-24 w-24 rotate-12" />
+                        <Activity className="h-24 w-24 rotate-12" />
                     </div>
                     <CardHeader className="py-4 px-6 flex flex-row items-center justify-between space-y-0 relative z-10">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Comptes Actifs</span>
-                        <RefreshCw className="h-4 w-4 text-chart-quaternary opacity-50" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Comptes Créditeurs</span>
+                        <Activity className="h-4 w-4 text-chart-quaternary opacity-50" />
                     </CardHeader>
                     <CardContent className="px-6 pb-6 relative z-10">
                         <p className="text-4xl font-black tracking-tighter text-chart-quaternary">{stats.activeSuppliers}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">Mouvements financiers récents</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">Flux financiers ouverts</p>
                     </CardContent>
                 </Card>
             </div>
@@ -311,7 +335,7 @@ export default function SuppliersPage() {
                     <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
-                        placeholder="Rechercher par nom ou téléphone..." 
+                        placeholder="Rechercher par nom, contact ou téléphone..." 
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10" 
                         value={searchQuery} 
                         onChange={e => setSearchQuery(e.target.value)} 
@@ -329,9 +353,11 @@ export default function SuppliersPage() {
                                 <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="luxury-glass w-56">
-                            <DropdownMenuCheckboxItem checked={!filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(false)} className="font-bold py-2">Tous</DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem checked={filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(true)} className="font-bold py-2 text-destructive">Avec solde dû</DropdownMenuCheckboxItem>
+                        <DropdownMenuContent className="luxury-glass w-56 p-2">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Filtrage des Comptes</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
+                            <DropdownMenuCheckboxItem checked={!filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(false)} className="font-bold py-2">Tous les partenaires</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(true)} className="font-bold py-2 text-destructive">Avec solde débiteur</DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
@@ -345,7 +371,9 @@ export default function SuppliersPage() {
                                 <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="luxury-glass w-56">
+                        <DropdownMenuContent className="luxury-glass w-56 p-2">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Tri des Registres</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
                                 {Object.entries(sortOptions).map(([key, value]) => (
                                     <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2">{value}</DropdownMenuRadioItem>
@@ -371,9 +399,12 @@ export default function SuppliersPage() {
 
             {selectedSuppliers.size > 0 && (
                 <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-2xl p-4 animate-in slide-in-from-top-4 duration-500 shadow-lg">
-                    <span className="text-xs font-black uppercase text-primary tracking-[0.2em]">
-                        {selectedSuppliers.size} مورد(ين) مختار(ين)
-                    </span>
+                    <div className="flex items-center gap-4">
+                        <Badge className="bg-primary text-primary-foreground px-4 py-1.5 rounded-xl font-black text-xs">
+                            {selectedSuppliers.size} مورد(ين) مختار(ين)
+                        </Badge>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Actions sur la sélection</p>
+                    </div>
                     <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6">
                         <Trash2 className="h-4 w-4" /> 
                         Révocation Collective

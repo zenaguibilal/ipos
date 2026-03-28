@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -17,10 +16,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Edit, Trash2, Eye, Phone, User, Calendar } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Phone, User, Calendar, MessageSquare, ExternalLink } from 'lucide-react';
 import { formatCurrency, cn, safeToDate } from '@/lib/utils';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -44,6 +45,13 @@ export function SupplierTable({
   onToggleAll,
 }: SupplierTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
+  const companyProfile = useAppStore(state => state.profile);
+
+  const handleWhatsApp = (e: React.MouseEvent, supplier: Supplier) => {
+    e.stopPropagation();
+    if (!supplier.phone) return;
+    window.open(`https://wa.me/${supplier.phone}`, '_blank');
+  };
 
   return (
     <div className="rounded-[2rem] border border-white/5 bg-card/50 backdrop-blur-xl overflow-hidden shadow-2xl">
@@ -65,17 +73,27 @@ export function SupplierTable({
         </TableHeader>
         <TableBody>
           {suppliers.map((supplier) => (
-            <TableRow key={supplier.uuid} className="hover:bg-primary/5 transition-colors border-white/5 group">
-              <TableCell className="px-6">
+            <TableRow 
+                key={supplier.uuid} 
+                className={cn(
+                    "hover:bg-primary/5 transition-colors border-white/5 group cursor-pointer",
+                    selectedSuppliers.has(supplier.uuid) && "bg-primary/10"
+                )}
+                onClick={() => onToggleSelection(supplier.uuid)}
+            >
+              <TableCell className="px-6" onClick={(e) => e.stopPropagation()}>
                 <Checkbox checked={selectedSuppliers.has(supplier.uuid)} onCheckedChange={() => onToggleSelection(supplier.uuid)} />
               </TableCell>
               <TableCell className="py-4">
-                <Link href={`/suppliers/${supplier.uuid}`} className="flex items-center gap-4 group/link">
-                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-black text-sm text-primary shadow-inner group-hover/link:scale-110 transition-transform">
+                <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-black text-sm text-primary shadow-inner group-hover:scale-110 transition-transform">
                         {supplier.name.substring(0, 1).toUpperCase()}
                     </div>
-                    <span className="font-black text-sm tracking-tight group-hover/link:text-primary transition-colors">{supplier.name}</span>
-                </Link>
+                    <div className="flex flex-col">
+                        <span className="font-black text-sm tracking-tight group-hover:text-primary transition-colors">{supplier.name}</span>
+                        <span className="text-[9px] text-muted-foreground font-mono opacity-60">ID: {supplier.uuid.substring(0,8)}</span>
+                    </div>
+                </div>
               </TableCell>
               <TableCell className="hidden md:table-cell">
                 <div className="flex flex-col gap-1">
@@ -84,8 +102,8 @@ export function SupplierTable({
                         {supplier.contactPerson || '-'}
                     </div>
                     {supplier.phone && (
-                        <div className="flex items-center gap-2 text-[10px] font-mono opacity-60">
-                            <Phone className="h-2.5 w-2.5" />
+                        <div className="flex items-center gap-2 text-[10px] font-mono opacity-60 group-hover:opacity-100 transition-opacity">
+                            <Phone className="h-2.5 w-2.5 text-primary/40" />
                             {supplier.phone}
                         </div>
                     )}
@@ -105,11 +123,16 @@ export function SupplierTable({
                     {formatCurrency(supplier.balance)}
                 </span>
               </TableCell>
-              <TableCell className="text-right px-8">
-                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <TableCell className="text-right px-8" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                   <Button variant="ghost" size="icon" asChild className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary">
-                    <Link href={`/suppliers/${supplier.uuid}`}><Eye className="h-4.5 w-4.5" /></Link>
+                    <Link href={`/suppliers/${supplier.uuid}`} title="Détails complets"><Eye className="h-4.5 w-4.5" /></Link>
                   </Button>
+                  {supplier.phone && (
+                    <Button variant="ghost" size="icon" onClick={(e) => handleWhatsApp(e, supplier)} className="h-9 w-9 rounded-xl hover:bg-green-500/10 text-green-500" title="WhatsApp">
+                        <MessageSquare className="h-4.5 w-4.5" />
+                    </Button>
+                  )}
                   {isManagerOrAdmin && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -117,11 +140,18 @@ export function SupplierTable({
                           <MoreHorizontal className="h-4.5 w-4.5" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="luxury-glass">
-                        <DropdownMenuItem onClick={() => onEdit(supplier)} className="gap-2 font-bold">
+                      <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[160px]">
+                        <DropdownMenuLabel className="text-[9px] font-black uppercase opacity-50 px-2 py-1">Souveraineté</DropdownMenuLabel>
+                        <DropdownMenuItem asChild className="cursor-pointer focus:bg-primary/10 rounded-lg">
+                            <Link href={`/suppliers/${supplier.uuid}`} className="flex items-center gap-2 font-bold py-2">
+                                <ExternalLink className="h-4 w-4" /> Activité Live
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(supplier)} className="cursor-pointer focus:bg-primary/10 rounded-lg gap-2 font-bold py-2">
                           <Edit className="h-4 w-4" /> Modifier
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDelete(supplier)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 font-bold">
+                        <DropdownMenuSeparator className="bg-white/5" />
+                        <DropdownMenuItem onClick={() => onDelete(supplier)} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg gap-2 font-bold py-2">
                           <Trash2 className="h-4 w-4" /> Supprimer
                         </DropdownMenuItem>
                       </DropdownMenuContent>
