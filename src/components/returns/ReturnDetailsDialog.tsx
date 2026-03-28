@@ -23,11 +23,15 @@ import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '../ui/badge';
-import { PackageCheck, PackageX, Printer } from 'lucide-react';
+import { PackageCheck, PackageX, Printer, Undo2, Hash, Calendar, FileText, Banknote, HandCoins } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import React, { useRef } from 'react';
 import { ReturnReceipt } from './ReturnReceipt';
 import { useAppStore } from '@/stores/appStore';
+
+/**
+ * @fileOverview Return Details Dialog (Sovereign Authority Style)
+ */
 
 interface ReturnDetailsDialogProps {
     isOpen: boolean;
@@ -45,7 +49,7 @@ export function ReturnDetailsDialog({
 
     if (!productReturn) return null;
 
-    const impactDebt = productReturn.totalReturnValue - productReturn.amountRefunded;
+    const impactDebt = Math.max(0, productReturn.totalReturnValue - productReturn.amountRefunded);
 
     const handlePrint = (formatType: 'thermal' | 'a4') => {
         const printableContent = document.getElementById('receipt-for-print');
@@ -69,107 +73,118 @@ export function ReturnDetailsDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl luxury-glass border-destructive/20 print-dialog-content">
-                <DialogHeader className="print-hide">
-                    <DialogTitle className="text-xl font-bold text-destructive flex items-center gap-2">
-                        Détails du retour
-                        <span className="text-muted-foreground font-mono text-base">#{productReturn.originalInvoiceNumber}</span>
-                    </DialogTitle>
-                    <DialogDescription className="mt-1">
-                        Opération effectuée le : <span className="font-semibold text-foreground">{format(safeToDate(productReturn.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}</span>
-                    </DialogDescription>
+            <DialogContent className="max-w-3xl luxury-glass border-destructive/20 p-0 overflow-hidden shadow-2xl print-dialog-content">
+                <DialogHeader className="p-8 bg-destructive/[0.03] border-b border-white/5 print-hide">
+                    <div className="flex justify-between items-start gap-6">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-destructive/10 rounded-xl">
+                                    <Undo2 className="h-6 w-6 text-destructive" />
+                                </div>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Archives du Retour</DialogTitle>
+                            </div>
+                            <div className="flex flex-wrap gap-4 items-center">
+                                <Badge variant="outline" className="bg-background/40 border-white/10 py-1 gap-2 font-mono font-bold">
+                                    <Hash className="h-3 w-3 text-destructive" />
+                                    Ref: {productReturn.originalInvoiceNumber}
+                                </Badge>
+                                <Badge variant="outline" className="bg-background/40 border-white/10 py-1 gap-2 font-bold">
+                                    <Calendar className="h-3 w-3 text-destructive" />
+                                    {format(safeToDate(productReturn.createdAt!), 'd MMMM yyyy HH:mm', { locale: fr })}
+                                </Badge>
+                            </div>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-destructive opacity-60 mb-1">Impact Financier Total</p>
+                            <p className="text-4xl font-black tracking-tighter text-destructive">-{formatCurrency(productReturn.totalReturnValue)}</p>
+                        </div>
+                    </div>
                 </DialogHeader>
                 
-                <div className="max-h-[45vh] overflow-y-auto my-4 border rounded-2xl bg-background/50 print-hide">
-                    <Table>
-                        <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                            <TableRow>
-                                <TableHead className="font-bold">Produit</TableHead>
-                                <TableHead className="text-center font-bold">Qté</TableHead>
-                                <TableHead className="text-right font-bold">Prix Unitaire</TableHead>
-                                <TableHead className="text-center font-bold">État Stock</TableHead>
-                                <TableHead className="text-right font-bold">Total</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {productReturn.items?.map((item, index) => (
-                                <TableRow key={index} className="border-b last:border-0">
-                                    <TableCell className="font-medium py-3">{item.productName}</TableCell>
-                                    <TableCell className="text-center font-mono py-3">{item.quantity}</TableCell>
-                                    <TableCell className="text-right py-3">{formatCurrency(item.price)}</TableCell>
-                                    <TableCell className="text-center py-3">
-                                        {item.wasRestocked ? (
-                                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 text-[10px] gap-1">
-                                                <PackageCheck className="h-3 w-3" /> Réintégré
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] gap-1">
-                                                <PackageX className="h-3 w-3" /> Perdu
-                                            </Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right font-bold py-3">{formatCurrency(item.price * item.quantity)}</TableCell>
+                <div className="p-8 space-y-8 print-hide">
+                    <div className="max-h-[35vh] overflow-y-auto border rounded-[2rem] bg-background/40 shadow-inner">
+                        <Table>
+                            <TableHeader className="bg-white/5 sticky top-0 z-10">
+                                <TableRow className="border-white/5">
+                                    <TableHead className="font-black uppercase tracking-widest text-[10px] py-4 pl-6">Produit Restitué</TableHead>
+                                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Qté</TableHead>
+                                    <TableHead className="text-right font-black uppercase tracking-widest text-[10px]">Prix U.</TableHead>
+                                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Action Stock</TableHead>
+                                    <TableHead className="text-right font-black uppercase tracking-widest text-[10px] pr-6">Sous-Total</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+                            </TableHeader>
+                            <TableBody>
+                                {productReturn.items?.map((item, index) => (
+                                    <TableRow key={index} className="border-white/5 hover:bg-white/5 transition-colors">
+                                        <TableCell className="font-bold py-4 pl-6">{item.productName}</TableCell>
+                                        <TableCell className="text-center font-mono font-bold">{item.quantity}</TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(item.price)}</TableCell>
+                                        <TableCell className="text-center">
+                                            {item.wasRestocked ? (
+                                                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 text-[9px] font-black gap-1.5 h-5 px-2">
+                                                    <PackageCheck className="h-2.5 w-2.5" /> RE-STOCK
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-[9px] font-black gap-1.5 h-5 px-2">
+                                                    <PackageX className="h-2.5 w-2.5" /> PERTE
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold pr-6">{formatCurrency(item.price * item.quantity)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print-hide">
-                    <div className="space-y-2 p-4 bg-muted/20 rounded-2xl border border-border/50">
-                        <h4 className="text-xs font-black uppercase text-muted-foreground tracking-widest border-b border-border/50 pb-2 mb-3">Régularisation Financière</h4>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm items-center">
-                                <span className="font-medium text-muted-foreground">💵 Remboursé Espèces</span>
-                                <span className="font-bold text-chart-quaternary">{formatCurrency(productReturn.amountRefunded)}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+                        <div className="space-y-4 p-6 rounded-[2rem] bg-muted/20 border border-white/5 shadow-inner">
+                            <div className="flex items-center gap-3 border-b border-white/5 pb-3 mb-4">
+                                <Banknote className="h-4 w-4 text-chart-quaternary" />
+                                <h4 className="text-[10px] font-black uppercase tracking-widest">Régularisation Flux</h4>
                             </div>
-                            {impactDebt > 0.01 && (
-                                <div className="flex justify-between text-sm items-center">
-                                    <span className="font-medium text-muted-foreground">💳 Crédit sur solde</span>
-                                    <span className="font-bold text-primary">{formatCurrency(impactDebt)}</span>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Remboursé Cash</span>
+                                    <span className="font-black text-chart-quaternary">{formatCurrency(productReturn.amountRefunded)}</span>
                                 </div>
-                            )}
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-muted-foreground font-medium uppercase tracking-widest text-[10px]">Crédité sur Compte</span>
+                                    <span className="font-black text-primary">{formatCurrency(impactDebt)}</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2 p-4 bg-destructive/5 rounded-2xl border border-destructive/20">
-                        <h4 className="text-xs font-black uppercase text-destructive tracking-widest border-b border-destructive/20 pb-2 mb-3">Impact Financier</h4>
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Valeur marchandises</span>
-                                <span className="font-medium">{formatCurrency(productReturn.totalReturnValue)}</span>
+                        {productReturn.notes && (
+                            <div className="p-6 rounded-[2rem] bg-background/40 border border-white/5 space-y-3">
+                                <div className="flex items-center gap-2 text-muted-foreground opacity-60">
+                                    <FileText className="h-3 w-3" />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Motif du retour</span>
+                                </div>
+                                <p className="text-xs italic leading-relaxed">"{productReturn.notes}"</p>
                             </div>
-                            <div className="flex justify-between items-center text-2xl font-black text-destructive pt-3 border-t border-destructive/20 mt-3">
-                                <span>TOTAL</span>
-                                <span>-{formatCurrency(productReturn.totalReturnValue)}</span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
-
-                {productReturn.notes && (
-                    <div className="p-3 bg-muted/30 rounded-xl border border-border/50 text-sm print-hide">
-                        <span className="font-bold text-xs uppercase text-muted-foreground block mb-1">Raison du retour :</span>
-                        <p className="italic">"{productReturn.notes}"</p>
-                    </div>
-                )}
 
                 {/* Hidden printable receipt */}
                 <div className="hidden">
                     <ReturnReceipt ref={receiptRef} productReturn={productReturn} profile={profile} />
                 </div>
 
-                <DialogFooter className="mt-4 gap-2 sm:gap-0 print-hide">
-                    <div className="flex w-full flex-col sm:flex-row justify-between gap-2">
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handlePrint('thermal')} className="gap-2 border-primary/30">
-                                <Printer className="h-4 w-4" /> Ticket (80mm)
+                <DialogFooter className="p-8 bg-white/5 border-t border-white/5 print-hide">
+                    <div className="flex w-full flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <Button variant="outline" onClick={() => handlePrint('thermal')} className="flex-1 rounded-xl h-12 px-6 gap-2 border-primary/30 font-black uppercase text-[10px] tracking-widest">
+                                <Printer className="h-4 w-4" /> 80mm
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handlePrint('a4')} className="gap-2 border-primary/30">
-                                <Printer className="h-4 w-4" /> Facture A4
+                            <Button variant="outline" onClick={() => handlePrint('a4')} className="flex-1 rounded-xl h-12 px-6 gap-2 border-primary/30 font-black uppercase text-[10px] tracking-widest">
+                                <Printer className="h-4 w-4" /> A4 PDF
                             </Button>
                         </div>
-                        <Button onClick={() => onOpenChange(false)}>Fermer</Button>
+                        <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto rounded-xl h-12 px-10 font-black uppercase text-[10px] tracking-widest">
+                            Fermer
+                        </Button>
                     </div>
                 </DialogFooter>
             </DialogContent>
