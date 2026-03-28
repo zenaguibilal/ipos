@@ -1,6 +1,4 @@
 
-'use client';
-
 import { createClient } from "@/utils/supabase/server";
 import type { Sale } from "@/lib/types";
 import { v4 as uuidv4 } from 'uuid';
@@ -26,14 +24,18 @@ export class SaleRepository {
     }
 
     /**
-     * Deterministic High-Entropy Invoice Generation
-     * Pattern: INV-[YYMMDD]-[UNIX_MICRO]-[RAND_HEX_12]
+     * @QUAL-03: High-Entropy Deterministic Invoice Number
+     * Replaces insecure Math.random() with CSPRNG via crypto.getRandomValues
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
         const timePart = now.getTime().toString().slice(-6);
-        const entropy = Math.random().toString(16).substring(2, 14).toUpperCase();
+        
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        const entropy = array[0].toString(16).toUpperCase().padStart(8, '0');
+        
         return `INV-${datePart}-${timePart}-${entropy}`;
     }
 
@@ -64,7 +66,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE`);
+        if (sErr) throw new Error(`SALE_PERSISTENCE_FAILURE: ${sErr.message}`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,

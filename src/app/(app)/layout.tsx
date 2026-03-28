@@ -6,10 +6,12 @@ import { BottomNavBar } from '@/components/layout/bottom-navbar';
 import { StoreInitializer } from '@/components/layout/StoreInitializer';
 import { useAppStore } from '@/stores/appStore';
 import { Loader2 } from 'lucide-react';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 /**
  * @fileOverview App Layout (Direct Access Guarded)
  * Phase 11: Prevents UI rendering before profile is ready.
+ * Wrap everything in ErrorBoundary for stability.
  */
 export default function AppLayout({
   children,
@@ -35,7 +37,7 @@ export default function AppLayout({
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <StoreInitializer />
       <div className="flex h-screen flex-col bg-background">
         <AppHeader />
@@ -44,6 +46,6 @@ export default function AppLayout({
         </main>
         <BottomNavBar />
       </div>
-    </>
+    </ErrorBoundary>
   );
 }
