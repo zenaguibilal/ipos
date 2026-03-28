@@ -1,10 +1,10 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/request'
 
 /**
  * iPOS Sovereign Guard Middleware
- * Enforce strict session protection and routing authority.
+ * SEC-02: Strict session enforcement.
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -39,25 +39,23 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
   const path = request.nextUrl.pathname
 
   // Public asset exemption
-  if (path.startsWith('/_next') || path.includes('/api/auth') || path === '/icon.svg') {
+  if (path.startsWith('/_next') || path === '/icon.svg' || path.startsWith('/api/auth')) {
     return response
   }
 
-  // Auth Guard Logic
-  if (!user && path !== '/login') {
+  // Guard Logic
+  if (!session && path !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (user && path === '/login') {
+  if (session && path === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // Force No-Cache for dynamic routes
-  response.headers.set('Cache-Control', 'no-store, max-age=0')
   return response
 }
 

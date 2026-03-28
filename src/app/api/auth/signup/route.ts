@@ -16,8 +16,7 @@ const SignupSchema = z.object({
 
 export async function POST(req: Request) {
     const supabase = createClient();
-    let createdUserId: string | null = null;
-
+    
     try {
         const body = await req.json();
         const { email, password, companyName } = SignupSchema.parse(body);
@@ -31,27 +30,26 @@ export async function POST(req: Request) {
         if (authError) throw authError;
         if (!authData.user) throw new Error("AUTH_CREATION_FAILED");
         
-        createdUserId = authData.user.id;
+        const userId = authData.user.id;
 
         // 2. Create Company Profile
         const { error: profileError } = await supabase
             .from('company_profile')
             .insert([{
-                user_id: createdUserId,
+                user_id: userId,
                 company_name: companyName,
-                role: 'admin',
             }]);
 
         if (profileError) {
             // ATOMIC ROLLBACK (SEC-03)
-            // Note: In a real production env with service role, we delete the user.
-            // Here we flag the error to prevent partial states.
-            console.error("[SIGNUP_ATOMIC_FAILURE] Rollback suggested for:", createdUserId);
+            // If profile fails, we shouldn't have an orphaned auth user
+            await supabase.auth.admin.deleteUser(userId);
             throw new Error("SIGNUP_ATOMIC_FAILURE");
         }
 
         return NextResponse.json({ data: { success: true } });
     } catch (e: any) {
+        console.error("[SIGNUP_ERROR]", e.message);
         return NextResponse.json({ error: e.message || 'SIGNUP_FAILED' }, { status: 500 });
     }
 }

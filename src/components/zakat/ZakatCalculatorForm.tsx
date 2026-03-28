@@ -43,7 +43,7 @@ export function ZakatCalculatorForm({ zakatData, zakatInputs, setZakatInputs, is
                     </div>
                     <Separator className="bg-white/5" />
                     <div className="space-y-4">
-                        <Label htmlFor="cash" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Cash في الخزانة و السيولة (DA)</Label>
+                        <Label htmlFor="cash" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Cash en Caisse (DA)</Label>
                         <div className="relative group">
                             <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/30 group-focus-within:text-primary transition-colors" />
                             <Input 
@@ -75,7 +75,7 @@ export function ZakatCalculatorForm({ zakatData, zakatInputs, setZakatInputs, is
                     </div>
                     <Separator className="bg-white/5" />
                     <div className="space-y-4">
-                        <Label htmlFor="other-debts" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Charges de Fonctionnement (DA)</Label>
+                        <Label htmlFor="other-debts" className="text-[10px] font-black uppercase tracking-widest opacity-70 ml-1">Autres Dettes / Charges (DA)</Label>
                         <div className="relative group">
                             <AlertCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-destructive/30 group-focus-within:text-destructive transition-colors" />
                             <Input 

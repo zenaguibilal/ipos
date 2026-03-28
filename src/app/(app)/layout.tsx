@@ -10,8 +10,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 /**
  * @fileOverview App Layout (Direct Access Guarded)
- * Phase 11: Prevents UI rendering before profile is ready.
- * Wrap everything in ErrorBoundary for stability.
+ * Fixed QUAL-02: Wrapped in ErrorBoundary.
  */
 export default function AppLayout({
   children,

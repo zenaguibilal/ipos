@@ -7,6 +7,7 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Autonomous Sovereign Authority)
+ * Fixed ARCH-01: Removed 'use client'.
  * Fixed QUAL-03: High-entropy invoice generation.
  */
 export class SaleRepository {
