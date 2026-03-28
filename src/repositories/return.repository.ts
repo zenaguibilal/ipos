@@ -12,6 +12,30 @@ export class ReturnRepository {
     private productRepo = new ProductRepository();
     private customerRepo = new CustomerRepository();
 
+    async getAll(filters?: { query?: string; from?: string; to?: string }): Promise<ProductReturn[]> {
+        let query = this.supabase
+            .from('product_returns')
+            .select('*, return_items(*)');
+
+        if (filters?.from) query = query.gte('created_at', filters.from);
+        if (filters?.to) query = query.lte('created_at', filters.to);
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw new Error(`RETURNS_FETCH_ERROR: ${error.message}`);
+        
+        let results = data.map(r => this.mapFromDb(r));
+
+        if (filters?.query) {
+            const q = filters.query.toLowerCase();
+            results = results.filter(r => 
+                r.originalInvoiceNumber.toLowerCase().includes(q) ||
+                r.notes?.toLowerCase().includes(q)
+            );
+        }
+
+        return results;
+    }
+
     async create(returnData: any): Promise<ProductReturn> {
         const { data: ret, error: rErr } = await this.supabase
             .from('product_returns')
@@ -28,7 +52,6 @@ export class ReturnRepository {
 
         if (rErr) throw new Error(`RETURN_CREATION_FAILED: ${rErr.message}`);
 
-        // تسجيل العناصر المرتجعة وتحديث المخزون
         const returnItems = returnData.items.map((item: any) => ({
             return_uuid: ret.uuid,
             product_uuid: item.productUuid,
@@ -45,7 +68,7 @@ export class ReturnRepository {
         // أتمتة السلطة: تحديث المخزون وحساب مديونية العميل فوراً
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
-                await this.productRepo.updateStock(item.product_uuid, item.quantity);
+                await this.productRepo.updateStock(item.product_uuid, item.quantity, 'return', ret.uuid);
             }
         }
 
@@ -54,6 +77,30 @@ export class ReturnRepository {
         }
 
         return this.mapFromDb({ ...ret, return_items: returnItems });
+    }
+
+    async delete(uuid: string): Promise<void> {
+        const { data: ret, error: fErr } = await this.supabase
+            .from('product_returns')
+            .select('*, return_items(*)')
+            .eq('uuid', uuid)
+            .single();
+        
+        if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
+
+        // عكس أثر المخزون: إذا تم إعادة التخزين سابقاً، يجب سحبه الآن لأننا نلغي المرتجع
+        for (const item of ret.return_items) {
+            if (item.was_restocked && item.product_uuid) {
+                await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
+            }
+        }
+
+        const { error: dErr } = await this.supabase.from('product_returns').delete().eq('uuid', uuid);
+        if (dErr) throw new Error(`RETURN_DELETE_FAILED: ${dErr.message}`);
+
+        if (ret.customer_uuid) {
+            await this.customerRepo.recalculateBalance(ret.customer_uuid);
+        }
     }
 
     private mapFromDb(r: any): ProductReturn {

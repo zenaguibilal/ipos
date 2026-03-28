@@ -6,6 +6,21 @@ import { ReturnSchema } from '@/lib/schemas';
  * @fileOverview API WALL: Product Returns Gateway (Validated)
  */
 
+export async function GET(req: Request) {
+    try {
+        const { searchParams } = new URL(req.url);
+        const query = searchParams.get('query') || undefined;
+        const from = searchParams.get('from') || undefined;
+        const to = searchParams.get('to') || undefined;
+
+        const repo = new ReturnRepository();
+        const data = await repo.getAll({ query, from, to });
+        return NextResponse.json({ data });
+    } catch (e: any) {
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
