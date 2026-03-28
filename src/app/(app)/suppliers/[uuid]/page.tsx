@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -24,7 +25,7 @@ import { PrintSupplierStatementDialog } from '@/components/suppliers/PrintSuppli
 import { useAppStore, useAppActions } from '@/stores/appStore';
 
 /**
- * @fileOverview Supplier Detail Page (Refined)
+ * @fileOverview Supplier Detail Page (WhatsApp Contact Integrated)
  */
 
 export default function SupplierDetailPage() {
@@ -77,7 +78,8 @@ export default function SupplierDetailPage() {
 
     const handleWhatsApp = () => {
         if (!supplier?.phone) return;
-        window.open(`https://wa.me/${supplier.phone}`, '_blank');
+        const message = `Bonjour ${supplier.name}, je vous contacte concernant nos commandes en cours sur iPOS. Cordialement.`;
+        window.open(`https://wa.me/${supplier.phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
     if (isLoading && !supplier) {
@@ -194,7 +196,7 @@ export default function SupplierDetailPage() {
             
             {supplier && <SupplierPaymentDialog isOpen={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen} supplier={supplier} onSuccess={() => fetchSupplierDetails(supplierUuid)} />}
             {supplier && <PrintSupplierStatementDialog isOpen={isStatementDialogOpen} onOpenChange={setIsStatementDialogOpen} supplier={supplier} activity={activity} />}
-            <StockIntakeDetailsDialog isOpen={isIntakeDetailsOpen} onOpenChange={setIsIntakeDetailsOpen} intake={selectedIntake} supplierName={supplier.name} />
+            <StockIntakeDetailsDialog isOpen={isIntakeDetailsOpen} onOpenChange={isIntakeDetailsOpen} intake={selectedIntake} supplierName={supplier.name} />
         </div>
     );
 }

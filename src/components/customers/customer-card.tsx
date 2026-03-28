@@ -43,7 +43,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
         e.stopPropagation();
         if (!customer.phone) return;
         const storeName = companyProfile?.companyName || "iPOS Store";
-        const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${customer.outstandingBalance.toFixed(1)} DA. Merci de votre fidélité.`;
+        const message = `Bonjour ${customer.firstName}, votre solde chez *${storeName}* est de *${customer.outstandingBalance.toFixed(1)} DA*. Merci de régulariser à votre convenance. Bonne journée !`;
         window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 

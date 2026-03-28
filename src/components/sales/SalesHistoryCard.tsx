@@ -2,16 +2,15 @@
 'use client';
 
 import React from 'react';
-import type { Sale, Customer } from '@/lib/types';
+import type { Sale } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, CreditCard, Banknote, HandCoins, ShoppingBag, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { safeToDate, formatCurrency } from '@/lib/utils';
+import { safeToDate, formatCurrency, cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 
 interface SalesHistoryCardProps {
@@ -30,28 +29,32 @@ export const SalesHistoryCard = React.memo(({ sale, customerName, customerPhone,
     const hasCard = sale.payments.some(p => p.method === 'card');
 
     const paymentStatusMap = {
-        paid: { text: 'Payé', icon: CheckCircle, color: 'text-chart-quaternary', bg: 'bg-chart-quaternary/10' },
+        paid: { text: 'Soldé', icon: CheckCircle, color: 'text-chart-quaternary', bg: 'bg-chart-quaternary/10' },
         partial: { text: 'Partiel', icon: AlertCircle, color: 'text-chart-secondary', bg: 'bg-chart-secondary/10' },
-        unpaid: { text: 'Impayé', icon: Clock, color: 'text-destructive', bg: 'bg-destructive/10' },
+        unpaid: { text: 'À Crédit', icon: Clock, color: 'text-destructive', bg: 'bg-destructive/10' },
     };
     const status = paymentStatusMap[sale.paymentStatus];
 
     const handleWhatsAppShare = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!sale || !customerPhone) return;
-        const storeName = profile?.companyName || "iPOS Store";
-        const itemsList = sale.items.map(i => `- ${i.name} (${i.quantity} x ${i.price} DA)`).join('\n');
-        const message = `*FACTURE iPOS - ${storeName}*\n` +
-                        `--------------------------\n` +
-                        `Réf: #${sale.invoiceNumber}\n` +
-                        `Date: ${format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm')}\n` +
-                        `--------------------------\n` +
+        const storeName = profile?.companyName || "iPOS Authority";
+        const dateStr = format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm');
+        
+        const itemsList = sale.items.map(i => `• ${i.name}\n  (${i.quantity} x ${i.price.toFixed(1)} DA)`).join('\n');
+        
+        const message = `*${storeName} - FACTURE NUMÉRIQUE*\n` +
+                        `------------------------------\n` +
+                        `🧾 Réf: #${sale.invoiceNumber}\n` +
+                        `📅 Date: ${dateStr}\n` +
+                        `------------------------------\n` +
                         `${itemsList}\n` +
-                        `--------------------------\n` +
-                        `*TOTAL: ${sale.total.toFixed(1)} DA*\n` +
-                        `Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
-                        `Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
-                        `Merci de votre confiance !`;
+                        `------------------------------\n` +
+                        `*TOTAL À PAYER: ${sale.total.toFixed(1)} DA*\n` +
+                        `💰 Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
+                        `💳 Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
+                        `_Merci de votre confiance_`;
+
         window.open(`https://wa.me/${customerPhone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
@@ -91,7 +94,7 @@ export const SalesHistoryCard = React.memo(({ sale, customerName, customerPhone,
                             )}
                             {onRecordPayment && (
                                 <DropdownMenuItem onClick={onRecordPayment} className="rounded-lg font-black text-primary bg-primary/5 gap-3 py-2.5">
-                                    <HandCoins className="h-4 w-4" /> Encaisser solده
+                                    <HandCoins className="h-4 w-4" /> Encaisser solde
                                 </DropdownMenuItem>
                             )}
                             {isManagerOrAdmin && (

@@ -53,8 +53,8 @@ export function CustomerTable({
   const handleWhatsAppReminder = (e: React.MouseEvent, customer: Customer) => {
     e.stopPropagation();
     if (!customer.phone) return;
-    const storeName = companyProfile?.companyName || "iPOS Store";
-    const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${customer.outstandingBalance.toFixed(1)} DA. Merci.`;
+    const storeName = companyProfile?.companyName || "iPOS Authority";
+    const message = `Bonjour ${customer.firstName}, votre solde chez *${storeName}* est de *${customer.outstandingBalance.toFixed(1)} DA*. Merci.`;
     window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -156,7 +156,7 @@ export function CustomerTable({
                 <TableCell className="text-right px-8" onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
                     {customer.phone && customer.outstandingBalance > 0 && (
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-green-600 hover:bg-green-500/10" onClick={(e) => handleWhatsAppReminder(e, customer)} title="WhatsApp">
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-green-600 hover:bg-green-500/10" onClick={(e) => handleWhatsAppReminder(e, customer)} title="Rappel WhatsApp">
                             <MessageSquare className="h-4 w-4" />
                         </Button>
                     )}

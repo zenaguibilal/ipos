@@ -60,19 +60,23 @@ export function SalesHistoryTable({
   const handleWhatsAppShare = (e: React.MouseEvent, sale: Sale, phone?: string) => {
     e.stopPropagation();
     if (!sale || !phone) return;
-    const storeName = profile?.companyName || "iPOS Store";
-    const itemsList = sale.items.map(i => `- ${i.name} (${i.quantity} x ${i.price} DA)`).join('\n');
-    const message = `*FACTURE iPOS - ${storeName}*\n` +
-                    `--------------------------\n` +
-                    `Réf: #${sale.invoiceNumber}\n` +
-                    `Date: ${format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm')}\n` +
-                    `--------------------------\n` +
+    const storeName = profile?.companyName || "iPOS Authority";
+    const dateStr = format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm');
+    
+    const itemsList = sale.items.map(i => `• ${i.name}\n  (${i.quantity} x ${i.price.toFixed(1)} DA)`).join('\n');
+    
+    const message = `*${storeName} - FACTURE NUMÉRIQUE*\n` +
+                    `------------------------------\n` +
+                    `🧾 Réf: #${sale.invoiceNumber}\n` +
+                    `📅 Date: ${dateStr}\n` +
+                    `------------------------------\n` +
                     `${itemsList}\n` +
-                    `--------------------------\n` +
-                    `*TOTAL: ${sale.total.toFixed(1)} DA*\n` +
-                    `Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
-                    `Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
-                    `Merci de votre confiance !`;
+                    `------------------------------\n` +
+                    `*TOTAL À PAYER: ${sale.total.toFixed(1)} DA*\n` +
+                    `💰 Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
+                    `💳 Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
+                    `_Merci de votre confiance_`;
+
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
