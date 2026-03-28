@@ -1,29 +1,22 @@
 'use client';
 
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { CompanyProfileForm } from "@/components/profile/company-profile-form";
-import { DataManagementCard } from "@/components/profile/DataManagementCard";
-import { StaffManagement } from "@/components/profile/StaffManagement";
-import { SecuritySettings } from "@/components/profile/SecuritySettings";
-import { DisplaySettings } from "@/components/profile/DisplaySettings";
-import { useAppStore, useIsAdmin, useAppActions } from "@/stores/appStore";
+import { useAppStore } from "@/stores/appStore";
 import { 
-    User, Building2, Database, Settings2, ShieldCheck, 
-    BadgeCheck, LayoutDashboard, Cloud, Wifi, Monitor, 
-    Cpu, Fingerprint, Globe, KeyRound, Server, Users, 
-    Terminal, Activity, Zap, Lock, History, ShoppingBag, 
-    Palette
+    User, Building2, ShieldCheck, 
+    BadgeCheck, Cloud, Wifi, Monitor, 
+    Cpu, Fingerprint, Globe, KeyRound, Server, 
+    Terminal, Activity, Zap, History, ShoppingBag
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useEffect, useState, useMemo } from "react";
-import { Separator } from "@/components/ui/separator";
 
 /**
- * @fileOverview Sovereign Profile & Configuration Page (Finalized Perfection)
- * المركز القيادي الأعلى للمنظومة - حيث تلتقي الهوية بالسيادة المطلقة.
+ * @fileOverview Sovereign User Profile Page
+ * المركز التعريفي للهوية والنشاط - حيث تلتقي الهوية بالسيادة الرقمية.
  */
 
 export default function ProfilePage() {
@@ -32,8 +25,8 @@ export default function ProfilePage() {
         sales: state.lastCompletedSale ? [state.lastCompletedSale.sale] : [],
         expenses: state.expenses,
     }));
-    const isAdmin = useIsAdmin();
-    const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...', platform: 'GCP-Sovereign' });
+    
+    const [systemInfo, setSystemInfo] = useState({ os: 'Chargement...', browser: 'Chargement...' });
     const [terminalId, setTerminalId] = useState('INIT-0000');
 
     useEffect(() => {
@@ -51,7 +44,7 @@ export default function ProfilePage() {
         else if (ua.indexOf("Safari") !== -1) browser = "Safari";
         else if (ua.indexOf("Edge") !== -1) browser = "Edge";
 
-        setSystemInfo({ os, browser, platform: 'GCP-Cloud-Sovereign' });
+        setSystemInfo({ os, browser });
         setTerminalId(`iPOS-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${os.substring(0,3).toUpperCase()}`);
     }, []);
 
@@ -59,19 +52,19 @@ export default function ProfilePage() {
         admin: { 
             label: 'Administrateur Système', 
             color: 'bg-primary text-primary-foreground shadow-lg shadow-primary/20',
-            desc: 'Souveraineté totale : Gestion des données, du personnel et de la configuration.',
+            desc: 'Souveraineté totale : Gestion des données و personnel.',
             icon: ShieldCheck
         },
         manager: { 
             label: 'Gérant d\'Établissement', 
             color: 'bg-blue-500 text-white shadow-lg shadow-blue-500/20',
-            desc: 'Gestion opérationnelle : Stocks, fournisseurs et rapports financiers.',
+            desc: 'Gestion opérationnelle : Stocks, fournisseurs و rapports.',
             icon: BadgeCheck
         },
         cashier: {
             label: 'Opérateur de Caisse',
             color: 'bg-orange-500 text-white shadow-lg shadow-orange-500/20',
-            desc: 'Exécution commerciale : Ventes, retours et suivi clients.',
+            desc: 'Exécution commerciale : Ventes و suivi clients.',
             icon: Zap
         }
     };
@@ -103,10 +96,10 @@ export default function ProfilePage() {
                             </div>
                         </div>
                         <div>
-                            <h1 className="text-5xl font-black uppercase tracking-tighter italic leading-none">Espace <span className="text-primary">Souverain</span></h1>
+                            <h1 className="text-5xl font-black uppercase tracking-tighter italic leading-none">Espace <span className="text-primary">Individuel</span></h1>
                             <p className="text-[11px] font-black uppercase tracking-[0.5em] text-muted-foreground opacity-60 mt-3 flex items-center gap-2">
                                 <Activity className="h-3 w-3 text-primary animate-pulse" />
-                                iPOS Cloud Authority • Terminal Active
+                                iPOS Cloud Profile • Terminal Active
                             </p>
                         </div>
                     </div>
@@ -121,65 +114,43 @@ export default function ProfilePage() {
                 </div>
             </div>
 
-            <Tabs defaultValue="account" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 luxury-glass p-2 h-auto bg-muted/20 border-white/5 shadow-inner gap-2">
-                    <TabsTrigger value="account" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Terminal className="h-4 w-4" /> Système
+            <Tabs defaultValue="identity" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto luxury-glass p-2 h-auto bg-muted/20 border-white/5 shadow-inner gap-2">
+                    <TabsTrigger value="identity" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
+                        <Terminal className="h-4 w-4" /> Statut
                     </TabsTrigger>
                     <TabsTrigger value="company" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
                         <Building2 className="h-4 w-4" /> Établissement
                     </TabsTrigger>
-                    <TabsTrigger value="settings" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Settings2 className="h-4 w-4" /> Réglages
-                    </TabsTrigger>
-                    <TabsTrigger value="display" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Palette className="h-4 w-4" /> Affichage
-                    </TabsTrigger>
-                    <TabsTrigger value="security" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Lock className="h-4 w-4" /> Sécurité
-                    </TabsTrigger>
-                    <TabsTrigger value="staff" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all">
-                        <Users className="h-4 w-4" /> Personnel
-                    </TabsTrigger>
-                    <TabsTrigger value="data" className="py-4 gap-3 rounded-2xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-background data-[state=active]:text-primary transition-all" disabled={!isAdmin}>
-                        <Database className="h-4 w-4" /> Données
-                    </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="account" className="mt-10 space-y-10 animate-in slide-in-from-bottom-4 duration-700">
+                <TabsContent value="identity" className="mt-10 space-y-10 animate-in slide-in-from-bottom-4 duration-700">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <Card className="luxury-glass border-white/5 bg-muted/10 p-10 flex flex-col items-center text-center group hover:bg-muted/20 transition-all">
                             <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <Cloud className="h-10 w-10 text-primary" />
                             </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Architecture Core</p>
-                            <p className="text-xl font-bold">Cloud-Native Absolute</p>
-                            <p className="text-[10px] text-muted-foreground mt-3 italic leading-relaxed">
-                                Zéro empreinte locale • Données sécurisées AES-256 <br/> Multi-Region Resiliency
-                            </p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Compte Cloud</p>
+                            <p className="text-sm font-bold truncate max-w-full px-2">{profile?.email || 'Instance iPOS'}</p>
+                            <p className="text-[10px] text-muted-foreground mt-3 italic leading-relaxed uppercase font-black opacity-40">Identité Certifiée</p>
                         </Card>
                         
                         <Card className="luxury-glass border-white/5 bg-muted/10 p-10 flex flex-col items-center text-center group hover:bg-muted/20 transition-all">
                             <div className="h-20 w-20 rounded-3xl bg-chart-quaternary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <Wifi className="h-10 w-10 text-chart-quaternary" />
                             </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">État du Flux Live</p>
-                            <p className="text-xl font-bold text-chart-quaternary">Synchronisation Temps Réel</p>
-                            <p className="text-[10px] text-muted-foreground mt-3 italic leading-relaxed">
-                                Ping: stable • Latence {"<"} 50ms <br/> Flux de données bidirectionnel
-                            </p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Connectivité</p>
+                            <p className="text-xl font-bold text-chart-quaternary">Synchronisation Live</p>
+                            <p className="text-[10px] text-muted-foreground mt-3 italic leading-relaxed">Flux de données bidirectionnel sécurisé</p>
                         </Card>
 
                         <Card className="luxury-glass border-white/5 bg-muted/10 p-10 flex flex-col items-center text-center group hover:bg-muted/20 transition-all">
                             <div className="h-20 w-20 rounded-3xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                                 <KeyRound className="h-10 w-10 text-blue-400" />
                             </div>
-                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">Accès Terminal</p>
-                            <p className="text-xl font-bold">Session Authentifiée</p>
-                            <p className="text-[10px] text-muted-foreground mt-3 italic leading-relaxed">
-                                Identifiant Cloud: {profile?.user_id?.substring(0,12)}... <br/>
-                                Token: Valid (Secure)
-                            </p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2">ID Terminal</p>
+                            <p className="text-xl font-mono font-bold">{terminalId}</p>
+                            <p className="text-[10px] text-muted-foreground mt-3 italic leading-relaxed">Instance Session unique</p>
                         </Card>
                     </div>
 
@@ -196,37 +167,29 @@ export default function ProfilePage() {
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Système OS</p>
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-lg">
-                                                <Cpu className="h-4 w-4 text-primary" />
-                                            </div>
+                                            <div className="p-2 bg-primary/10 rounded-lg"><Cpu className="h-4 w-4 text-primary" /></div>
                                             <p className="font-bold text-sm">{systemInfo.os}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Interface Nav.</p>
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-lg">
-                                                <Globe className="h-4 w-4 text-primary" />
-                                            </div>
+                                            <div className="p-2 bg-primary/10 rounded-lg"><Globe className="h-4 w-4 text-primary" /></div>
                                             <p className="font-bold text-sm">{systemInfo.browser}</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">ID Terminal</p>
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-lg">
-                                                <Fingerprint className="h-4 w-4 text-primary" />
-                                            </div>
-                                            <p className="font-mono font-bold text-sm text-primary">{terminalId}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Infrastructure Host</p>
                                         <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-primary/10 rounded-lg">
-                                                <Server className="h-4 w-4 text-primary" />
-                                            </div>
+                                            <div className="p-2 bg-primary/10 rounded-lg"><Server className="h-4 w-4 text-primary" /></div>
                                             <p className="font-bold text-sm">Google Cloud Platform</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest opacity-60">Niveau d'Accès</p>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg"><ShieldCheck className="h-4 w-4 text-primary" /></div>
+                                            <p className="font-bold text-sm uppercase">{profile?.role}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -285,36 +248,6 @@ export default function ProfilePage() {
                         </CardHeader>
                         <CompanyProfileForm mode="company" />
                     </Card>
-                </TabsContent>
-
-                <TabsContent value="settings" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
-                    <Card className="luxury-glass border-white/5 overflow-hidden shadow-2xl">
-                        <CardHeader className="bg-primary/5 border-b border-white/5 p-8">
-                            <CardTitle className="flex items-center gap-4 text-xl font-black uppercase tracking-tight">
-                                <div className="p-3 bg-primary/10 rounded-2xl">
-                                    <Settings2 className="h-6 w-6 text-primary" />
-                                </div>
-                                Paramètres Métier & Références Marché
-                            </CardTitle>
-                        </CardHeader>
-                        <CompanyProfileForm mode="settings" />
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="display" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
-                    <DisplaySettings />
-                </TabsContent>
-
-                <TabsContent value="security" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
-                    <SecuritySettings />
-                </TabsContent>
-
-                <TabsContent value="staff" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
-                    <StaffManagement />
-                </TabsContent>
-
-                <TabsContent value="data" className="mt-10 animate-in slide-in-from-bottom-4 duration-700">
-                    <DataManagementCard />
                 </TabsContent>
             </Tabs>
         </div>

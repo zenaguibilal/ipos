@@ -3,15 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  Package,
   Users2,
   LayoutDashboard,
   ShoppingCart,
   Archive,
   History,
-  Search,
-  Menu,
-  MoreVertical,
+  Settings2,
   Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,14 +16,14 @@ import { useIsManagerOrAdmin } from '@/stores/appStore';
 
 /**
  * @fileOverview Sovereign Mobile Navigation (Luxury Floating Edition)
- * Phase 14: Finalized Role-Based UI for touch devices.
+ * Updated to include separate Settings and Profile links.
  */
 
 const allNavLinks = [
   { href: '/dashboard', label: 'Stats', icon: LayoutDashboard, manager: false },
   { href: '/customers', label: 'Clients', icon: Users2, manager: false },
   { href: '/sales-history', label: 'Historique', icon: History, manager: false },
-  { href: '/stock', label: 'Stock', icon: Archive, manager: true },
+  { href: '/settings', label: 'Réglages', icon: Settings2, manager: true },
 ];
 
 export function BottomNavBar() {
@@ -40,7 +37,7 @@ export function BottomNavBar() {
     <div className="fixed bottom-0 left-0 z-50 w-full border-t border-white/5 bg-background/80 backdrop-blur-3xl md:hidden print-hide safe-bottom pb-4 shadow-[0_-15px_40px_-5px_rgba(0,0,0,0.4)]">
       <div className="grid grid-cols-5 items-stretch justify-around h-16 px-2">
         
-        {/* Left Section Links (Home / Customers) */}
+        {/* Home & Customers */}
         {navLinks.slice(0, 2).map(link => (
           <Link
             key={link.href}
@@ -65,25 +62,18 @@ export function BottomNavBar() {
           </Link>
         ))}
 
-        {/* Central Action: Live Sell (Floating Highlight) */}
+        {/* Central Action: Live Sell */}
         <div className="flex items-center justify-center">
             <Link href="/sell" className="-mt-12 transition-all active:scale-90 relative group">
-                 {/* Radial Glow */}
                  <div className="absolute inset-0 bg-primary/30 rounded-full blur-2xl group-hover:bg-primary/50 transition-all duration-1000 animate-pulse" />
-                 
                  <div className="flex h-16 w-16 items-center justify-center rounded-[2.2rem] bg-primary text-primary-foreground shadow-[0_15px_35px_-5px_rgba(var(--primary),0.6)] ring-4 ring-background relative overflow-hidden z-10 border border-white/20">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-50" />
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                     <ShoppingCart className="h-7 w-7 relative z-10 group-hover:scale-110 transition-transform duration-500" />
                  </div>
-                 
-                 <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-[0.3em] text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                    Caisse
-                 </span>
             </Link>
         </div>
 
-        {/* Right Section Links (History / Stock or More) */}
+        {/* Settings/History */}
         {navLinks.slice(2).map(link => (
           <Link
             key={link.href}
@@ -108,7 +98,7 @@ export function BottomNavBar() {
           </Link>
         ))}
 
-        {/* Menu / Profile Toggle */}
+        {/* Profile Link */}
         <Link
             href="/profile"
             className={cn(

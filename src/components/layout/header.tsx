@@ -22,7 +22,8 @@ import {
   Calculator,
   Terminal,
   Activity,
-  Zap
+  Zap,
+  Settings2
 } from 'lucide-react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ const allNavLinks = [
   { href: '/expenses', label: 'Dépenses', icon: Wallet, managerOnly: true },
   { href: '/bread', label: 'Boulangerie', icon: Wheat, managerOnly: true },
   { href: '/zakat', label: 'Zakat', icon: Coins, managerOnly: true },
+  { href: '/settings', label: 'Réglages', icon: Settings2, managerOnly: true },
 ];
 
 export function AppHeader() {
@@ -216,15 +218,17 @@ export function AppHeader() {
                             <DropdownMenuItem asChild>
                                 <Link href="/profile" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
                                     <User className="h-4 w-4 opacity-60" />
-                                    <span className="text-xs font-bold">Centre de Commandement</span>
+                                    <span className="text-xs font-bold">Mon Profil</span>
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/profile" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
-                                    <Settings className="h-4 w-4 opacity-60" />
-                                    <span className="text-xs font-bold">Paramètres Système</span>
-                                </Link>
-                            </DropdownMenuItem>
+                            {isManagerOrAdmin && (
+                                <DropdownMenuItem asChild>
+                                    <Link href="/settings" className="flex items-center gap-3 py-3 px-4 rounded-xl cursor-pointer hover:bg-white/5 transition-colors">
+                                        <Settings className="h-4 w-4 opacity-60" />
+                                        <span className="text-xs font-bold">Réglages Système</span>
+                                    </Link>
+                                </DropdownMenuItem>
+                            )}
                         </div>
 
                         <DropdownMenuSeparator className="bg-white/5 my-2" />
