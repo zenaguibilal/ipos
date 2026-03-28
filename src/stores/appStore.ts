@@ -47,6 +47,10 @@ interface AppState {
     supplierViewMode: 'grid' | 'list';
     stockViewMode: 'grid' | 'list';
 
+    // UI Preferences
+    isCompactMode: boolean;
+    isMotionEnabled: boolean;
+
     carts: Cart[];
     activeCartId: string;
     lastCompletedSale: { sale: Sale; customer?: Customer } | null;
@@ -87,6 +91,9 @@ interface AppState {
         setSalesHistoryViewMode: (mode: 'grid' | 'list') => void;
         setSupplierViewMode: (mode: 'grid' | 'list') => void;
         setStockViewMode: (mode: 'grid' | 'list') => void;
+
+        setCompactMode: (enabled: boolean) => void;
+        setMotionEnabled: (enabled: boolean) => void;
 
         toggleSellProductSheet: (open: boolean) => void;
         toggleSellDebtPayment: (open: boolean) => void;
@@ -162,6 +169,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     salesHistoryViewMode: 'list',
     supplierViewMode: 'grid',
     stockViewMode: 'list',
+
+    isCompactMode: false,
+    isMotionEnabled: true,
 
     modals: {
         sell: {
@@ -351,6 +361,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         setSalesHistoryViewMode: (mode) => set({ salesHistoryViewMode: mode }),
         setSupplierViewMode: (mode) => set({ supplierViewMode: mode }),
         setStockViewMode: (mode) => set({ stockViewMode: mode }),
+
+        setCompactMode: (enabled) => set({ isCompactMode: enabled }),
+        setMotionEnabled: (enabled) => set({ isMotionEnabled: enabled }),
 
         toggleSellProductSheet: (open) => set(produce((s: AppState) => { s.modals.sell.isProductSheetOpen = open; })),
         toggleSellDebtPayment: (open) => set(produce((s: AppState) => { s.modals.sell.isDebtPaymentDialogOpen = open; })),

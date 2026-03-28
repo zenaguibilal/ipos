@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { useAppStore, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
+import { useEffect } from "react";
 
 /**
  * @fileOverview Display Settings Component (Sovereign UX Control)
@@ -22,12 +24,29 @@ export function DisplaySettings() {
     const { theme, setTheme } = useTheme();
     const { 
         productViewMode, customerViewMode, expenseViewMode, 
-        stockViewMode, salesHistoryViewMode, supplierViewMode
+        stockViewMode, salesHistoryViewMode, supplierViewMode,
+        isCompactMode, isMotionEnabled
     } = useAppStore();
+    
     const { 
         setProductViewMode, setCustomerViewMode, setExpenseViewMode, 
-        setStockViewMode, setSalesHistoryViewMode, setSupplierViewMode 
+        setStockViewMode, setSalesHistoryViewMode, setSupplierViewMode,
+        setCompactMode, setMotionEnabled
     } = useAppActions();
+
+    // Effect to apply compact mode to body
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            document.body.classList.toggle('compact-mode', isCompactMode);
+        }
+    }, [isCompactMode]);
+
+    // Effect to apply reduced motion to body
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            document.body.classList.toggle('reduce-motion', !isMotionEnabled);
+        }
+    }, [isMotionEnabled]);
 
     const ThemeCard = ({ value, label, icon: Icon }: { value: string, label: string, icon: any }) => (
         <button 
@@ -133,7 +152,7 @@ export function DisplaySettings() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <Maximize2 className="h-5 w-5 text-primary" />
+                                <Minimize2 className="h-5 w-5 text-primary" />
                                 <h4 className="text-xs font-black uppercase tracking-[0.2em]">Densité de Données</h4>
                             </div>
                             <div className="p-6 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-between group">
@@ -141,7 +160,11 @@ export function DisplaySettings() {
                                     <p className="text-sm font-bold">Mode Compact</p>
                                     <p className="text-[10px] text-muted-foreground leading-relaxed uppercase font-black opacity-60">Réduire l'espacement pour les listes denses</p>
                                 </div>
-                                <Switch className="data-[state=checked]:bg-primary" />
+                                <Switch 
+                                    checked={isCompactMode} 
+                                    onCheckedChange={setCompactMode} 
+                                    className="data-[state=checked]:bg-primary" 
+                                />
                             </div>
                         </div>
 
@@ -155,7 +178,11 @@ export function DisplaySettings() {
                                     <p className="text-sm font-bold">Fluidité Maximale</p>
                                     <p className="text-[10px] text-muted-foreground leading-relaxed uppercase font-black opacity-60">Activer les transitions et animations de luxe</p>
                                 </div>
-                                <Switch defaultChecked className="data-[state=checked]:bg-primary" />
+                                <Switch 
+                                    checked={isMotionEnabled} 
+                                    onCheckedChange={setMotionEnabled} 
+                                    className="data-[state=checked]:bg-primary" 
+                                />
                             </div>
                         </div>
                     </div>
@@ -165,7 +192,7 @@ export function DisplaySettings() {
                         <Monitor className="h-4 w-4 text-primary" />
                     </div>
                     <p className="text-[10px] text-muted-foreground italic leading-relaxed">
-                        "Les paramètres d'affichage sont stockés localement sur ce terminal pour garantir un confort visuel optimal sans impacter les autres postes de travail de votre instance iPOS Cloud."
+                        "Les paramètres d'affichage sont stockés dans votre session de travail actuelle pour garantir un confort visuel optimal sans impacter les autres postes de travail de votre instance iPOS Cloud."
                     </p>
                 </div>
             </Card>

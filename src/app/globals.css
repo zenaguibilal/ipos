@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -94,6 +95,28 @@
     content: "";
     @apply fixed inset-0 pointer-events-none opacity-[0.02] z-[100];
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  /* Compact Mode Adjustments */
+  body.compact-mode {
+    --radius: 0.75rem;
+  }
+
+  /* Avoiding @apply on utilities that are being redefined to prevent circular dependencies */
+  body.compact-mode .p-10 { padding: 1.5rem !important; }
+  body.compact-mode .p-8 { padding: 1rem !important; }
+  body.compact-mode .p-6 { padding: 0.75rem !important; }
+  body.compact-mode .gap-12 { gap: 1.5rem !important; }
+  body.compact-mode .gap-8 { gap: 1rem !important; }
+  body.compact-mode .h-14 { height: 2.75rem !important; }
+  body.compact-mode .h-16 { height: 3rem !important; }
+
+  /* Reduced Motion Adjustments */
+  body.reduce-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
