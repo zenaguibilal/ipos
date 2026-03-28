@@ -106,10 +106,16 @@
   body.compact-mode .p-10 { padding: 1.5rem !important; }
   body.compact-mode .p-8 { padding: 1rem !important; }
   body.compact-mode .p-6 { padding: 0.75rem !important; }
+  body.compact-mode .p-4 { padding: 0.5rem !important; }
+  
   body.compact-mode .gap-12 { gap: 1.5rem !important; }
   body.compact-mode .gap-8 { gap: 1rem !important; }
+  body.compact-mode .gap-6 { gap: 0.75rem !important; }
+  body.compact-mode .gap-4 { gap: 0.5rem !important; }
+
   body.compact-mode .h-14 { height: 2.75rem !important; }
-  body.compact-mode .h-16 { height: 3rem !important; }
+  body.compact-mode .h-16 { height: 3.25rem !important; }
+  body.compact-mode .h-12 { height: 2.25rem !important; }
 
   /* Reduced Motion Adjustments */
   body.reduce-motion * {

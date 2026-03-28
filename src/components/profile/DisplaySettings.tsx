@@ -8,16 +8,16 @@ import { useTheme } from "next-themes";
 import { 
     Palette, Sun, Moon, Monitor, LayoutGrid, List, 
     Sparkles, Zap, Maximize2, Minimize2, CheckCircle2,
-    Scaling, ZoomIn, ZoomOut
+    Scaling, ZoomIn, ZoomOut, RotateCcw
 } from "lucide-react";
 import { useAppStore, useAppActions } from "@/stores/appStore";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import { Separator } from "../ui/separator";
-import { useEffect } from "react";
+import { toast } from "sonner";
 
 /**
- * @fileOverview Display Settings Component (Sovereign UX Control)
+ * @fileOverview Display Settings Component (Sovereign UX Control - Finalized)
  * واجهة التحكم السيادية في تجربة المستخدم والهوية البصرية للمنظومة.
  */
 
@@ -32,22 +32,22 @@ export function DisplaySettings() {
     const { 
         setProductViewMode, setCustomerViewMode, setExpenseViewMode, 
         setStockViewMode, setSalesHistoryViewMode, setSupplierViewMode,
-        setCompactMode, setMotionEnabled, setInterfaceScale
+        setCompactMode, setMotionEnabled, setInterfaceScale, resetStore
     } = useAppActions();
 
-    // Effect to apply compact mode to body
-    useEffect(() => {
-        if (typeof document !== 'undefined') {
-            document.body.classList.toggle('compact-mode', isCompactMode);
-        }
-    }, [isCompactMode]);
-
-    // Effect to apply reduced motion to body
-    useEffect(() => {
-        if (typeof document !== 'undefined') {
-            document.body.classList.toggle('reduce-motion', !isMotionEnabled);
-        }
-    }, [isMotionEnabled]);
+    const handleReset = () => {
+        setInterfaceScale(100);
+        setCompactMode(false);
+        setMotionEnabled(true);
+        setTheme('system');
+        setProductViewMode('grid');
+        setCustomerViewMode('grid');
+        setSupplierViewMode('grid');
+        setStockViewMode('list');
+        setSalesHistoryViewMode('list');
+        setExpenseViewMode('list');
+        toast.success("Interface réinitialisée aux valeurs d'usine iPOS.");
+    };
 
     const ThemeCard = ({ value, label, icon: Icon }: { value: string, label: string, icon: any }) => (
         <button 
@@ -112,7 +112,7 @@ export function DisplaySettings() {
     return (
         <div className="space-y-10 animate-in fade-in duration-700">
             <Card className="luxury-glass border-white/5 overflow-hidden shadow-2xl">
-                <CardHeader className="bg-primary/5 border-b border-white/5 p-10">
+                <CardHeader className="bg-primary/5 border-b border-white/5 p-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-primary/10 rounded-2xl">
                             <Palette className="h-6 w-6 text-primary" />
@@ -122,6 +122,10 @@ export function DisplaySettings() {
                             <CardDescription className="text-xs font-bold uppercase tracking-widest opacity-60">Personnalisez l'atmosphère de votre terminal de commande</CardDescription>
                         </div>
                     </div>
+                    <Button variant="outline" size="sm" onClick={handleReset} className="rounded-xl border-destructive/20 text-destructive hover:bg-destructive/10 h-10 px-6 font-black uppercase text-[10px] tracking-widest">
+                        <RotateCcw className="h-3.5 w-3.5 mr-2" />
+                        Réinitialiser
+                    </Button>
                 </CardHeader>
                 <CardContent className="p-10 space-y-12">
                     {/* Theme Selection */}
@@ -171,7 +175,7 @@ export function DisplaySettings() {
                     <div className="space-y-6">
                         <div className="flex items-center gap-3">
                             <LayoutGrid className="h-5 w-5 text-primary" />
-                            <h4 className="text-xs font-black uppercase tracking-[0.2em]">Anatomية des Registres</h4>
+                            <h4 className="text-xs font-black uppercase tracking-[0.2em]">Anatomie des Registres</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <ViewModeToggle label="Produits" current={productViewMode} onToggle={setProductViewMode} />

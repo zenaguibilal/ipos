@@ -7,13 +7,13 @@ import { useEffect, useRef } from "react";
 /**
  * @fileOverview Application Bootstrapper (Phase 11 Consolidated)
  * Deterministically syncs session and profile.
- * Applies global UI scale (Resolution).
+ * Applies global UI scale (Resolution) and display modes.
  */
 
 export function StoreInitializer() {
     const initialized = useRef(false);
     const { setAuth, fetchProfile } = useAppStore(state => state.actions);
-    const interfaceScale = useAppStore(state => state.interfaceScale);
+    const { interfaceScale, isCompactMode, isMotionEnabled } = useAppStore();
 
     // Apply global UI Scale
     useEffect(() => {
@@ -21,6 +21,14 @@ export function StoreInitializer() {
             document.documentElement.style.fontSize = `${interfaceScale}%`;
         }
     }, [interfaceScale]);
+
+    // Apply global Display Modes
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            document.body.classList.toggle('compact-mode', isCompactMode);
+            document.body.classList.toggle('reduce-motion', !isMotionEnabled);
+        }
+    }, [isCompactMode, isMotionEnabled]);
 
     useEffect(() => {
         if (!initialized.current) {
