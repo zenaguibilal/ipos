@@ -12,7 +12,7 @@ import {
     Loader2, Lock, Mail, Building2, UserPlus, ShieldCheck, 
     ArrowRight, Eye, EyeOff, CheckCircle2, Globe, Server, 
     Info, Zap, ShieldAlert, Cpu, Activity, Fingerprint, 
-    KeyRound, Terminal as TerminalIcon
+    KeyRound, Terminal as TerminalIcon, Wifi, Shield
 } from 'lucide-react';
 import Image from 'next/image';
 import { useAppStore } from '@/stores/appStore';
@@ -26,7 +26,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
@@ -40,16 +39,16 @@ import {
 // Validation Schemas
 const loginSchema = z.object({
     email: z.string().email("Format d'email invalide"),
-    password: z.string().min(6, "La clé d'accès بايد تحتوي على 6 رموز على الأقل"),
+    password: z.string().min(1, "La clé d'accès est requise"),
 });
 
 const signupSchema = z.object({
     email: z.string().email("Format d'email invalide"),
-    password: z.string().min(6, "La clé d'accès بايد تحتوي على 6 رموز على الأقل"),
+    password: z.string().min(6, "La clé d'accès doit contenir 6 caractères minimum"),
     confirmPassword: z.string(),
     companyName: z.string().min(2, "Le nom de l'établissement est trop court"),
     agreeToTerms: z.literal(true, {
-        errorMap: () => ({ message: "Vous devez accepter les conditions de souveraineté" }),
+        errorMap: () => ({ message: "Acceptation des conditions requise" }),
     }),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Les clés d'accès ne correspondent pas",
@@ -67,6 +66,7 @@ export default function AuthPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [activeTab, setActiveTab] = useState('login');
     const [terminalId, setTerminalId] = useState('INIT-NODE-0000');
+    const [systemPulse, setSystemPulse] = useState(false);
     
     // Form States
     const [email, setEmail] = useState('');
@@ -82,6 +82,10 @@ export default function AuthPage() {
             const platform = window.navigator.platform.substring(0, 3).toUpperCase();
             const id = `iPOS-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${platform}`;
             setTerminalId(id);
+            
+            // Start system pulse animation
+            const timer = setTimeout(() => setSystemPulse(true), 500);
+            return () => clearTimeout(timer);
         }
     }, []);
 
@@ -158,7 +162,10 @@ export default function AuthPage() {
             <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-primary/5 rounded-full blur-[150px] pointer-events-none" />
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] pointer-events-none" />
 
-            <div className="w-full max-w-xl space-y-10 relative z-10 animate-in fade-in zoom-in-95 duration-1000">
+            <div className={cn(
+                "w-full max-w-xl space-y-10 relative z-10 transition-all duration-1000 transform",
+                systemPulse ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
+            )}>
                 {/* Header: System Identity */}
                 <div className="flex flex-col items-center text-center space-y-6">
                     <div className="relative">
@@ -428,7 +435,7 @@ export default function AuthPage() {
                     <div className="flex flex-wrap justify-center gap-6">
                         <SystemBadge icon={Globe} label="Cloud Native" />
                         <SystemBadge icon={Server} label="Multi-Region" />
-                        <SystemBadge icon={ShieldCheck} label="AES-256" />
+                        <SystemBadge icon={Shield} label="AES-256 Auth" />
                         <SystemBadge icon={Cpu} label="Pure Authority" />
                     </div>
                     
@@ -461,7 +468,7 @@ export default function AuthPage() {
                                     <p>1. <strong>Cloud Authority</strong>: Vos données résident exclusivement dans une infrastructure multi-région sécurisée. Aucune donnée n'est stockée localement de manière permanente.</p>
                                     <p>2. <strong>Chiffrement Maître</strong>: Chaque enregistrement financier est protégé par un algorithme AES-256 de classe militaire.</p>
                                     <p>3. <strong>Isolation des Rôles</strong>: L'accès au terminal est strictement hiérarchisé. Seul l'administrateur possède la clé de révocation globale.</p>
-                                    <p>4. <strong>Audit de Flux</strong>: Chaque mouvement de stock ou transaction est horodaté et signé par le terminal émetteur.</p>
+                                    <p>4. <strong>Audit de Flux</strong>: Chaque mouvement de stock ou transaction est horأت ذاتي horodaté et signé par le terminal émetteur.</p>
                                 </div>
                                 <DialogFooter>
                                     <Button variant="outline" className="rounded-xl font-black uppercase text-[10px] tracking-widest border-primary/20">Compris و Accusé Réception</Button>
@@ -479,9 +486,9 @@ export default function AuthPage() {
 
 function SystemBadge({ icon: Icon, label }: { icon: any, label: string }) {
     return (
-        <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white/5 border border-white/5 shadow-xl hover:border-primary/20 transition-all hover:-translate-y-1">
-            <Icon className="h-3.5 w-3.5 text-primary/60" />
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/60">{label}</span>
+        <div className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white/5 border border-white/5 shadow-xl hover:border-primary/20 transition-all hover:-translate-y-1 group">
+            <Icon className="h-3.5 w-3.5 text-primary/60 group-hover:text-primary transition-colors" />
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/60 group-hover:text-primary transition-colors">{label}</span>
         </div>
     );
 }
