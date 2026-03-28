@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Product, Supplier } from '@/lib/types';
@@ -19,6 +20,7 @@ interface ProductTableProps {
     onDelete: (product: Product) => void;
     onDuplicate: (product: Product) => void;
     onViewHistory: (product: Product) => void;
+    onPrintLabel: (product: Product) => void;
     suppliers: Supplier[];
     selectedProducts: Set<string>;
     onToggleSelection: (uuid: string) => void;
@@ -26,7 +28,7 @@ interface ProductTableProps {
 }
 
 export function ProductTable({ 
-    products, onEdit, onDelete, onDuplicate, onViewHistory, suppliers, 
+    products, onEdit, onDelete, onDuplicate, onViewHistory, onPrintLabel, suppliers, 
     selectedProducts, onToggleSelection, onToggleAll 
 }: ProductTableProps) {
     const isManagerOrAdmin = useIsManagerOrAdmin();
@@ -45,7 +47,7 @@ export function ProductTable({
                         </TableHead>
                         <TableHead className="w-[80px] font-black uppercase text-[10px] tracking-widest text-muted-foreground py-5">Aperçu</TableHead>
                         <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Désignation Produit</TableHead>
-                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Rayon</TableHead>
+                        <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground">Rayون</TableHead>
                         <TableHead className="font-black uppercase text-[10px] tracking-widest text-muted-foreground hidden lg:table-cell">Fournisseur</TableHead>
                         <TableHead className="text-center font-black uppercase text-[10px] tracking-widest text-muted-foreground">Quantité</TableHead>
                         <TableHead className="text-right font-black uppercase text-[10px] tracking-widest text-muted-foreground">Prix Achat</TableHead>
@@ -169,7 +171,7 @@ export function ProductTable({
                                                 <DropdownMenuItem onClick={() => onViewHistory(product)} className="gap-2 font-bold">
                                                     <History className="h-4 w-4" /> Historique Stock
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => {}} className="gap-2 font-bold">
+                                                <DropdownMenuItem onClick={() => onPrintLabel(product)} className="gap-2 font-bold">
                                                     <Tag className="h-4 w-4 text-primary" /> Étiquette
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => onDelete(product)} className="text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 font-bold">

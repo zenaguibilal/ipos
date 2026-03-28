@@ -67,7 +67,7 @@ export class ProductRepository {
         return data ? this.mapFromDb(data) : null;
     }
 
-    async updateStock(uuid: string, quantityChange: number, reason: InventoryLog['reason'], relatedUuid?: string): Promise<void> {
+    async updateStock(uuid: string, quantityChange: number, reason: InventoryLog['reason'] = 'manual_adjustment', relatedUuid?: string): Promise<void> {
         const { data: product, error: fErr } = await this.supabase
             .from('products')
             .select('quantity, min_stock_level')
@@ -142,7 +142,13 @@ export class ProductRepository {
     }
 
     async update(uuid: string, product: Partial<Product>): Promise<Product> {
-        const { data: existing } = await this.supabase.from('products').select('quantity, min_stock_level, price').eq('uuid', uuid).single();
+        const { data: existing, error: eErr } = await this.supabase
+            .from('products')
+            .select('quantity, min_stock_level, price')
+            .eq('uuid', uuid)
+            .single();
+        
+        if (eErr || !existing) throw new Error("PRODUCT_NOT_FOUND");
         
         const updatedQty = product.quantity !== undefined ? product.quantity : existing.quantity;
         const updatedMin = product.minStockLevel !== undefined ? product.minStockLevel : existing.min_stock_level;
@@ -150,6 +156,17 @@ export class ProductRepository {
 
         // Update price timestamp if price changed
         const priceChanged = product.price !== undefined && Number(product.price) !== existing.price;
+
+        // Log manual stock adjustment if quantity changed directly through update
+        if (product.quantity !== undefined && product.quantity !== existing.quantity) {
+            const inventoryRepo = new InventoryRepository();
+            await inventoryRepo.add({
+                productUuid: uuid,
+                change: product.quantity - existing.quantity,
+                newQuantity: product.quantity,
+                reason: 'manual_adjustment'
+            });
+        }
 
         const { data, error } = await this.supabase
             .from('products')
@@ -205,7 +222,7 @@ export class ProductRepository {
             barcodes: p.barcodes,
             image_url: p.imageUrl,
             unite: p.unite,
-            date_expiration: p.dateExpiration,
+            date_expiration: p.date_expiration,
             supplier_uuid: p.supplierUuid,
         };
     }

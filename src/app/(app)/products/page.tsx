@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Product, Supplier, ProductImportAnalysis } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X, Copy } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FileDown, Scan, RefreshCw, FileUp, ShieldAlert, Loader2, Trash2, Tag, Printer, X, Copy, RotateCcw } from 'lucide-react';
 import { ProductCard } from '@/components/products/product-card';
 import { ProductTable } from '@/components/products/product-table';
 import { ProductTableSkeleton } from '@/components/products/product-table-skeleton';
@@ -129,9 +129,20 @@ export default function ProductsPage() {
         }
     };
 
+    const handlePrintSingleLabel = (p: Product) => {
+        setSelectedProducts(new Set([p.uuid]));
+        setIsPrintLabelsOpen(true);
+    };
+
     const selectedProductsData = useMemo(() => {
         return products.filter(p => selectedProducts.has(p.uuid));
     }, [products, selectedProducts]);
+
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setSelectedProducts(new Set());
+        refreshProducts();
+    };
 
     if (!profile || !isManagerOrAdmin) {
         return (
@@ -190,6 +201,10 @@ export default function ProductsPage() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
+                    <Button variant="ghost" size="icon" className="h-10 w-10 luxury-glass hover:bg-destructive/10" onClick={handleClearFilters} title="Réinitialiser">
+                        <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+
                     <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5">
                         <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-10 w-10 rounded-lg" onClick={() => setProductViewMode('grid')}>
                             <LayoutGrid className="h-4.5 w-4.5"/>
@@ -244,7 +259,7 @@ export default function ProductsPage() {
                                     product={p} 
                                     onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} 
                                     onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} 
-                                    onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} 
+                                    onDuplicate={(p) => { const { uuid, barcodes, ...rest } = p; setSelectedProduct({...rest, barcodes: []}); setIsProductDialogOpen(true); }} 
                                     onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }}
                                     isSelected={selectedProducts.has(p.uuid)}
                                     onToggleSelection={() => handleToggleSelection(p.uuid)}
@@ -256,8 +271,9 @@ export default function ProductsPage() {
                             products={products} 
                             onEdit={(p) => { setSelectedProduct(p); setIsProductDialogOpen(true); }} 
                             onDelete={(p) => { setSelectedProduct(p); setIsDeleteDialogOpen(true); }} 
-                            onDuplicate={(p) => { const { uuid, ...rest } = p; setSelectedProduct(rest); setIsProductDialogOpen(true); }} 
+                            onDuplicate={(p) => { const { uuid, barcodes, ...rest } = p; setSelectedProduct({...rest, barcodes: []}); setIsProductDialogOpen(true); }} 
                             onViewHistory={(p) => { setSelectedProduct(p); setIsHistoryDialogOpen(true); }} 
+                            onPrintLabel={handlePrintSingleLabel}
                             suppliers={suppliers} 
                             selectedProducts={selectedProducts}
                             onToggleSelection={handleToggleSelection}

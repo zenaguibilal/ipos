@@ -20,7 +20,7 @@ import { Loader2, Camera, CameraOff } from 'lucide-react';
  * يضمن تشغيل ماسح الأكواد في بيئة العميل فقط مع الحماية القصوى من أخطاء الـ SSR.
  */
 
-export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: BarcodeScannerDialogProps) {
+export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: { isOpen: boolean, onOpenChange: (open: boolean) => void, onScanSuccess: (barcode: string) => void }) {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
   const scannerRef = useRef<any>(null);
@@ -32,7 +32,7 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
     if (isOpen) {
       const initScanner = async () => {
         try {
-          // Request permissions
+          // Request permissions to verify access
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
           stream.getTracks().forEach(track => track.stop());
@@ -74,7 +74,7 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
       if (scannerRef.current) {
         try {
           if (scannerRef.current.isScanning) {
-            scannerRef.current.stop();
+            scannerRef.current.stop().catch(console.warn);
           }
         } catch (err) {
           console.warn("Scanner cleanup warning:", err);
@@ -99,7 +99,7 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
         <div className="relative aspect-video bg-black/40 flex items-center justify-center">
           <div id={scannerId} className="w-full h-full"></div>
           
-          {!isScannerReady && hasCameraPermission && (
+          {!isScannerReady && hasCameraPermission !== false && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md gap-4">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
               <p className="text-[10px] font-black uppercase tracking-widest animate-pulse text-primary">Initialisation du Capteur...</p>
@@ -127,10 +127,4 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
       </DialogContent>
     </Dialog>
   );
-}
-
-interface BarcodeScannerDialogProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onScanSuccess: (barcode: string) => void;
 }
