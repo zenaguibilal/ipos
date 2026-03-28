@@ -1,9 +1,8 @@
-
 'use client';
 
 /**
- * @fileOverview Hydration-Safe Real-time Clock
- * Ensures no server/client mismatch by deferring rendering until mount.
+ * @fileOverview THE SYSTEM CLOCK (NUCLEAR REBUILT)
+ * Eliminates all hydration errors by strictly waiting for client mount.
  */
 
 import { useState, useEffect } from 'react';
@@ -27,12 +26,13 @@ export function Clock() {
     };
   }, []);
 
+  // HYDRATION SHIELD: Return placeholder until client is ready
   if (!isMounted || !time) {
-    return <Skeleton className="h-6 w-[240px]" />;
+    return <Skeleton className="h-6 w-[240px] bg-muted/20" />;
   }
 
   return (
-    <div className="hidden sm:flex items-center text-base font-medium text-foreground h-6 w-[240px]">
+    <div className="hidden sm:flex items-center text-sm font-black uppercase tracking-widest text-foreground h-6 w-[240px]">
       <span suppressHydrationWarning>{format(time, 'd MMMM yyyy, HH:mm:ss', { locale: fr })}</span>
     </div>
   );

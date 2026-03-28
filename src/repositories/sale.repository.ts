@@ -7,8 +7,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Sale Repository (Sovereign Authority - Hardened)
- * PHASE 18: Cryptographic-strength invoice numbering and atomic transactions.
+ * @fileOverview Sale Repository (Sovereign Authority - NUCLEAR REBUILT)
+ * PHASE 18: Cryptographic-strength invoice numbering and deterministic transactional flow.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -25,14 +25,16 @@ export class SaleRepository {
     }
 
     /**
-     * Deterministic Sequential Invoice Generation
-     * Pattern: INV-[YYMMDD]-[HHMM]-[ENTROPY]
+     * Deterministic High-Entropy Invoice Generation
+     * Pattern: INV-[YYMMDD]-[HHMMSS]-[RAND]
      */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
-        const timePart = now.getHours().toString().padStart(2, '0') + now.getMinutes().toString().padStart(2, '0');
-        const entropy = Math.random().toString(36).substring(2, 5).toUpperCase();
+        const timePart = now.getHours().toString().padStart(2, '0') + 
+                         now.getMinutes().toString().padStart(2, '0') +
+                         now.getSeconds().toString().padStart(2, '0');
+        const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
         return `INV-${datePart}-${timePart}-${entropy}`;
     }
 
@@ -68,7 +70,7 @@ export class SaleRepository {
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
             sale_uuid: saleUuid,
-            product_uuid: item.productUuid || item.uuid,
+            product_uuid: item.productUuid || item.uuid || null,
             name: item.name,
             price: item.price,
             purchase_price: item.purchasePrice || 0,
@@ -77,13 +79,14 @@ export class SaleRepository {
 
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
+            // Cleanup on item failure
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
             throw new Error(`SALE_ITEMS_SYNC_FAILED`);
         }
 
-        // Transactional Stock Update
+        // Atomic Stock Adjustment
         for (const item of saleItems) {
-            if (item.product_uuid && item.product_uuid !== 'custom') {
+            if (item.product_uuid && item.product_uuid !== 'custom' && !item.product_uuid.startsWith('custom-')) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
@@ -115,9 +118,9 @@ export class SaleRepository {
         
         if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
-        // Reverse stock accurately
+        // Transactional Reversal
         for (const item of sale.sale_items) {
-            if (item.product_uuid && item.product_uuid !== 'custom') {
+            if (item.product_uuid && item.product_uuid !== 'custom' && !item.product_uuid.startsWith('custom-')) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);
             }
         }

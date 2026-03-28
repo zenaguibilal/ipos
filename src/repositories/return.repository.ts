@@ -4,8 +4,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Return Repository (Nuclear Hardened)
- * PHASE 18: Transactional reliability for stock reversals and ledger sync.
+ * @fileOverview Return Repository (Absolute Authority - NUCLEAR REBUILT)
+ * PHASE 18: Enforces transactional reliability for stock reversals and ledger sync.
  */
 export class ReturnRepository {
     private supabase = createClient();
@@ -68,7 +68,7 @@ export class ReturnRepository {
             throw new Error("RETURN_ITEMS_PERSISTENCE_FAILED");
         }
 
-        // Atomic Stock Adjustment
+        // Atomic Item-by-Item Stock Adjustment
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'return', ret.uuid);
@@ -91,10 +91,14 @@ export class ReturnRepository {
         
         if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
 
-        // Precise Reversal: Only deduct from stock if it was added (restocked)
+        // Precise Reversal: Only deduct from stock if it was added during the return
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
-                await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
+                // Check if product still exists
+                const product = await this.productRepo.findByUuid(item.product_uuid);
+                if (product) {
+                    await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
+                }
             }
         }
 

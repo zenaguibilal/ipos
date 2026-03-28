@@ -5,9 +5,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { useEffect } from 'react';
 
 /**
- * @fileOverview THE SYSTEM PURIFIER (NUCLEAR RECONSTRUCTION)
- * PHASE 18: Precision purge logic to protect system-critical UX keys.
- * Ensures theme, UI resolution, and session persistence are NOT wiped.
+ * @fileOverview THE SYSTEM PURIFIER (SURGICAL RECONSTRUCTION)
+ * NUCLEAR MODE: Enforces Cloud-Only architecture while protecting system-critical UX keys.
  */
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
@@ -16,12 +15,18 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
 
         const executeSurgicalPurge = () => {
             try {
-                // WHITELIST: Protect only essential stability keys
-                const whitelistedKeys = ['theme', 'ipos-ui-pref', 'next-themes-system', 'supabase.auth.token'];
+                // WHITELIST: Protect only essential stability keys to prevent UI flickering
+                const whitelistedKeys = [
+                    'theme', 
+                    'ipos-ui-pref', 
+                    'next-themes-system', 
+                    'supabase.auth.token',
+                    'zustand-app-store' // If persistence is ever added to Zustand
+                ];
                 
                 const purgeStorage = (storage: Storage) => {
                     Object.keys(storage).forEach(key => {
-                        if (!whitelistedKeys.some(w => key.includes(w))) {
+                        if (!whitelistedKeys.some(w => key === w || key.startsWith(w))) {
                             storage.removeItem(key);
                         }
                     });
@@ -31,7 +36,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
                 purgeStorage(localStorage);
                 purgeStorage(sessionStorage);
                 
-                // Nuclear IDB Purge (Except auth persistence if needed)
+                // Nuclear IDB Purge
                 if (window.indexedDB && window.indexedDB.databases) {
                     window.indexedDB.databases().then(dbs => {
                         dbs.forEach(db => { if(db.name) window.indexedDB.deleteDatabase(db.name); });
@@ -52,8 +57,8 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         // Immediate Execution
         executeSurgicalPurge();
         
-        // Authority Reinforcement Cycle
-        const interval = setInterval(executeSurgicalPurge, 10000); 
+        // Authority Reinforcement Cycle (Every 30 seconds instead of 10 to balance performance)
+        const interval = setInterval(executeSurgicalPurge, 30000); 
         return () => clearInterval(interval);
     }, []);
 
