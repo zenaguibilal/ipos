@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { 
     MoreHorizontal, Edit, Trash2, FileText, Phone, DollarSign, 
     Calendar, HandCoins, Printer, MessageSquare, Tag, ChevronRight,
-    TrendingUp, ShieldCheck
+    TrendingUp, ShieldCheck, MapPin
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -43,7 +43,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
         e.stopPropagation();
         if (!customer.phone) return;
         const storeName = companyProfile?.companyName || "iPOS Store";
-        const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${customer.outstandingBalance.toFixed(1)} DA. Merci.`;
+        const message = `Bonjour ${customer.firstName}, votre solde chez ${storeName} est de ${customer.outstandingBalance.toFixed(1)} DA. Merci de votre fidélité.`;
         window.open(`https://wa.me/${customer.phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 
@@ -80,7 +80,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
             <CardHeader className="pb-3 pt-6 px-6">
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
-                        <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-xl shadow-inner group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-black text-xl shadow-inner group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-500">
                             {customer.firstName[0].toUpperCase()}{customer.lastName[0].toUpperCase()}
                         </div>
                         <div className="space-y-1.5 overflow-hidden">
@@ -101,26 +101,26 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass p-2 min-w-[180px]">
-                            <DropdownMenuItem asChild className="rounded-lg font-bold">
+                            <DropdownMenuItem asChild className="rounded-lg font-bold py-2.5">
                                 <Link href={`/customers/${customer.uuid}`} className="gap-2">
                                     <FileText className="h-4 w-4" /> Dossier Client
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onStatement(customer)} className="rounded-lg font-bold gap-2">
+                            <DropdownMenuItem onClick={() => onStatement(customer)} className="rounded-lg font-bold py-2.5 gap-2">
                                 <Printer className="h-4 w-4 text-primary" /> Relevé A4
                             </DropdownMenuItem>
                             {customer.phone && (
-                                <DropdownMenuItem onClick={handleWhatsAppReminder} className="rounded-lg font-bold gap-2 text-green-500">
+                                <DropdownMenuItem onClick={handleWhatsAppReminder} className="rounded-lg font-bold py-2.5 gap-2 text-green-500">
                                     <MessageSquare className="h-4 w-4" /> Rappel WhatsApp
                                 </DropdownMenuItem>
                             )}
                             <DropdownMenuSeparator className="bg-white/5" />
                             {isManagerOrAdmin && (
                                 <>
-                                    <DropdownMenuItem onClick={() => onEdit(customer)} className="rounded-lg font-bold gap-2">
+                                    <DropdownMenuItem onClick={() => onEdit(customer)} className="rounded-lg font-bold py-2.5 gap-2">
                                         <Edit className="h-4 w-4" /> Modifier Profil
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => onDelete(customer)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg font-bold gap-2">
+                                    <DropdownMenuItem onClick={() => onDelete(customer)} className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg font-bold py-2.5 gap-2">
                                         <Trash2 className="h-4 w-4" /> Supprimer
                                     </DropdownMenuItem>
                                 </>
@@ -138,40 +138,47 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                             <ShieldCheck className="h-3 w-3 text-primary" />
                             Santé Crédit
                         </span>
-                        <span className={cn(creditUsage > 90 ? "text-destructive" : "text-chart-quaternary")}>
+                        <span className={cn(creditUsage > 90 ? "text-destructive font-black" : "text-chart-quaternary")}>
                             {customer.creditLimit > 0 ? `${Math.round(creditUsage)}% utilisé` : 'Illimité'}
                         </span>
                     </div>
                     {customer.creditLimit > 0 ? (
                         <div className="space-y-2">
-                            <Progress value={Math.min(creditUsage, 100)} className={cn("h-2 rounded-full bg-white/10", creditUsage > 100 ? "[&>div]:bg-destructive" : creditUsage > 80 ? "[&>div]:bg-orange-500" : "[&>div]:bg-chart-quaternary")} />
-                            <div className="flex justify-between items-center text-[9px] font-bold text-muted-foreground opacity-50 uppercase">
+                            <Progress value={Math.min(creditUsage, 100)} className={cn("h-2.5 rounded-full bg-white/10 shadow-inner", creditUsage > 100 ? "[&>div]:bg-destructive" : creditUsage > 80 ? "[&>div]:bg-orange-500" : "[&>div]:bg-chart-quaternary")} />
+                            <div className="flex justify-between items-center text-[9px] font-bold text-muted-foreground opacity-50 uppercase tracking-tighter">
                                 <span>Solde Dû</span>
                                 <span>Plafond: {formatCurrency(customer.creditLimit)}</span>
                             </div>
                         </div>
                     ) : (
-                        <div className="h-2 w-full bg-white/5 rounded-full border border-white/5" />
+                        <div className="h-2.5 w-full bg-white/5 rounded-full border border-white/5 shadow-inner" />
                     )}
                  </div>
 
                  {/* Stats Mini Grid */}
                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center shadow-inner group-hover:border-primary/20 transition-colors">
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center shadow-inner group-hover:border-primary/20 transition-all">
                         <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest mb-1 flex items-center">
-                            <TrendingUp className="h-2.5 w-2.5 mr-1 text-primary" /> Volume Achat
+                            <TrendingUp className="h-2.5 w-2.5 mr-1 text-primary" /> Achat Total
                         </p>
                         <p className="text-sm font-black tracking-tight">{formatCurrency(customer.totalSpent)}</p>
                     </div>
-                    <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center shadow-inner group-hover:border-primary/20 transition-colors">
+                    <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-center shadow-inner group-hover:border-primary/20 transition-all">
                         <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest mb-1 flex items-center">
-                            <Calendar className="h-2.5 w-2.5 mr-1 text-primary" /> Dernier Flux
+                            <Calendar className="h-2.5 w-2.5 mr-1 text-primary" /> Activité
                         </p>
                         <p className="text-[10px] font-bold truncate">
                             {customer.lastActivityDate ? formatDistanceToNow(new Date(customer.lastActivityDate), { addSuffix: true, locale: fr }) : 'Inactif'}
                         </p>
                     </div>
                  </div>
+                 
+                 {customer.address && (
+                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground italic font-medium truncate opacity-60">
+                         <MapPin className="h-3 w-3 shrink-0" />
+                         {customer.address}
+                     </div>
+                 )}
             </CardContent>
 
             <CardFooter className={cn(
@@ -183,7 +190,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block mb-0.5 opacity-60">Solde Impayé</span>
                         <div className="flex items-center gap-2">
                             <span className={cn(
-                                "text-xl font-black tracking-tighter",
+                                "text-2xl font-black tracking-tighter",
                                 customer.outstandingBalance > 0 ? "text-destructive" : "text-chart-quaternary"
                             )}>
                                 {formatCurrency(customer.outstandingBalance)}
@@ -195,7 +202,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                         <Button 
                             size="sm"
                             className={cn(
-                                "rounded-xl font-black uppercase text-[10px] tracking-widest h-10 px-5 shadow-lg transition-all active:scale-95",
+                                "rounded-xl font-black uppercase text-[10px] tracking-widest h-11 px-6 shadow-lg transition-all active:scale-95",
                                 customer.outstandingBalance > 0 ? "bg-destructive hover:bg-destructive/90 shadow-destructive/20" : "bg-primary hover:bg-primary/90 shadow-primary/20"
                             )}
                             onClick={(e) => { e.stopPropagation(); onPayment(customer); }}
@@ -203,7 +210,7 @@ const CustomerCardComponent = ({ customer, onEdit, onDelete, onPayment, onStatem
                         >
                             <HandCoins className="mr-2 h-4 w-4" /> Encaisser
                         </Button>
-                        <Button variant="ghost" size="icon" asChild className="h-10 w-10 rounded-xl hover:bg-white/10 shrink-0">
+                        <Button variant="ghost" size="icon" asChild className="h-11 w-11 rounded-xl hover:bg-white/10 shrink-0">
                             <Link href={`/customers/${customer.uuid}`} onClick={(e) => e.stopPropagation()}>
                                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
                             </Link>

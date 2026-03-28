@@ -37,13 +37,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
-
-/**
- * @fileOverview Sovereign Customer Ledger (Finalized Perfection)
- * المركز السيادي للتحكم في حسابات الزبائن، الديون، والعمليات الجماعية.
- */
 
 const sortOptions = {
     'name_asc': 'Nom (A-Z)',
@@ -154,7 +148,7 @@ export default function CustomersPage() {
         setIsImporting(true);
         try {
             await api.post('customers/bulk', confirmedData);
-            toast.success("Opération d'importation réussية.", {
+            toast.success("Opération d'importation réussie.", {
                 description: `${confirmedData.toAdd.length} nouveaux زبائن و ${confirmedData.toUpdate.length} mises à jour.`
             });
             setIsImportPreviewOpen(false);
@@ -222,7 +216,6 @@ export default function CustomersPage() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
-                    {/* Filter: Debt Status */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
@@ -239,12 +232,11 @@ export default function CustomersPage() {
                             <DropdownMenuRadioGroup value={debtFilter} onValueChange={(v) => setDebtFilter(v as DebtFilter)}>
                                 <DropdownMenuRadioItem value="all" className="font-bold py-2">Tout afficher</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="debtors" className="font-bold py-2 text-destructive">Avec solde débiteur</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="overlimit" className="font-bold py-2 text-destructive">Plafond dépassé</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="overlimit" className="font-bold py-2 text-destructive">Plafンド dépassement</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Filter: Category */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[140px] justify-between">
@@ -267,7 +259,6 @@ export default function CustomersPage() {
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    {/* Sorting */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
