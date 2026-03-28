@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -19,6 +18,7 @@ import { ProductHistoryDialog } from '@/components/products/ProductHistoryDialog
 import { BarcodeScannerDialog } from '@/components/products/BarcodeScannerDialog';
 import { DeleteMultipleProductsDialog } from '@/components/products/DeleteMultipleProductsDialog';
 import { PrintLabelsDialog } from '@/components/products/PrintLabelsDialog';
+import { PrintProductListDialog } from '@/components/products/PrintProductListDialog';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { api } from '@/lib/api-client';
@@ -161,6 +161,7 @@ export default function ProductsPage() {
                 description="Gestion absolue du catalogue, des prix et des stocks stratégiques."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintProductListDialog products={products} />
                     <Button variant="outline" onClick={() => CsvImporter.exportProducts(products)} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-2">
                         <FileUp className="h-4 w-4" /> Exporter
                     </Button>
