@@ -4,18 +4,18 @@
 
 @layer base {
   :root {
-    /* Light Mode - Warm Ivory & Gold Heritage */
+    /* Light Mode - Warm Ivory & Gold Heritage (Refined Architecture) */
     --background: 34 40% 98%; 
     --foreground: 28 45% 10%;
 
-    --card: 0 0% 100%;
+    --card: 34 30% 100%;
     --card-foreground: 28 45% 10%;
  
-    --popover: 0 0% 100%;
+    --popover: 34 30% 100%;
     --popover-foreground: 28 45% 10%;
  
     --primary: 34 100% 42%; /* Golden Honey */
-    --primary-foreground: 30 40% 98%;
+    --primary-foreground: 34 40% 98%;
 
     --secondary: 34 30% 94%;
     --secondary-foreground: 28 45% 15%;
@@ -41,11 +41,11 @@
     --chart-quaternary: 155 65% 35%;
 
     --bg-gradient-from: 34 40% 98%;
-    --bg-gradient-to: 34 30% 94%;
+    --bg-gradient-to: 34 30% 92%;
   }
  
   .dark {
-    /* Dark Mode - Premium Chocolate & Amber */
+    /* Dark Mode - Premium Chocolate & Amber (Absolute Authority) */
     --background: 28 25% 4%; /* Near Black Chocolate */
     --foreground: 30 30% 92%;
 
@@ -100,12 +100,12 @@
 @layer components {
   .luxury-glass {
     @apply rounded-3xl border backdrop-blur-xl transition-all duration-500;
-    background-color: hsl(var(--card) / 0.75);
-    border-color: hsl(var(--border));
+    background-color: hsl(var(--card) / 0.85);
+    border-color: hsl(var(--border) / 0.6);
     box-shadow: 
-      0 10px 30px -5px rgb(0 0 0 / 0.03), 
-      0 4px 6px -2px rgb(0 0 0 / 0.02),
-      inset 0 1px 0 0 hsl(0 0% 100% / 0.5);
+      0 20px 40px -10px rgba(34, 25, 10, 0.05), 
+      0 10px 15px -5px rgba(34, 25, 10, 0.03),
+      inset 0 1px 1px 0 rgba(255, 255, 255, 0.8);
   }
 
   .dark .luxury-glass {
@@ -120,7 +120,7 @@
   .luxury-glass:hover {
     @apply shadow-2xl;
     border-color: hsl(var(--primary) / 0.4);
-    background-color: hsl(var(--card) / 0.85);
+    background-color: hsl(var(--card) / 0.95);
   }
 
   .dark .luxury-glass:hover {
