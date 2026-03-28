@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -6,7 +5,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Search, Building, LayoutGrid, List, RefreshCw, Wallet, FileUp, SortAsc, Filter, FileDown, Trash2, Loader2, Printer, ChevronDown } from 'lucide-react';
 import { SupplierCard } from '@/components/suppliers/SupplierCard';
 import { SupplierTable } from '@/components/suppliers/SupplierTable';
 import { SupplierDialog } from '@/components/suppliers/SupplierDialog';
@@ -30,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ImportSuppliersPreviewDialog } from '@/components/suppliers/ImportSuppliersPreviewDialog';
 import { DeleteMultipleSuppliersDialog } from '@/components/suppliers/DeleteMultipleSuppliersDialog';
+import { PrintSupplierListDialog } from '@/components/suppliers/PrintSupplierListDialog';
 import { CsvImporter } from '@/lib/csv-utils';
 
 const sortOptions: { [key: string]: string } = {
@@ -225,128 +225,159 @@ export default function SuppliersPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader
-                title="Gestion des Fournisseurs"
-                description="Suivez vos partenaires commerciaux et l'état de vos dettes fournisseurs."
+                title="Souveraineté des Partenaires"
+                description="Suivez vos partenaires commerciaux و maîtrisez l'état de vos dettes fournisseurs."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
+                    <PrintSupplierListDialog suppliers={filteredAndSortedSuppliers} />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" disabled={isAnalyzing} className="border-primary/20 luxury-glass h-11">
-                                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="mr-2 h-4 w-4" />}
+                            <Button variant="outline" disabled={isAnalyzing} className="border-primary/20 luxury-glass h-11 rounded-xl px-6 font-black uppercase text-[10px] tracking-widest gap-2">
+                                {isAnalyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
                                 Importer
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass">
                             <DropdownMenuItem asChild>
-                                <label className="cursor-pointer w-full flex items-center gap-2">
+                                <label className="cursor-pointer w-full flex items-center gap-2 p-3 font-bold">
+                                    <FileDown className="h-4 w-4 text-primary" />
                                     <span>Fichier CSV</span>
                                     <input type="file" className="hidden" accept=".csv" onChange={handleFileSelected} />
                                 </label>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="outline" onClick={handleExport} disabled={!filteredAndSortedSuppliers.length} className="border-primary/20 luxury-glass h-11">
-                        <FileUp className="mr-2 h-4 w-4" /> Exporter
+                    <Button variant="outline" onClick={handleExport} disabled={!filteredAndSortedSuppliers.length} className="border-primary/20 luxury-glass h-11 rounded-xl px-6 font-black uppercase text-[10px] tracking-widest gap-2">
+                        <FileUp className="h-4 w-4" /> Exporter
                     </Button>
                     {isManagerOrAdmin && (
-                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-11 px-6 rounded-xl">
-                            <Plus className="mr-2 h-4 w-4" /> Nouveau
+                        <Button onClick={() => { setSelectedSupplier(null); setIsSupplierDialogOpen(true); }} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-11 px-8 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+                            <Plus className="h-4 w-4" /> Nouveau
                         </Button>
                     )}
                 </div>
             </PageHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="luxury-glass bg-primary/5 border-primary/10 group overflow-hidden">
-                    <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Partenaires</span>
-                        <Building className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <Card className="luxury-glass bg-primary/5 border-white/5 group overflow-hidden">
+                    <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+                        <Building className="h-24 w-24 rotate-12" />
+                    </div>
+                    <CardHeader className="py-4 px-6 flex flex-row items-center justify-between space-y-0 relative z-10">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Partenaires Référencés</span>
+                        <Building className="h-4 w-4 text-primary opacity-50" />
                     </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                        <p className="text-3xl font-black">{stats.total}</p>
+                    <CardContent className="px-6 pb-6 relative z-10">
+                        <p className="text-4xl font-black tracking-tighter">{stats.total}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">Catalogue Partenaires</p>
                     </CardContent>
                 </Card>
-                <Card className="luxury-glass bg-destructive/5 border-destructive/10 group overflow-hidden">
-                    <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Dette Totale</span>
-                        <Wallet className="h-4 w-4 text-destructive group-hover:scale-110 transition-transform" />
+                <Card className="luxury-glass bg-destructive/5 border-white/5 group overflow-hidden">
+                    <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+                        <Wallet className="h-24 w-24 rotate-12" />
+                    </div>
+                    <CardHeader className="py-4 px-6 flex flex-row items-center justify-between space-y-0 relative z-10">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Encours Global Dettes</span>
+                        <Wallet className="h-4 w-4 text-destructive opacity-50" />
                     </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                        <p className="text-3xl font-black text-destructive">{formatCurrency(stats.totalDebt)}</p>
+                    <CardContent className="px-6 pb-6 relative z-10">
+                        <p className="text-4xl font-black tracking-tighter text-destructive">{formatCurrency(stats.totalDebt)}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">À solder aux fournisseurs</p>
                     </CardContent>
                 </Card>
-                <Card className="luxury-glass bg-blue-500/5 border-blue-500/10 group overflow-hidden">
-                    <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Comptes Actifs</span>
-                        <RefreshCw className="h-4 w-4 text-blue-400 group-hover:rotate-180 transition-all duration-500" />
+                <Card className="luxury-glass bg-chart-quaternary/5 border-white/5 group overflow-hidden">
+                    <div className="absolute top-0 right-0 p-6 opacity-[0.02] group-hover:opacity-[0.05] transition-opacity pointer-events-none">
+                        <RefreshCw className="h-24 w-24 rotate-12" />
+                    </div>
+                    <CardHeader className="py-4 px-6 flex flex-row items-center justify-between space-y-0 relative z-10">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Comptes Actifs</span>
+                        <RefreshCw className="h-4 w-4 text-chart-quaternary opacity-50" />
                     </CardHeader>
-                    <CardContent className="px-4 pb-4">
-                        <p className="text-3xl font-black text-blue-400">{stats.activeSuppliers}</p>
+                    <CardContent className="px-6 pb-6 relative z-10">
+                        <p className="text-4xl font-black tracking-tighter text-chart-quaternary">{stats.activeSuppliers}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 opacity-60">Mouvements financiers récents</p>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-3">
-                <div className="relative flex-grow">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Rechercher..." className="pl-10 h-11 luxury-glass rounded-xl" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <div className="flex flex-col lg:flex-row gap-4">
+                <div className="relative flex-grow group">
+                    <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
+                    <Input 
+                        placeholder="Rechercher par nom ou téléphone..." 
+                        className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10" 
+                        value={searchQuery} 
+                        onChange={e => setSearchQuery(e.target.value)} 
+                    />
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto luxury-glass p-2 bg-muted/20 border-white/5">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-11 luxury-glass rounded-xl min-w-[180px] justify-between">
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[180px] justify-between">
                                 <span className="flex items-center gap-2">
-                                    <Filter className="h-4 w-4 text-primary" />
-                                    <span className="text-xs font-bold">{filterDebtOnly ? 'Dettes uniquement' : 'Tous'}</span>
+                                    <Filter className="h-3.5 w-3.5 text-primary" />
+                                    {filterDebtOnly ? 'Dettes uniquement' : 'Tous les comptes'}
                                 </span>
+                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="luxury-glass w-56">
-                            <DropdownMenuCheckboxItem checked={!filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(false)}>Tous</DropdownMenuCheckboxItem>
-                            <DropdownMenuCheckboxItem checked={filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(true)}>Avec solde dû</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={!filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(false)} className="font-bold py-2">Tous</DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem checked={filterDebtOnly} onCheckedChange={() => setFilterDebtOnly(true)} className="font-bold py-2 text-destructive">Avec solde dû</DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-11 luxury-glass rounded-xl min-w-[180px] justify-between">
-                                <SortAsc className="h-4 w-4 text-primary" />
-                                <span className="text-xs font-bold">{sortOptions[sortBy]}</span>
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[180px] justify-between">
+                                <span className="flex items-center gap-2">
+                                    <SortAsc className="h-3.5 w-3.5 text-primary" />
+                                    {sortOptions[sortBy]}
+                                </span>
+                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="luxury-glass w-56">
                             <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
                                 {Object.entries(sortOptions).map(([key, value]) => (
-                                    <DropdownMenuRadioItem key={key} value={key}>{value}</DropdownMenuRadioItem>
+                                    <DropdownMenuRadioItem key={key} value={key} className="font-bold py-2">{value}</DropdownMenuRadioItem>
                                 ))}
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-primary/10 h-11 luxury-glass">
-                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" onClick={() => setSupplierViewMode('grid')}><LayoutGrid className="h-5 w-5"/></Button>
-                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" onClick={() => setSupplierViewMode('list')}><List className="h-5 w-5"/></Button>
+                    <div className="flex items-center gap-1 rounded-xl bg-muted/50 p-1 border border-white/5 shadow-inner">
+                        <Button variant={viewMode === 'grid' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setSupplierViewMode('grid')}>
+                            <LayoutGrid className="h-4 w-4"/>
+                        </Button>
+                        <Button variant={viewMode === 'list' ? 'secondary': 'ghost'} size="icon" className="h-9 w-9 rounded-lg" onClick={() => setSupplierViewMode('list')}>
+                            <List className="h-4 w-4"/>
+                        </Button>
                     </div>
 
-                    <Button variant="ghost" size="icon" className="h-11 w-11 luxury-glass" onClick={() => fetchSuppliers(true)} disabled={isRefreshing}>
-                        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                    <Button variant="ghost" size="icon" className="h-10 w-10 luxury-glass hover:bg-primary/10" onClick={() => fetchSuppliers(true)} disabled={isRefreshing}>
+                        <RefreshCw className={cn("h-4 w-4 text-primary", isRefreshing && "animate-spin")} />
                     </Button>
                 </div>
             </div>
 
             {selectedSuppliers.size > 0 && (
-                <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-xl p-3 animate-in slide-in-from-top-2">
-                    <span className="text-sm font-bold text-primary">{selectedSuppliers.size} مورد(ين) مختار(ين)</span>
-                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="rounded-lg h-8">
-                        <Trash2 className="h-4 w-4 mr-2" /> Supprimer la sélection
+                <div className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-2xl p-4 animate-in slide-in-from-top-4 duration-500 shadow-lg">
+                    <span className="text-xs font-black uppercase text-primary tracking-[0.2em]">
+                        {selectedSuppliers.size} مورد(ين) مختار(ين)
+                    </span>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteDialogOpen(true)} className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 h-10 px-6">
+                        <Trash2 className="h-4 w-4" /> 
+                        Révocation Collective
                     </Button>
                 </div>
             )}
             
-            <div className="min-h-[400px]">
+            <div className="min-h-[500px]">
                {renderContent()}
             </div>
 
