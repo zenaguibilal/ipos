@@ -103,7 +103,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                 toast.info("Rien à générer.");
             }
         } catch (error: any) {
-            toast.error("Génération échouée.");
+            toast.error("Génération échوقت.");
         } finally {
             setIsGenerating(false);
         }
