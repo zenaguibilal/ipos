@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { 
     Plus, Search, RefreshCw, LayoutGrid, List, FileUp, 
     FileDown, Trash2, RotateCcw, X, Filter, ChevronDown, 
-    SortAsc, UserPlus, Users, Wallet, AlertTriangle, UserCheck
+    SortAsc, UserPlus, Users, Wallet, AlertTriangle, UserCheck, Activity
 } from 'lucide-react';
 import { CustomerCard } from '@/components/customers/customer-card';
 import { CustomerTable } from '@/components/customers/customer-table';
@@ -173,7 +173,7 @@ export default function CustomersPage() {
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader 
                 title="Souveraineté de la Clientèle" 
-                description="Contrôle absolu des comptes, gestion des créances و historique des flux clients."
+                description="Contrôle absolو des comptes, gestion des créances و historique des flux clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <PrintCustomerListDialog customers={filteredAndSortedCustomers} />
@@ -232,7 +232,7 @@ export default function CustomersPage() {
                             <DropdownMenuRadioGroup value={debtFilter} onValueChange={(v) => setDebtFilter(v as DebtFilter)}>
                                 <DropdownMenuRadioItem value="all" className="font-bold py-2">Tout afficher</DropdownMenuRadioItem>
                                 <DropdownMenuRadioItem value="debtors" className="font-bold py-2 text-destructive">Avec solde débiteur</DropdownMenuRadioItem>
-                                <DropdownMenuRadioItem value="overlimit" className="font-bold py-2 text-destructive">Plafンド dépassement</DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="overlimit" className="font-bold py-2 text-destructive">Plafond dépassement</DropdownMenuRadioItem>
                             </DropdownMenuRadioGroup>
                         </DropdownMenuContent>
                     </DropdownMenu>
