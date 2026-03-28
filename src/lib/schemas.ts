@@ -151,6 +151,7 @@ export const ProfileSchema = z.object({
     prix_pain: z.number().nonnegative().optional(),
     currencySymbol: z.string().optional(),
     decimalPlaces: z.number().int().min(0).max(3).optional(),
+    zakatAnniversary: z.string().optional(),
 });
 
 export const RecipeSchema = z.object({

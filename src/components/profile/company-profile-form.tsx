@@ -9,14 +9,12 @@ import { toast } from 'sonner';
 import type { CompanyProfile } from '@/lib/types';
 import { Skeleton } from '../ui/skeleton';
 import { 
-    Loader2, Save, Globe, Phone, Mail, MapPin, Hash, 
-    ShoppingBag, Coins, Scale, FileText, LogOut, 
-    Briefcase, Building, Map, Landmark, ShieldCheck, Wheat, Star, DollarSign, Binary
+    Loader2, Save, Globe, Phone, Mail, MapPin, 
+    ShoppingBag, Coins, Wheat, Star, DollarSign, Binary, Calendar
 } from 'lucide-react';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Separator } from '../ui/separator';
-import { Badge } from '../ui/badge';
-import { cn } from '@/lib/utils';
+import { DatePicker } from '../ui/date-picker';
 
 interface CompanyProfileFormProps {
     mode: 'company' | 'settings';
@@ -27,7 +25,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
         profile: state.profile,
         isSettingsLoading: state.isSettingsLoading,
     }));
-    const { updateProfile, logout } = useAppStore(state => state.actions);
+    const { updateProfile } = useAppStore(state => state.actions);
     const isManagerOrAdmin = useIsManagerOrAdmin();
     
     const [formState, setFormState] = useState<Partial<CompanyProfile>>({});
@@ -42,6 +40,10 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setFormState(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleDateChange = (date?: Date) => {
+        setFormState(prev => ({ ...prev, zakatAnniversary: date?.toISOString() }));
     };
 
     const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -69,6 +71,7 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                 prix_pain: formState.prix_pain ? Number(formState.prix_pain) : undefined,
                 currencySymbol: formState.currencySymbol || undefined,
                 decimalPlaces: formState.decimalPlaces !== undefined ? Number(formState.decimalPlaces) : undefined,
+                zakatAnniversary: formState.zakatAnniversary || undefined,
             });
             toast.success('Informations souveraines mises à jour avec succès.');
         } catch (err) {
@@ -96,7 +99,6 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
             <CardContent className="space-y-12 pt-10">
                 {mode === 'company' ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        {/* Section Left: Core Identity */}
                         <div className="space-y-10">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -135,11 +137,10 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                             </div>
                         </div>
 
-                        {/* Section Right: Legal & Contacts */}
                         <div className="space-y-10">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                                    <Landmark className="h-5 w-5 text-blue-400" />
+                                    <Calendar className="h-5 w-5 text-blue-400" />
                                 </div>
                                 <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">Canaux & Registres Légaux</h4>
                             </div>
@@ -179,58 +180,54 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                     </div>
                 ) : (
                     <div className="space-y-12">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            {/* Reference: Bread Price */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             <div className="p-8 rounded-[3rem] bg-gradient-to-br from-primary/10 via-transparent to-transparent border border-primary/10 relative overflow-hidden group shadow-2xl">
                                 <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:rotate-12 transition-all duration-700">
                                     <Wheat className="h-48 w-48 text-primary" />
                                 </div>
                                 <div className="relative z-10 space-y-6">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-3 bg-primary/20 rounded-2xl shadow-inner">
-                                            <Wheat className="h-6 w-6 text-primary" />
-                                        </div>
+                                        <div className="p-3 bg-primary/20 rounded-2xl shadow-inner"><Wheat className="h-6 w-6 text-primary" /></div>
                                         <div>
-                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Référence Boulangerie</h4>
-                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Prix unitaire du Pain (DA)</p>
+                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-primary">Boulangerie</h4>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Prix unitaire Pain (DA)</p>
                                         </div>
                                     </div>
-                                    <Input 
-                                        id="prix_pain" 
-                                        type="number" 
-                                        step="0.1" 
-                                        value={formState.prix_pain || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving || !isManagerOrAdmin} 
-                                        className="h-24 text-6xl font-black rounded-[2rem] bg-background/60 border-primary/20 focus:border-primary text-center tracking-tighter"
-                                    />
+                                    <Input id="prix_pain" type="number" step="0.1" value={formState.prix_pain || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="h-20 text-5xl font-black rounded-[2rem] bg-background/60 border-primary/20 focus:border-primary text-center tracking-tighter" />
                                 </div>
                             </div>
 
-                            {/* Reference: Gold Price */}
                             <div className="p-8 rounded-[3rem] bg-gradient-to-br from-orange-500/10 via-transparent to-transparent border border-orange-500/10 relative overflow-hidden group shadow-2xl">
                                 <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:-rotate-12 transition-all duration-700">
                                     <Coins className="h-48 w-48 text-orange-400" />
                                 </div>
                                 <div className="relative z-10 space-y-6">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-3 bg-orange-500/20 rounded-2xl shadow-inner">
-                                            <Coins className="h-6 w-6 text-orange-400" />
-                                        </div>
+                                        <div className="p-3 bg-orange-500/20 rounded-2xl shadow-inner"><Coins className="h-6 w-6 text-orange-400" /></div>
                                         <div>
-                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400">Référence Marché (Or)</h4>
-                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Valeur du Gramme 24k (DA)</p>
+                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400">Marché Or</h4>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">Prix Gramme 24k (DA)</p>
                                         </div>
                                     </div>
-                                    <Input 
-                                        id="goldPricePerGram" 
-                                        type="number" 
-                                        step="0.01" 
-                                        value={formState.goldPricePerGram || ''} 
-                                        onChange={handleInputChange} 
-                                        disabled={isSaving || !isManagerOrAdmin} 
-                                        className="h-24 text-6xl font-black rounded-[2rem] bg-background/60 border-orange-500/20 focus:border-orange-500 text-center tracking-tighter"
-                                    />
+                                    <Input id="goldPricePerGram" type="number" step="0.01" value={formState.goldPricePerGram || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="h-20 text-5xl font-black rounded-[2rem] bg-background/60 border-orange-500/20 focus:border-orange-500 text-center tracking-tighter" />
+                                </div>
+                            </div>
+
+                            <div className="p-8 rounded-[3rem] bg-gradient-to-br from-blue-500/10 via-transparent to-transparent border border-blue-500/10 relative overflow-hidden group shadow-2xl">
+                                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:rotate-6 transition-all duration-700">
+                                    <Calendar className="h-48 w-48 text-blue-400" />
+                                </div>
+                                <div className="relative z-10 space-y-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-blue-500/20 rounded-2xl shadow-inner"><Calendar className="h-6 w-6 text-blue-400" /></div>
+                                        <div>
+                                            <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-blue-400">حول الحول</h4>
+                                            <p className="text-[9px] text-muted-foreground uppercase font-bold">تاريخ استحقاق الزكاة</p>
+                                        </div>
+                                    </div>
+                                    <div className="h-20 flex items-center justify-center bg-background/60 rounded-[2rem] border border-blue-500/20">
+                                        <DatePicker date={formState.zakatAnniversary ? new Date(formState.zakatAnniversary) : undefined} setDate={handleDateChange} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -238,67 +235,37 @@ export function CompanyProfileForm({ mode }: CompanyProfileFormProps) {
                         <Separator className="bg-white/5" />
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                            {/* Regional & Financial Preferences */}
                             <div className="space-y-10">
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-2xl bg-chart-quaternary/10 flex items-center justify-center">
-                                        <DollarSign className="h-5 w-5 text-chart-quaternary" />
-                                    </div>
-                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-chart-quaternary">Paramètres Régionaux & Financiers</h4>
+                                    <div className="h-10 w-10 rounded-2xl bg-chart-quaternary/10 flex items-center justify-center"><DollarSign className="h-5 w-5 text-chart-quaternary" /></div>
+                                    <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-chart-quaternary">Finances & Région</h4>
                                 </div>
-
                                 <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <Label htmlFor="currencySymbol" className="text-[10px] font-black uppercase opacity-60 ml-1">Symbole de la monnaie</Label>
-                                        <div className="relative group">
-                                            <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-chart-quaternary/30 group-focus-within:text-chart-quaternary transition-colors" />
-                                            <Input id="currencySymbol" value={formState.currencySymbol || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-chart-quaternary/40 font-bold" placeholder="Ex: DA, $, €" />
-                                        </div>
+                                        <Label htmlFor="currencySymbol" className="text-[10px] font-black uppercase opacity-60 ml-1">Symbole monnaie</Label>
+                                        <Input id="currencySymbol" value={formState.currencySymbol || ''} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="h-14 rounded-2xl bg-background/40 border-white/5 focus:border-chart-quaternary/40 font-bold" />
                                     </div>
-
                                     <div className="space-y-2">
-                                        <Label htmlFor="decimalPlaces" className="text-[10px] font-black uppercase opacity-60 ml-1">Nombre de chiffres après la virgule</Label>
-                                        <div className="relative group">
-                                            <Binary className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-chart-quaternary/30 group-focus-within:text-chart-quaternary transition-colors" />
-                                            <Input id="decimalPlaces" type="number" min="0" max="3" value={formState.decimalPlaces ?? 1} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="pl-12 h-14 rounded-2xl bg-background/40 border-white/5 focus:border-chart-quaternary/40 font-bold" />
-                                        </div>
+                                        <Label htmlFor="decimalPlaces" className="text-[10px] font-black uppercase opacity-60 ml-1">Décimales</Label>
+                                        <Input id="decimalPlaces" type="number" min="0" max="3" value={formState.decimalPlaces ?? 1} onChange={handleInputChange} disabled={isSaving || !isManagerOrAdmin} className="h-14 rounded-2xl bg-background/40 border-white/5 focus:border-chart-quaternary/40 font-bold" />
                                     </div>
                                 </div>
                             </div>
-
                             <div className="p-8 rounded-[3rem] bg-muted/10 border border-white/5 flex flex-col justify-center text-center">
                                 <div className="p-4 bg-chart-quaternary/5 rounded-2xl border border-chart-quaternary/10 mb-4">
-                                    <p className="text-[10px] font-black uppercase text-chart-quaternary mb-2">Exemple d'affichage financier</p>
-                                    <p className="text-4xl font-black tracking-tighter">
-                                        {(1250.50).toLocaleString('fr-FR', { minimumFractionDigits: formState.decimalPlaces ?? 1, maximumFractionDigits: formState.decimalPlaces ?? 1 })} {formState.currencySymbol || 'DA'}
-                                    </p>
+                                    <p className="text-[10px] font-black uppercase text-chart-quaternary mb-2">Simulation</p>
+                                    <p className="text-4xl font-black tracking-tighter">1250.50 {formState.currencySymbol || 'DA'}</p>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground italic leading-relaxed">
-                                    "Ces réglages s'appliquent dynamiquement à l'ensemble des rapports, factures et tableaux de bord du terminal iPOS."
-                                </p>
+                                <p className="text-[10px] text-muted-foreground italic">Paramètres globaux pour rapports et factures.</p>
                             </div>
                         </div>
                     </div>
                 )}
             </CardContent>
 
-            <CardFooter className="bg-white/5 p-8 border-t border-white/5 mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 rounded-b-[2.5rem]">
-                <Button 
-                    type="button" 
-                    variant="ghost" 
-                    onClick={logout}
-                    className="h-14 px-10 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] text-destructive hover:bg-destructive/10 gap-3 w-full sm:w-auto transition-all"
-                >
-                    <LogOut className="h-5 w-5" />
-                    Mettre Fin à la Session
-                </Button>
-
+            <CardFooter className="bg-white/5 p-8 border-t border-white/5 mt-12 flex flex-col sm:flex-row items-center justify-end gap-6 rounded-b-[2.5rem]">
                 {isManagerOrAdmin && (
-                    <Button 
-                        type="submit" 
-                        disabled={isSaving} 
-                        className="h-14 px-12 rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] gap-3 shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto bg-primary hover:bg-primary/90"
-                    >
+                    <Button type="submit" disabled={isSaving} className="h-14 px-12 rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] gap-3 shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto bg-primary hover:bg-primary/90">
                         {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                         Graver les Décrets
                     </Button>

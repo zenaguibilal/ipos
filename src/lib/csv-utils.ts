@@ -1,9 +1,8 @@
-
 'use client';
 
 import Papa from 'papaparse';
 import { api } from './api-client';
-import type { Customer, ImportAnalysis, Product, ProductImportAnalysis, Supplier, Expense, Sale, ProductReturn, StockIntake } from './types';
+import type { Customer, ImportAnalysis, Product, ProductImportAnalysis, Supplier, Expense, Sale, ProductReturn, StockIntake, SavedZakatCalculation } from './types';
 
 /**
  * @fileOverview THE CSV SINGULARITY
@@ -197,5 +196,14 @@ export class CsvImporter {
                 'Nbr Articles': i.items.length
             };
         }), 'stock-register-export');
+    }
+
+    static exportZakatHistory(history: SavedZakatCalculation[]) {
+        this.download(history.map(h => ({
+            'Date': new Date(h.createdAt).toLocaleDateString(),
+            'Assiette Zakat': h.zakatBase,
+            'Zakat Due (2.5%)': h.zakatAmount,
+            'Valeur Or Ref.': h.details?.goldPrice || 'N/A'
+        })), 'zakat-ledger-export');
     }
 }

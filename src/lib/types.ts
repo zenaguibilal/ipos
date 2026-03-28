@@ -195,6 +195,7 @@ export interface CompanyProfile {
     prix_pain?: number;
     currencySymbol?: string;
     decimalPlaces?: number;
+    zakatAnniversary?: string;
     role: AppRole;
     updatedAt: string;
 }
@@ -254,6 +255,7 @@ export interface SavedZakatCalculation {
     zakatBase: number;
     zakatAmount: number;
     createdAt: string;
+    details?: any;
 }
 
 export interface ImportAnalysis {
