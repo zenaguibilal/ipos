@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt, PackageCheck, PackageX } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -71,7 +71,7 @@ export function ReturnTable({
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground py-6 px-8">Origine Sale</TableHead>
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Horodatage</TableHead>
             <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Entité Cliente</TableHead>
-            <TableHead className="text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">Items</TableHead>
+            <TableHead className="text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">Audit Items</TableHead>
             <TableHead className="text-right font-black uppercase tracking-widest text-[10px] text-muted-foreground">Refund Cash</TableHead>
             <TableHead className="text-right font-black uppercase tracking-widest text-[10px] text-muted-foreground">Impact Solde</TableHead>
             <TableHead className="text-right font-black uppercase tracking-widest text-[10px] text-muted-foreground pr-10">Valeur Nette</TableHead>
@@ -84,6 +84,7 @@ export function ReturnTable({
             const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Client de passage';
             const impactDebt = Math.max(0, pr.totalReturnValue - pr.amountRefunded);
             const isSelected = selectedReturns.has(pr.uuid);
+            const restockedCount = pr.items.filter(i => i.wasRestocked).length;
 
             return (
               <TableRow 
@@ -122,9 +123,21 @@ export function ReturnTable({
                   </div>
                 </TableCell>
                 <TableCell className="text-center">
-                  <Badge variant="secondary" className="font-black h-5 text-[9px] px-2 rounded-lg bg-muted/50 border-white/5">
-                    {pr.items.length} art.
-                  </Badge>
+                  <div className="flex flex-col items-center gap-1">
+                    <Badge variant="secondary" className="font-black h-5 text-[9px] px-2 rounded-lg bg-muted/50 border-white/5">
+                        {pr.items.length} art.
+                    </Badge>
+                    <div className="flex gap-1">
+                        <span className="text-[8px] font-bold text-green-500 flex items-center gap-0.5">
+                            <PackageCheck className="h-2 w-2" /> {restockedCount}
+                        </span>
+                        {pr.items.length > restockedCount && (
+                            <span className="text-[8px] font-bold text-destructive flex items-center gap-0.5">
+                                <PackageX className="h-2 w-2" /> {pr.items.length - restockedCount}
+                            </span>
+                        )}
+                    </div>
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                     <span className="font-bold text-chart-quaternary text-xs flex items-center justify-end gap-1.5">

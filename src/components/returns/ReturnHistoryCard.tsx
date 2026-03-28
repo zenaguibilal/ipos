@@ -6,7 +6,7 @@ import type { ProductReturn } from '@/lib/types';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt, Undo2 } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Printer, User, Banknote, HandCoins, Clock, Receipt, Undo2, PackageCheck, PackageX } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -35,9 +35,11 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
 }) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const impactDebt = Math.max(0, productReturn.totalReturnValue - productReturn.amountRefunded);
+    const restockedCount = productReturn.items.filter(i => i.wasRestocked).length;
 
     const handleCardClick = (e: React.MouseEvent) => {
-        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="menu"]')) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('[role="menu"]') || target.closest('[role="checkbox"]')) return;
         onToggleSelection();
     };
 
@@ -89,6 +91,9 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                             <DropdownMenuItem onClick={() => onPrint(productReturn, 'thermal')} className="rounded-lg font-bold gap-3 py-2.5">
                                 <Printer className="h-4 w-4 text-primary" /> Ticket 80mm
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onPrint(productReturn, 'a4')} className="rounded-lg font-bold gap-3 py-2.5">
+                                <Printer className="h-4 w-4 text-primary" /> Facture A4
+                            </DropdownMenuItem>
                             {isManagerOrAdmin && (
                                 <DropdownMenuItem onClick={() => onCancelReturn(productReturn)} className="rounded-lg text-destructive focus:text-destructive focus:bg-destructive/10 gap-3 py-2.5">
                                     <Trash2 className="h-4 w-4" /> Annuler Retour
@@ -125,6 +130,19 @@ export const ReturnHistoryCard = React.memo<ReturnCardProps>(({
                             <HandCoins className="h-3 w-3" />
                         </p>
                     </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                    <Badge variant="outline" className="text-[8px] font-black uppercase gap-1.5 border-white/5 bg-background/40 h-5">
+                        <PackageCheck className="h-2.5 w-2.5 text-green-500" />
+                        {restockedCount} Re-stock
+                    </Badge>
+                    {productReturn.items.length > restockedCount && (
+                        <Badge variant="outline" className="text-[8px] font-black uppercase gap-1.5 border-white/5 bg-background/40 h-5">
+                            <PackageX className="h-2.5 w-2.5 text-destructive" />
+                            {productReturn.items.length - restockedCount} Perte
+                        </Badge>
+                    )}
                 </div>
             </CardContent>
 

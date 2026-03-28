@@ -7,7 +7,7 @@ import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
-    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins
+    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins, History, Filter
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 /**
- * @fileOverview Returns Sovereign Ledger (Finalized Excellence)
+ * @fileOverview Returns Sovereign Ledger (Finalized Perfection)
  * المركز السيادي لتعقب حركات الإرجاع وتصحيح الأرصدة والمخزون.
  */
 
