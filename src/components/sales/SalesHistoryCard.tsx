@@ -2,29 +2,31 @@
 'use client';
 
 import React from 'react';
-import type { Sale } from '@/lib/types';
+import type { Sale, Customer } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, CreditCard, Banknote, HandCoins, ShoppingBag } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, CreditCard, Banknote, HandCoins, ShoppingBag, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { safeToDate, formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 
 interface SalesHistoryCardProps {
     sale: Sale;
     customerName?: string;
+    customerPhone?: string;
     onViewDetails: (sale: Sale) => void;
     onCancelSale: (sale: Sale) => void;
     onPrint: (sale: Sale) => void;
     onRecordPayment?: () => void;
 }
 
-export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails, onCancelSale, onPrint, onRecordPayment }: SalesHistoryCardProps) => {
+export const SalesHistoryCard = React.memo(({ sale, customerName, customerPhone, onViewDetails, onCancelSale, onPrint, onRecordPayment }: SalesHistoryCardProps) => {
     const isManagerOrAdmin = useIsManagerOrAdmin();
+    const profile = useAppStore(state => state.profile);
     const hasCard = sale.payments.some(p => p.method === 'card');
 
     const paymentStatusMap = {
@@ -33,6 +35,25 @@ export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails,
         unpaid: { text: 'Impayé', icon: Clock, color: 'text-destructive', bg: 'bg-destructive/10' },
     };
     const status = paymentStatusMap[sale.paymentStatus];
+
+    const handleWhatsAppShare = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!sale || !customerPhone) return;
+        const storeName = profile?.companyName || "iPOS Store";
+        const itemsList = sale.items.map(i => `- ${i.name} (${i.quantity} x ${i.price} DA)`).join('\n');
+        const message = `*FACTURE iPOS - ${storeName}*\n` +
+                        `--------------------------\n` +
+                        `Réf: #${sale.invoiceNumber}\n` +
+                        `Date: ${format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm')}\n` +
+                        `--------------------------\n` +
+                        `${itemsList}\n` +
+                        `--------------------------\n` +
+                        `*TOTAL: ${sale.total.toFixed(1)} DA*\n` +
+                        `Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
+                        `Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
+                        `Merci de votre confiance !`;
+        window.open(`https://wa.me/${customerPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
 
     return (
         <Card className="flex flex-col transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 group relative overflow-hidden luxury-glass border-white/5 bg-muted/10">
@@ -63,6 +84,11 @@ export const SalesHistoryCard = React.memo(({ sale, customerName, onViewDetails,
                             <DropdownMenuItem onClick={() => onPrint(sale)} className="rounded-lg font-bold gap-3 py-2.5">
                                 <Printer className="h-4 w-4 text-primary" /> Imprimer reçu
                             </DropdownMenuItem>
+                            {customerPhone && (
+                                <DropdownMenuItem onClick={handleWhatsAppShare} className="rounded-lg font-bold text-green-600 gap-3 py-2.5">
+                                    <MessageSquare className="h-4 w-4" /> Partager WhatsApp
+                                </DropdownMenuItem>
+                            )}
                             {onRecordPayment && (
                                 <DropdownMenuItem onClick={onRecordPayment} className="rounded-lg font-black text-primary bg-primary/5 gap-3 py-2.5">
                                     <HandCoins className="h-4 w-4" /> Encaisser solده

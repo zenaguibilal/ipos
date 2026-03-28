@@ -12,7 +12,7 @@ import {
     LayoutGrid, List, RefreshCw, Loader2, Wallet, HandCoins, 
     DollarSign, X, ArrowUpDown, Calendar, CalendarDays, CheckCircle2,
     AlertCircle, Clock, Receipt, Banknote, CreditCard, ChevronDown, 
-    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock, Printer, ShieldX
+    Target, Activity, TrendingUpDown, Zap, ArrowRight, Lock, Printer, ShieldX, MessageSquare
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -49,18 +49,11 @@ import { fr } from 'date-fns/locale';
 import { format } from 'date-fns';
 
 /**
- * @fileOverview Sales Sovereign Ledger (Finalized with Granular Permission)
+ * @fileOverview Sales Sovereign Ledger (Finalized with WhatsApp Integration)
  */
 
 type PaymentFilter = 'all' | 'paid' | 'partial' | 'unpaid';
 const ITEMS_PER_PAGE = 15;
-
-const sortOptions = {
-    'createdAt_desc': 'Plus récents',
-    'createdAt_asc': 'Plus anciens',
-    'total_desc': 'Total (Plus élevé)',
-    'total_asc': 'Total (Moins élevé)',
-};
 
 export default function SalesHistoryPage() {
     const router = useRouter();
@@ -440,6 +433,7 @@ export default function SalesHistoryPage() {
                         onOpenChange={setIsDetailsOpen}
                         sale={selectedSale}
                         customerName={selectedSale.customerUuid ? (customerMap.get(selectedSale.customerUuid) ? `${customerMap.get(selectedSale.customerUuid)?.firstName} ${customerMap.get(selectedSale.customerUuid)?.lastName}` : 'Compte Inconnu') : 'Client de passage'}
+                        customerPhone={selectedSale.customerUuid ? customerMap.get(selectedSale.customerUuid)?.phone : undefined}
                         onPrint={() => {
                             setIsDetailsOpen(false);
                             setIsPrintOpen(true);

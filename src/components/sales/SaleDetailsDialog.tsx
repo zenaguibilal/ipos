@@ -18,18 +18,20 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Printer, X, HandCoins } from 'lucide-react';
+import { Printer, X, HandCoins, MessageSquare, Share2 } from 'lucide-react';
 import type { Sale } from '@/lib/types';
 import { formatCurrency, safeToDate } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Separator } from '@/components/ui/separator';
+import { useAppStore } from '@/stores/appStore';
 
 interface SaleDetailsDialogProps {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     sale: Sale | null;
     customerName?: string;
+    customerPhone?: string;
     onPrint?: () => void;
     onRecordPayment?: () => void;
 }
@@ -39,10 +41,31 @@ export function SaleDetailsDialog({
     onOpenChange,
     sale,
     customerName,
+    customerPhone,
     onPrint,
     onRecordPayment,
 }: SaleDetailsDialogProps) {
+    const profile = useAppStore(state => state.profile);
+
     if (!sale) return null;
+
+    const handleWhatsAppShare = () => {
+        if (!sale || !customerPhone) return;
+        const storeName = profile?.companyName || "iPOS Store";
+        const itemsList = sale.items.map(i => `- ${i.name} (${i.quantity} x ${i.price} DA)`).join('\n');
+        const message = `*FACTURE iPOS - ${storeName}*\n` +
+                        `--------------------------\n` +
+                        `Réf: #${sale.invoiceNumber}\n` +
+                        `Date: ${format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm')}\n` +
+                        `--------------------------\n` +
+                        `${itemsList}\n` +
+                        `--------------------------\n` +
+                        `*TOTAL: ${sale.total.toFixed(1)} DA*\n` +
+                        `Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
+                        `Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
+                        `Merci de votre confiance !`;
+        window.open(`https://wa.me/${customerPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -151,10 +174,18 @@ export function SaleDetailsDialog({
 
                 <DialogFooter className="gap-2 sm:gap-0 mt-6 border-t border-border/50 pt-4">
                     <div className="flex w-full flex-col sm:flex-row justify-between items-center gap-2">
-                        <Button variant="outline" onClick={onPrint} className="w-full sm:w-auto gap-2 border-primary/30 hover:bg-primary/10">
-                            <Printer className="h-4 w-4" />
-                            Réimprimer le Reçu
-                        </Button>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <Button variant="outline" onClick={onPrint} className="flex-1 sm:flex-none gap-2 border-primary/30 hover:bg-primary/10">
+                                <Printer className="h-4 w-4" />
+                                Reçu
+                            </Button>
+                            {customerPhone && (
+                                <Button variant="outline" onClick={handleWhatsAppShare} className="flex-1 sm:flex-none gap-2 border-green-500/30 text-green-600 hover:bg-green-500/10">
+                                    <MessageSquare className="h-4 w-4" />
+                                    WhatsApp
+                                </Button>
+                            )}
+                        </div>
                         <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
                             Fermer
                         </Button>

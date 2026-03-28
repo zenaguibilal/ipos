@@ -20,15 +20,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, Banknote, CreditCard, HandCoins, User } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, CheckCircle, AlertCircle, Clock, Printer, Banknote, CreditCard, HandCoins, User, MessageSquare } from 'lucide-react';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { useIsManagerOrAdmin } from '@/stores/appStore';
+import { useIsManagerOrAdmin, useAppStore } from '@/stores/appStore';
 
 /**
- * @fileOverview Sales History Table (Luxury Sovereign Style)
+ * @fileOverview Sales History Table (Luxury Sovereign Style with WhatsApp)
  */
 
 interface SalesHistoryTableProps {
@@ -49,11 +49,31 @@ export function SalesHistoryTable({
   onRecordPayment,
 }: SalesHistoryTableProps) {
   const isManagerOrAdmin = useIsManagerOrAdmin();
+  const profile = useAppStore(state => state.profile);
 
   const paymentStatusMap = {
     paid: { text: 'Soldé', icon: CheckCircle, color: 'text-chart-quaternary', bg: 'bg-chart-quaternary/10 border-chart-quaternary/20' },
     partial: { text: 'Partiel', icon: AlertCircle, color: 'text-chart-secondary', bg: 'bg-chart-secondary/10 border-chart-secondary/20' },
     unpaid: { text: 'À Crédit', icon: Clock, color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/20' },
+  };
+
+  const handleWhatsAppShare = (e: React.MouseEvent, sale: Sale, phone?: string) => {
+    e.stopPropagation();
+    if (!sale || !phone) return;
+    const storeName = profile?.companyName || "iPOS Store";
+    const itemsList = sale.items.map(i => `- ${i.name} (${i.quantity} x ${i.price} DA)`).join('\n');
+    const message = `*FACTURE iPOS - ${storeName}*\n` +
+                    `--------------------------\n` +
+                    `Réf: #${sale.invoiceNumber}\n` +
+                    `Date: ${format(safeToDate(sale.createdAt!), 'dd/MM/yyyy HH:mm')}\n` +
+                    `--------------------------\n` +
+                    `${itemsList}\n` +
+                    `--------------------------\n` +
+                    `*TOTAL: ${sale.total.toFixed(1)} DA*\n` +
+                    `Payé: ${sale.amountPaid.toFixed(1)} DA\n` +
+                    `Reste: ${sale.remainingBalance.toFixed(1)} DA\n\n` +
+                    `Merci de votre confiance !`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (
@@ -88,7 +108,7 @@ export function SalesHistoryTable({
                         <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center font-mono font-black text-xs text-primary shadow-inner group-hover:scale-110 transition-transform">
                             {sale.invoiceNumber.split('-')[1]}
                         </div>
-                        <span className="font-mono font-bold text-sm tracking-tight text-foreground">{sale.invoiceNumber}</span>
+                        <span className="font-mono font-bold text-sm tracking-tight text-foreground">#{sale.invoiceNumber}</span>
                     </div>
                 </TableCell>
                 <TableCell>
@@ -140,6 +160,11 @@ export function SalesHistoryTable({
                       <DropdownMenuItem onClick={() => onPrint(sale)} className="rounded-xl py-3 font-bold gap-3">
                         <Printer className="h-4 w-4 text-primary" /> Réédition Ticket
                       </DropdownMenuItem>
+                      {customer?.phone && (
+                        <DropdownMenuItem onClick={(e) => handleWhatsAppShare(e, sale, customer.phone)} className="rounded-xl py-3 font-bold text-green-600 gap-3">
+                          <MessageSquare className="h-4 w-4" /> WhatsApp
+                        </DropdownMenuItem>
+                      )}
                       {onRecordPayment && sale.remainingBalance > 0 && (
                         <DropdownMenuItem onClick={() => onRecordPayment(sale)} className="rounded-xl py-3 font-black text-primary bg-primary/5 gap-3">
                           <HandCoins className="h-4 w-4" /> Encaisser Solde
