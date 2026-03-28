@@ -71,7 +71,10 @@ export class ReturnRepository {
         // Atomic Item-by-Item Stock Adjustment
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
-                await this.productRepo.updateStock(item.product_uuid, item.quantity, 'return', ret.uuid);
+                const productExists = await this.productRepo.findByUuid(item.product_uuid);
+                if (productExists) {
+                    await this.productRepo.updateStock(item.product_uuid, item.quantity, 'return', ret.uuid);
+                }
             }
         }
 
@@ -94,8 +97,8 @@ export class ReturnRepository {
         // Precise Reversal: Only deduct from stock if it was added during the return process
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
-                const product = await this.productRepo.findByUuid(item.product_uuid);
-                if (product) {
+                const productExists = await this.productRepo.findByUuid(item.product_uuid);
+                if (productExists) {
                     await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
                 }
             }

@@ -76,7 +76,7 @@ export class SaleRepository {
             product_uuid: item.productUuid || item.uuid || null,
             name: item.name,
             price: item.price,
-            purchase_price: item.purchase_price || 0,
+            purchase_price: item.purchasePrice || 0,
             quantity: item.cartQuantity || item.quantity,
         }));
 
@@ -90,7 +90,10 @@ export class SaleRepository {
         // Atomic Item-by-Item Stock Adjustment
         for (const item of saleItems) {
             if (item.product_uuid && !item.product_uuid.startsWith('custom-')) {
-                await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
+                const productExists = await this.productRepo.findByUuid(item.product_uuid);
+                if (productExists) {
+                    await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
+                }
             }
         }
 
