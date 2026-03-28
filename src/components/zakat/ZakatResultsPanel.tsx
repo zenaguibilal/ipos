@@ -1,12 +1,13 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { formatCurrency, cn } from '@/lib/utils';
 import { Save, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
+/**
+ * [QUAL-01] Modulaire Component pour les résultats de Zakat
+ */
 interface ZakatResultsPanelProps {
     result: any;
     isSaving: boolean;
@@ -44,7 +45,7 @@ export function ZakatResultsPanel({ result, isSaving, onSave }: ZakatResultsPane
                 
                 {!result.isNisabReached && nisabGap > 0 && (
                     <div className="p-5 rounded-2xl bg-destructive/5 border border-destructive/10 text-center">
-                        <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-1">فجوة النصاب</p>
+                        <p className="text-[10px] font-black uppercase text-destructive tracking-widest mb-1">Ecart au Seuil</p>
                         <p className="text-lg font-black text-destructive">-{formatCurrency(nisabGap)}</p>
                     </div>
                 )}
@@ -57,7 +58,7 @@ export function ZakatResultsPanel({ result, isSaving, onSave }: ZakatResultsPane
                     <div className="space-y-1">
                         <p className="text-[11px] font-black uppercase tracking-widest">{result.isNisabReached ? 'Nisab Atteint' : 'Patrimoine Inférieur'}</p>
                         <p className="text-[10px] italic leading-tight font-medium">
-                            {result.isNisabReached ? "La فريضة est applicable." : "Seuil de وجوب non atteint."}
+                            {result.isNisabReached ? "La fريضة est applicable." : "Seuil de وجوب non atteint."}
                         </p>
                     </div>
                 </div>

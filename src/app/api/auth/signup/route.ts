@@ -1,11 +1,10 @@
-
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 /**
- * @fileOverview API WALL: Atomic Sovereign Identity Creation
- * Fixed SEC-03: Rollback auth user if profile creation fails.
+ * [SEC-03] Atomic Sovereign Identity Creation
+ * Garantit qu'aucun utilisateur n'est créé sans profil associé.
  */
 
 const SignupSchema = z.object({
@@ -41,9 +40,14 @@ export async function POST(req: Request) {
             }]);
 
         if (profileError) {
-            // ATOMIC ROLLBACK (SEC-03)
-            // If profile fails, we shouldn't have an orphaned auth user
+            // ATOMIC ROLLBACK: Delete auth user if profile fails
+            // Requires service role or admin privileges if configured
+            console.error("[SIGNUP_CRITICAL] Profile creation failed, rolling back user:", userId);
+            
+            // In a real Supabase production env, you'd use a DB function (RPC) 
+            // but here we implement the logical rollback as requested.
             await supabase.auth.admin.deleteUser(userId);
+            
             throw new Error("SIGNUP_ATOMIC_FAILURE");
         }
 

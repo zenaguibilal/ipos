@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { ErrorInfo, ReactNode } from 'react';
@@ -15,7 +14,7 @@ interface State {
 
 /**
  * @fileOverview Sovereign Error Boundary
- * Fixed QUAL-02: Universal error catching with French UI.
+ * [QUAL-02] Intercepte les erreurs critiques et offre une interface de récupération.
  */
 export class ErrorBoundary extends React.Component<Props, State> {
   public state: State = {

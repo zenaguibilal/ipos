@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Label } from '@/components/ui/label';
@@ -9,6 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { formatCurrency } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
+/**
+ * [QUAL-01] Modulaire Component pour le formulaire de Zakat
+ */
 interface ZakatCalculatorFormProps {
     zakatData: any;
     zakatInputs: any;

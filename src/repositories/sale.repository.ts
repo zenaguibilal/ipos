@@ -1,4 +1,3 @@
-
 import { createClient } from "@/utils/supabase/server";
 import type { Sale } from "@/lib/types";
 import { v4 as uuidv4 } from 'uuid';
@@ -7,22 +6,25 @@ import { CustomerRepository } from "./customer.repository";
 
 /**
  * @fileOverview Sale Repository (Autonomous Sovereign Authority)
- * Fixed ARCH-01: Removed 'use client'.
- * Fixed QUAL-03: High-entropy invoice generation.
+ * [ARCH-01] Server-side only (no 'use client').
+ * [QUAL-03] High-entropy invoice generation using crypto.
  */
 export class SaleRepository {
     private supabase = createClient();
     private productRepo = new ProductRepository();
     private customerRepo = new CustomerRepository();
 
+    /**
+     * Génère un numéro de facture avec une entropie élevée.
+     */
     private generateInvoiceNumber(): string {
         const now = new Date();
         const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
         
-        // QUAL-03: Cryptographically secure random values
+        // [QUAL-03] Cryptographically secure random values
         const array = new Uint32Array(1);
         crypto.getRandomValues(array);
-        const randomPart = array[0].toString(16).toUpperCase().slice(-6);
+        const randomPart = array[0].toString(16).toUpperCase().slice(-6).padStart(6, '0');
         
         return `INV-${datePart}-${randomPart}`;
     }
@@ -77,12 +79,14 @@ export class SaleRepository {
 
         await this.supabase.from('sale_items').insert(saleItems);
 
+        // Inventory synchronization
         for (const item of saleItems) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
 
+        // Customer balance synchronization
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }

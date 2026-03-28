@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 /**
  * iPOS Sovereign Guard Middleware
- * SEC-02: Strict session enforcement.
+ * [SEC-02] Protection rigoureuse des routes et gestion des sessions.
  */
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -41,16 +41,17 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   const path = request.nextUrl.pathname
 
-  // Public asset exemption
+  // Public assets and auth API exemption
   if (path.startsWith('/_next') || path === '/icon.svg' || path.startsWith('/api/auth')) {
     return response
   }
 
-  // Guard Logic
+  // Guard Logic: Redirect unauthenticated users to login
   if (!session && path !== '/login') {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Guard Logic: Redirect authenticated users away from login
   if (session && path === '/login') {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }

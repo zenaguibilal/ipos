@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppHeader } from '@/components/layout/header';
@@ -10,7 +9,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 /**
  * @fileOverview App Layout (Direct Access Guarded)
- * Fixed QUAL-02: Wrapped in ErrorBoundary.
+ * [QUAL-02] Enveloppé dans un ErrorBoundary pour la résilience.
  */
 export default function AppLayout({
   children,

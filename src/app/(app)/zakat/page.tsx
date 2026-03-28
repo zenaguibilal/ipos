@@ -1,18 +1,11 @@
-
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useMemo } from 'react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, cn } from '@/lib/utils';
-import { 
-    Printer, RefreshCw, Scale, History, Info, ShieldAlert, Clock, AlertTriangle, CheckCircle2, Zap
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { RefreshCw, Scale, History, Clock, ShieldAlert } from 'lucide-react';
 import { useAppStore, useAppActions, useIsManagerOrAdmin } from '@/stores/appStore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { ZakatReport } from '@/components/zakat/ZakatReport';
 import { ZakatHistoryDialog } from '@/components/zakat/ZakatHistoryDialog';
 import { ZakatHistoryTable } from '@/components/zakat/ZakatHistoryTable';
@@ -21,15 +14,15 @@ import { ZakatResultsPanel } from '@/components/zakat/ZakatResultsPanel';
 import { ZakatCharts } from '@/components/zakat/ZakatCharts';
 import { differenceInDays, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { CsvImporter } from '@/lib/csv-utils';
+import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 /**
- * @fileOverview Zakat Command Center (Architectural Redesign)
- * Separated into modular components for maintainability.
+ * @fileOverview Zakat Command Center
+ * [QUAL-01] Refactorisé en composants modulaires pour la maintenabilité.
  */
 
 export default function ZakatPage() {
-    const router = useRouter();
     const isManagerOrAdmin = useIsManagerOrAdmin();
     const { profile, zakatHistory, isLoading, zakatData, zakatInputs, result, isSaving } = useAppStore(state => ({
         profile: state.profile,
@@ -44,7 +37,6 @@ export default function ZakatPage() {
     
     const [selectedHistory, setSelectedHistory] = useState<any>(null);
     const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
-    
     const reportRef = useRef<HTMLDivElement>(null);
     const [printData, setPrintData] = useState<any>(null);
 
@@ -72,7 +64,7 @@ export default function ZakatPage() {
 
     return (
         <div className="p-4 sm:p-6 space-y-10 animate-in fade-in duration-1000 max-w-screen-2xl mx-auto pb-24 md:pb-10">
-            <PageHeader title="Calculateur de Zakat" description="Évaluation حتمية des actifs commerciaux و estimation de la فريضة légale.">
+            <PageHeader title="Calculateur de Zakat" description="Évaluation des actifs commerciaux et estimation de la fريضة légale.">
                 <div className="flex gap-2 w-full sm:w-auto luxury-glass p-1.5 bg-muted/20 border-white/5">
                     <Button variant="outline" onClick={() => refreshZakatData()} disabled={isLoading} className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 border-white/10 hover:bg-primary/10">
                         <RefreshCw className={cn("h-4 w-4 text-primary", isLoading && "animate-spin")} /> Sync
@@ -88,7 +80,7 @@ export default function ZakatPage() {
                                 <Clock className={cn("h-8 w-8", anniversaryInfo.daysLeft <= 7 && "animate-pulse")} />
                             </div>
                             <div>
-                                <h3 className="text-xl font-black uppercase tracking-tighter">Vigilance : <span className={anniversaryInfo.daysLeft <= 7 ? "text-destructive" : "text-primary"}>حول الحول</span></h3>
+                                <h3 className="text-xl font-black uppercase tracking-tighter">Vigilance : حول الحول</h3>
                                 <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-60">Échéance : {anniversaryInfo.date.toLocaleDateString('fr-FR')}</p>
                             </div>
                         </div>
