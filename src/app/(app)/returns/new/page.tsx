@@ -244,8 +244,8 @@ export default function NewReturnPage() {
                         <>
                             <Card className="luxury-glass border-white/5 bg-muted/10 overflow-hidden shadow-2xl animate-in slide-in-from-right-4 duration-700">
                                 <CardHeader className="bg-primary/5 border-b border-white/5 p-8">
-                                    <CardTitle className="text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-3">
-                                        <Banknote className="h-4 w-4 text-primary" />
+                                    <CardTitle className="text-[11px] font-black uppercase tracking-widest flex items-center gap-3 text-primary">
+                                        <Banknote className="h-4 w-4" />
                                         Modalités Financières
                                     </CardTitle>
                                 </CardHeader>
@@ -273,7 +273,7 @@ export default function NewReturnPage() {
                                             value={notes} 
                                             onChange={e => setNotes(e.target.value)} 
                                             placeholder="Motif du retour (Ex: Défaut fabrication, erreur taille)..." 
-                                            className="rounded-2xl bg-background/40 border-white/10 focus:border-primary/40 min-h-[100px] text-sm"
+                                            className="rounded-2xl bg-background/40 border-white/10 focus:border-primary/40 min-h-[100px] text-sm font-bold"
                                         />
                                     </div>
                                 </CardContent>

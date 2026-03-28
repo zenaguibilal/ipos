@@ -161,7 +161,7 @@ export function ReturnDetailsDialog({
                                     <FileText className="h-3 w-3" />
                                     <span className="text-[9px] font-black uppercase tracking-widest">Motif du retour</span>
                                 </div>
-                                <p className="text-xs italic leading-relaxed">"{productReturn.notes}"</p>
+                                <p className="text-xs italic leading-relaxed font-bold">"{productReturn.notes}"</p>
                             </div>
                         )}
                     </div>
@@ -181,7 +181,7 @@ export function ReturnDetailsDialog({
                                 <Printer className="h-4 w-4" /> A4 PDF
                             </Button>
                         </div>
-                        <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto rounded-xl h-12 px-10 font-black uppercase text-[10px] tracking-widest">
+                        <Button onClick={() => onOpenChange(false)} className="w-full sm:w-auto rounded-xl h-12 px-10 font-black uppercase text-[10px] tracking-widest bg-muted/20 hover:bg-muted/30">
                             Fermer
                         </Button>
                     </div>

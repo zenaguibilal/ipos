@@ -7,7 +7,7 @@ import type { ProductReturn, Customer } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { 
     Search, Plus, Undo2, FileUp, RefreshCw, 
-    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins, History, Filter
+    Archive, RotateCcw, LayoutGrid, List, X, ArrowRight, Trash2, Banknote, HandCoins, History, Filter, TrendingDown
 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
@@ -215,7 +215,7 @@ export default function ReturnsPage() {
                     <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
                     <Input 
-                        placeholder="Rechercher par N° Facture ou Identité..."
+                        placeholder="Rechercher par N° Facture أو ملاحظات..."
                         className="pl-12 h-14 luxury-glass rounded-2xl bg-background/40 border-white/5 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10 shadow-inner"
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
