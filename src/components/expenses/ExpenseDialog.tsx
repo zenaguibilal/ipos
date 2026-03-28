@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { Expense, ExpenseCategory } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Banknote, Tag, Calendar, Sparkles, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { DatePicker } from '../ui/date-picker';
 import { Combobox } from '../ui/combobox';
+import { Separator } from '../ui/separator';
 
 const defaultCategories: ExpenseCategory[] = ['Loyer', 'Salaires', 'Fournisseurs', 'Services Publics', 'Marketing', 'Maintenance', 'Autre'];
 
@@ -23,24 +24,23 @@ interface ExpenseDialogProps {
     existingCategories: string[];
 }
 
-const initialFormState: Omit<Expense, 'uuid' | 'user_id' | 'createdAt' | 'updatedAt'> = {
+const initialFormState = {
     description: '',
-    category: 'Autre',
-    amount: 0,
+    category: 'Autre' as ExpenseCategory,
+    amount: '',
     expenseDate: new Date().toISOString(),
 };
 
 export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess, existingCategories }: ExpenseDialogProps) {
     const [formState, setFormState] = useState(initialFormState);
-    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
      useEffect(() => {
         if (expense && isOpen) {
             setFormState({
                 description: expense.description,
-                category: expense.category,
-                amount: expense.amount,
+                category: expense.category as ExpenseCategory,
+                amount: String(expense.amount),
                 expenseDate: expense.expenseDate,
             });
         } else if (!expense && isOpen) {
@@ -65,39 +65,27 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError(null);
-        setIsLoading(true);
-
-        const { description, amount } = formState;
-
-        if (!description || !amount) {
-            setError("La description et le montant sont requis.");
-            setIsLoading(false);
-            return;
-        }
-
-        const amountNum = parseFloat(String(amount));
-        if (isNaN(amountNum) || amountNum <= 0) {
-            setError("Veuillez entrer un montant valide.");
-            setIsLoading(false);
-            return;
-        }
         
-        const expenseData = { ...formState, amount: amountNum };
+        const amountNum = parseFloat(formState.amount);
+        if (isNaN(amountNum) || amountNum <= 0) {
+            toast.error("Veuillez entrer un montant valide.");
+            return;
+        }
 
+        setIsLoading(true);
         try {
-            // Updated to use direct API Wall
+            const expenseData = { ...formState, amount: amountNum };
             if (expense && expense.uuid) {
                 await api.put(`expenses/${expense.uuid}`, expenseData);
-                toast.success(`Dépense modifiée.`);
+                toast.success(`Dépense rectifiée dans le nuage.`);
             } else {
                 await api.post('expenses', expenseData);
-                toast.success(`Dépense ajoutée.`);
+                toast.success(`Nouvelle charge enregistrée.`);
             }
             onSuccess();
             onOpenChange(false);
         } catch (err: any) {
-            toast.error("Échec de l'opération.");
+            toast.error("Échec de l'enregistrement souverain.");
         } finally {
             setIsLoading(false);
         }
@@ -107,47 +95,105 @@ export default function ExpenseDialog({ isOpen, onOpenChange, expense, onSuccess
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md luxury-glass">
+            <DialogContent className="sm:max-w-2xl luxury-glass border-destructive/20 p-0 overflow-hidden shadow-2xl">
                 <form onSubmit={handleSubmit}>
-                    <DialogHeader>
-                        <DialogTitle className="font-bold">{expense ? 'Modifier la dépense' : 'Ajouter une dépense'}</DialogTitle>
-                        <DialogDescription>
-                           Remplissez les détails de la charge pour votre comptabilité.
-                        </DialogDescription>
+                    <DialogHeader className="p-8 bg-destructive/[0.03] border-b border-white/5">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-destructive/10 rounded-2xl shadow-inner">
+                                <Banknote className="h-8 w-8 text-destructive" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tighter italic">Registre des <span className="text-destructive">Charges</span></DialogTitle>
+                                <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60 mt-2 flex items-center gap-2">
+                                    <Sparkles className="h-3 w-3 text-destructive animate-pulse" />
+                                    Initialisation d'un flux de sortie de caisse
+                                </DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        {error && <p className="text-sm text-red-500 text-center font-bold">{error}</p>}
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="font-bold uppercase text-[10px] tracking-widest opacity-70">Description</Label>
-                            <Input id="description" value={formState.description} onChange={handleInputChange} required autoFocus className="h-11 rounded-xl" />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="amount" className="font-bold uppercase text-[10px] tracking-widest opacity-70">Montant (DA)</Label>
-                            <Input id="amount" type="number" step="0.1" value={formState.amount} onChange={handleInputChange} required className="h-11 text-lg font-black text-destructive rounded-xl" />
-                        </div>
-                         <div className="grid grid-cols-2 gap-4">
+
+                    <div className="p-8 space-y-8">
+                        <div className="space-y-6">
                             <div className="space-y-2">
-                                <Label htmlFor="category" className="font-bold uppercase text-[10px] tracking-widest opacity-70">Catégorie</Label>
-                                <Combobox 
-                                    options={categoryOptions}
-                                    value={formState.category}
-                                    onSelect={handleCategoryChange}
-                                    placeholder="Sélectionner..."
-                                    searchPlaceholder="Rechercher..."
-                                    notFoundMessage="Aucune catégorie trouvée."
-                                />
+                                <Label htmlFor="description" className="text-[11px] font-black uppercase tracking-widest opacity-70 ml-1">Libellé de la Dépense</Label>
+                                <div className="relative group">
+                                    <Banknote className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-destructive/30 group-focus-within:text-destructive transition-colors" />
+                                    <Input 
+                                        id="description" 
+                                        value={formState.description} 
+                                        onChange={handleInputChange} 
+                                        required 
+                                        autoFocus 
+                                        className="pl-12 h-14 rounded-2xl bg-background/40 border-white/10 focus:border-destructive/40 focus:ring-0 font-bold text-lg shadow-inner" 
+                                        placeholder="Ex: Paiement Loyer Mars, Facture Électricité..."
+                                    />
+                                </div>
                             </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="amount" className="text-[11px] font-black uppercase tracking-widest opacity-70 ml-1">Montant Net (DA)</Label>
+                                    <Input 
+                                        id="amount" 
+                                        type="number" 
+                                        step="0.1" 
+                                        value={formState.amount} 
+                                        onChange={handleInputChange} 
+                                        required 
+                                        className="h-14 text-2xl font-black text-destructive rounded-2xl bg-background/40 border-white/10 focus:border-destructive/40 shadow-inner" 
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-black uppercase tracking-widest opacity-70 ml-1">Horodatage du Flux</Label>
+                                    <div className="relative group">
+                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 z-10" />
+                                        <div className="pl-4">
+                                            <DatePicker date={new Date(formState.expenseDate)} setDate={handleDateChange} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
-                                <Label className="font-bold uppercase text-[10px] tracking-widest opacity-70">Date</Label>
-                                <DatePicker date={new Date(formState.expenseDate)} setDate={handleDateChange} />
+                                <Label htmlFor="category" className="text-[11px] font-black uppercase tracking-widest opacity-70 ml-1">Affectation Budgétaire (Catégorie)</Label>
+                                <div className="relative">
+                                    <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/30 z-10" />
+                                    <div className="pl-12">
+                                        <Combobox 
+                                            options={categoryOptions}
+                                            value={formState.category}
+                                            onSelect={handleCategoryChange}
+                                            placeholder="Sélectionner un poste de dépense..."
+                                            searchPlaceholder="Rechercher..."
+                                            notFoundMessage="Poste inconnu."
+                                        />
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+
+                        <Separator className="bg-white/5" />
+
+                        <div className="p-5 rounded-2xl border-2 border-dashed border-destructive/20 bg-destructive/5 flex items-start gap-4">
+                            <ShieldCheck className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-muted-foreground leading-relaxed italic">
+                                "L'enregistrement d'une charge est une opération déterministe. Elle sera immédiatement déduite de votre bénéfice net calculé dans le dashboard iPOS."
+                            </p>
                         </div>
                     </div>
-                    <DialogFooter className="pt-4 border-t border-border/50">
-                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading}>Annuler</Button>
-                        <Button type="submit" disabled={isLoading} className="bg-destructive hover:bg-destructive/90 rounded-xl px-8 h-11">
-                             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isLoading ? 'Enregistrement...' : 'Enregistrer'}
+
+                    <DialogFooter className="p-8 bg-white/5 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl h-12 px-8 font-black uppercase text-[10px] tracking-widest">
+                            Annuler
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            disabled={isLoading} 
+                            className="bg-destructive hover:bg-destructive/90 rounded-2xl h-14 px-12 shadow-2xl shadow-destructive/30 font-black uppercase text-[11px] tracking-[0.2em] gap-3 hover:scale-105 active:scale-95 transition-all w-full sm:w-auto"
+                        >
+                             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
+                            Graver la Charge
                         </Button>
                     </DialogFooter>
                 </form>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { 
     Plus, Search, FileUp, TrendingDown, RefreshCw, 
     RotateCcw, LayoutGrid, List, X, Filter, ChevronDown, 
-    Trash2, Activity, Banknote, Calendar
+    Trash2, Activity, Banknote, Calendar, ArrowRight, Info, ShieldCheck
 } from 'lucide-react';
 import { ExpenseCard } from '@/components/expenses/ExpenseCard';
 import { ExpenseTable } from '@/components/expenses/ExpenseTable';
@@ -37,6 +38,7 @@ import {
 
 /**
  * @fileOverview Expense Ledger (Sovereign Authority - Finalized Perfection)
+ * المركز السيادي للتحكم في التدفقات النقدية الخارجة وتدقيق الأعباء التشغيلية.
  */
 
 export default function ExpensesPage() {
@@ -116,20 +118,21 @@ export default function ExpensesPage() {
         <div className="p-4 sm:p-6 space-y-10 animate-in fade-in duration-1000 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader 
                 title="Souveraineté des Charges" 
-                description="Contrôle absolu des flux sortants, classification و audit des dépenses opérationnelles."
+                description="Audit chronologique des flux sortants, classification و maîtrise des dépenses."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="outline" onClick={handleExport} disabled={!filteredExpenses.length} className="luxury-glass border-primary/20 rounded-2xl h-12 px-6 font-black uppercase text-[10px] tracking-widest gap-3">
-                        <FileUp className="h-4 w-4" /> Exporter CSV
+                        <FileUp className="h-4 w-4" /> Export CSV
                     </Button>
-                    <Button 
-                        onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }} 
-                        disabled={!isManagerOrAdmin} 
-                        className="bg-destructive hover:bg-destructive/90 shadow-2xl shadow-destructive/20 rounded-2xl h-12 px-10 font-black uppercase text-[10px] tracking-[0.2em] gap-3 group"
-                    >
-                        <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" /> 
-                        Nouvelle Dépense
-                    </Button>
+                    {isManagerOrAdmin && (
+                        <Button 
+                            onClick={() => { setSelectedExpense(null); setIsExpenseDialogOpen(true); }} 
+                            className="bg-destructive hover:bg-destructive/90 shadow-2xl shadow-destructive/20 rounded-2xl h-12 px-10 font-black uppercase text-[10px] tracking-[0.2em] gap-3 group"
+                        >
+                            <Plus className="h-4 w-4 group-hover:scale-110 transition-transform" /> 
+                            Nouvelle Dépense
+                        </Button>
+                    )}
                 </div>
             </PageHeader>
 
@@ -158,13 +161,13 @@ export default function ExpensesPage() {
                             <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between shadow-sm">
                                 <span className="flex items-center gap-2">
                                     <Activity className="h-3.5 w-3.5 text-destructive" />
-                                    {selectedCategory === 'all' ? 'Toutes catégories' : selectedCategory}
+                                    {selectedCategory === 'all' ? 'Tous les postes' : selectedCategory}
                                 </span>
                                 <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="luxury-glass min-w-[200px] p-2">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Postes de Dépenses</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1.5 tracking-widest">Nomenclature Budgétaire</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-white/5" />
                             <DropdownMenuRadioGroup value={selectedCategory} onValueChange={setSelectedCategory}>
                                 <DropdownMenuRadioItem value="all" className="font-bold py-2.5 rounded-lg">Tous les flux</DropdownMenuRadioItem>
@@ -230,7 +233,7 @@ export default function ExpensesPage() {
                         description={searchQuery || selectedCategory !== 'all' ? "Aucune dépense ne correspond à vos filtres actuels." : "Le registre des charges est vierge. Enregistrez vos frais pour un suivi comptable précis."} 
                         className="py-32 luxury-glass border-white/5 bg-muted/5 rounded-[3rem]"
                     >
-                        {!searchQuery && selectedCategory === 'all' && (
+                        {!searchQuery && selectedCategory === 'all' && isManagerOrAdmin && (
                             <Button onClick={() => setIsExpenseDialogOpen(true)} className="rounded-2xl px-12 h-14 bg-destructive shadow-2xl shadow-destructive/20 font-black uppercase text-[11px] tracking-widest">
                                 <Plus className="h-4 w-4 mr-2" />
                                 Initialiser une charge
@@ -264,6 +267,26 @@ export default function ExpensesPage() {
                         )}
                    </div>
                )}
+            </div>
+
+            <div className="p-10 rounded-[3rem] bg-destructive/5 border border-destructive/10 flex flex-col md:flex-row items-center justify-between gap-8 mt-10">
+                <div className="flex items-center gap-6">
+                    <div className="p-4 bg-destructive/10 rounded-2xl">
+                        <Info className="h-6 w-6 text-destructive" />
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-sm font-black uppercase tracking-tight italic">Optimisation des Flux</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                            Une surveillance rigoureuse des charges est essentielle pour maintenir une marge nette saine. Catégorisez précisément chaque sortie pour un audit financier déterministe.
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="h-10 px-6 rounded-xl border-destructive/20 text-destructive font-black uppercase text-[9px] tracking-widest bg-background/40">
+                        <ShieldCheck className="h-3.5 w-3.5 mr-2" />
+                        Audit iPOS Activé
+                    </Badge>
+                </div>
             </div>
 
             {isManagerOrAdmin && (
