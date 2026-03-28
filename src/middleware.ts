@@ -1,6 +1,5 @@
-
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/request'
+import { NextResponse, type NextRequest } from 'next/server'
 
 /**
  * iPOS Sovereign Guard Middleware
