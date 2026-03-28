@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -17,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
+import { Badge } from '../ui/badge';
 
 interface BreadDayViewProps {
     orders: BreadOrder[];
@@ -148,7 +148,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                     {selectedOrders.size > 0 ? `${selectedOrders.size} flux sélectionné(s)` : 'Sélection collective'}
                                 </label>
                                 {breadPrice === 0 && (
-                                    <Badge variant="destructive" className="h-5 text-[8px] font-black uppercase animate-pulse gap-1.5">
+                                    <Badge variant="destructive" className="h-5 text-[8px] font-black uppercase animate-pulse gap-1.5 px-3">
                                         <AlertCircle className="h-2.5 w-2.5" /> Prix unitaire non défini
                                     </Badge>
                                 )}
@@ -215,7 +215,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                             <EmptyState
                                 icon={Wheat}
                                 title="Registre de distribution vierge"
-                                description="Aucune commande n'est programmée pour cette date. Lancez la génération automatique ou ajoutez des bons manuellement."
+                                description="Aucune commande n'est programmée pour cette date. Lanceز la génération automatique أو أضف طلبيات يدوياً."
                                 className="py-32"
                             >
                                 {isManagerOrAdmin && (
@@ -250,7 +250,7 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                 isOpen={isDeleteConfirmOpen} 
                 onOpenChange={setIsDeleteConfirmOpen} 
                 title="Supprimer les commandes sélectionnées ?" 
-                description={`Cette action est irréversible. Vous allez révoquer définitivement ${selectedOrders.size} bon(s) de distribution du registre sikh.`} 
+                description={`Cette action est irréversible. Vous allez révoquer définitivement ${selectedOrders.size} bon(s) de distribution du registre iPOS.`} 
                 onConfirm={handleDeleteSelected} 
                 confirmText="Confirmer la révocation" 
             />
