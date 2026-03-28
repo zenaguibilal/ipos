@@ -2,11 +2,11 @@ import { createClient } from "@/utils/supabase/server";
 import type { BreadOrder } from "@/lib/types";
 import { SaleRepository } from "./sale.repository";
 import { CustomerRepository } from "./customer.repository";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 /**
- * @fileOverview BreadOrder Repository (Absolute Data Authority)
- * المركز السيادي لإدارة طلبيات الخبز وعمليات التحويل والإنتاج.
+ * @fileOverview BreadOrder Repository (Sovereign Authority - Nuclear Rebuilt)
+ * PHASE 16: Safe date handling and automated sales conversion protocols.
  */
 export class BreadOrderRepository {
     private supabase = createClient();
@@ -19,7 +19,7 @@ export class BreadOrderRepository {
             .select('*')
             .eq('date', date)
             .order('created_at', { ascending: true });
-        if (error) throw new Error(`BREAD_FETCH_ERROR: ${error.message}`);
+        if (error) throw new Error(`BREAD_FETCH_FAILED`);
         return data.map(this.mapFromDb);
     }
 
@@ -37,13 +37,13 @@ export class BreadOrderRepository {
             }])
             .select()
             .single();
-        if (error) throw new Error(`BREAD_CREATE_FAILED: ${error.message}`);
+        if (error) throw new Error(`BREAD_ENTRY_FAILED`);
         return this.mapFromDb(data);
     }
 
     async bulkDelete(uuids: string[]): Promise<void> {
         const { error } = await this.supabase.from('bread_orders').delete().in('uuid', uuids);
-        if (error) throw new Error(`BREAD_BULK_DELETE_FAILURE: ${error.message}`);
+        if (error) throw new Error(`BREAD_PURGE_FAILED`);
     }
 
     async update(uuid: string, data: Partial<BreadOrder>): Promise<void> {
@@ -57,7 +57,7 @@ export class BreadOrderRepository {
                 updated_at: new Date().toISOString()
             })
             .eq('uuid', uuid);
-        if (error) throw new Error(`BREAD_UPDATE_FAILED: ${error.message}`);
+        if (error) throw new Error(`BREAD_UPDATE_FAILED`);
     }
 
     async generateForDate(date: string): Promise<number> {
@@ -72,7 +72,8 @@ export class BreadOrderRepository {
         const existingCustomerUuids = new Set(existingOrders.map(o => o.customerUuid));
 
         let generatedCount = 0;
-        const targetDay = format(new Date(date.replace(/-/g, '/')), 'eeee').toLowerCase();
+        // Deterministic Day Calculation
+        const targetDay = format(parseISO(date), 'eeee').toLowerCase();
 
         for (const customer of customers) {
             if (existingCustomerUuids.has(customer.uuid)) continue;

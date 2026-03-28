@@ -1,12 +1,11 @@
-
 import { createClient } from "@/utils/supabase/server";
 import type { ProductReturn } from "@/lib/types";
 import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Return Repository (Absolute Data Authority)
- * يدير عمليات المرتجعات ويفرض تزامن المخزون ومديونية العميل.
+ * @fileOverview Return Repository (Absolute Authority - Nuclear Rebuilt)
+ * PHASE 16: Robust handling of stock reversals and transactional debt recovery.
  */
 export class ReturnRepository {
     private supabase = createClient();
@@ -22,7 +21,7 @@ export class ReturnRepository {
         if (filters?.to) query = query.lte('created_at', filters.to);
 
         const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw new Error(`RETURNS_FETCH_ERROR: ${error.message}`);
+        if (error) throw new Error(`RETURNS_FETCH_FAILED`);
         
         let results = data.map(r => this.mapFromDb(r));
 
@@ -51,7 +50,7 @@ export class ReturnRepository {
             .select()
             .single();
 
-        if (rErr) throw new Error(`RETURN_CREATION_FAILED: ${rErr.message}`);
+        if (rErr) throw new Error(`RETURN_CREATION_FAILED`);
 
         const returnItems = returnData.items.map((item: any) => ({
             return_uuid: ret.uuid,
@@ -64,9 +63,12 @@ export class ReturnRepository {
         }));
 
         const { error: iErr } = await this.supabase.from('return_items').insert(returnItems);
-        if (iErr) throw new Error("RETURN_ITEMS_SYNC_FAILED");
+        if (iErr) {
+            await this.supabase.from('product_returns').delete().eq('uuid', ret.uuid);
+            throw new Error("RETURN_ITEMS_FAILED");
+        }
 
-        // أتمتة السلطة: تحديث المخزون وحساب مديونية العميل فوراً
+        // Logic Re-Inforcement: Update stock only if restock was requested
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'return', ret.uuid);
@@ -89,7 +91,7 @@ export class ReturnRepository {
         
         if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
 
-        // عكس أثر المخزون: إذا تم إعادة التخزين سابقاً، يجب سحبه الآن لأننا نلغي المرتجع
+        // Precise Stock Reversal: Only subtract from stock if it was previously added (restocked)
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'cancellation', uuid);
@@ -97,7 +99,7 @@ export class ReturnRepository {
         }
 
         const { error: dErr } = await this.supabase.from('product_returns').delete().eq('uuid', uuid);
-        if (dErr) throw new Error(`RETURN_DELETE_FAILED: ${dErr.message}`);
+        if (dErr) throw new Error(`RETURN_DELETE_FAILED`);
 
         if (ret.customer_uuid) {
             await this.customerRepo.recalculateBalance(ret.customer_uuid);

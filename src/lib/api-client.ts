@@ -1,7 +1,6 @@
 /**
- * @fileOverview THE API GATEWAY
- * The only authorized pathway for UI -> Backend communication.
- * Enforces standardized error normalization and deterministic responses.
+ * @fileOverview THE API GATEWAY (Nuclear Cleaned)
+ * PHASE 16: Purged redundant logs and enforced clean error normalization.
  */
 
 class ApiClient {
@@ -17,9 +16,7 @@ class ApiClient {
         const result = await response.json();
         
         if (!response.ok) {
-            // Normalization of server errors
-            const errorMessage = result.error || `API_ERROR_${response.status}`;
-            console.error(`[API_GATEWAY_FAILURE] ${path}:`, errorMessage);
+            const errorMessage = result.error || `GATEWAY_VIOLATION_${response.status}`;
             throw new Error(errorMessage);
         }
 

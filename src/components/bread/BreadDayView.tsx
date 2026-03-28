@@ -15,13 +15,13 @@ import { api } from '@/lib/api-client';
 import { 
     Loader2, Wheat, ShoppingCart, Trash2, Sparkles, 
     PackageCheck, AlertCircle, Search, Filter, X, 
-    CheckCircle2, Clock, Banknote, ListFilter, Activity
+    CheckCircle2, Clock, ListFilter
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useAppStore, useIsManagerOrAdmin } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { ConfirmAlertDialog } from '@/components/ui/ConfirmAlertDialog';
-import { Badge } from '../ui/badge';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,8 +33,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * @fileOverview Bread Day View (Finalized Sovereign Edition)
- * واجهة التحكم اليومية: فلترة استراتيجية، إدارة جماعية، وتكامل سحابي.
+ * @fileOverview Bread Day View (Nuclear Cleaned)
+ * PHASE 16: Verified imports and cleaned action flows.
  */
 
 interface BreadDayViewProps {
@@ -97,13 +97,13 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         try {
             const result = await api.post<{ count: number }>('bread/generate', { date: currentDate });
             if (result.count > 0) {
-                toast.success(`${result.count} commande(s) générée(s) avec succès.`);
+                toast.success(`${result.count} commande(s) générée(s).`);
                 onOrdersChange();
             } else {
-                toast.info("Aucune commande à générer. Tous les clients programmés sont déjà enregistrés.");
+                toast.info("Rien à générer.");
             }
         } catch (error: any) {
-            toast.error("Échec de la génération automatique.");
+            toast.error("Génération échouée.");
         } finally {
             setIsGenerating(false);
         }
@@ -111,23 +111,20 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
 
     const handleConvertToSales = async () => {
         if (!isManagerOrAdmin) return;
-        if (selectedOrders.size === 0) {
-            toast.info("Veuillez sélectionner au moins une commande à facturer.");
-            return;
-        }
+        if (selectedOrders.size === 0) return;
         if (breadPrice <= 0) {
-            toast.error("Prix du pain non configuré.", { description: "Veuillez le régler dans Profil > Paramètres." });
+            toast.error("Définissez le prix du pain dans l'onglet Métier.");
             return;
         }
         
         setIsConverting(true);
         try {
             await api.post('bread/convert-to-sales', { orderUuids: Array.from(selectedOrders), breadPrice });
-            toast.success(`${selectedOrders.size} commande(s) transformée(s) en factures.`);
+            toast.success("Conversion en factures terminée.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur lors de la facturation souveraine.");
+            toast.error("Erreur de conversion.");
         } finally {
             setIsConverting(false);
         }
@@ -139,11 +136,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             for (const uuid of Array.from(selectedOrders)) {
                 await api.put(`bread/${uuid}`, { est_livre: true });
             }
-            toast.success("Statut de livraison mis à jour.");
+            toast.success("Livraisons confirmées.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error) {
-            toast.error("Erreur de mise à jour des flux.");
+            toast.error("Erreur de mise à jour.");
         }
     };
 
@@ -152,11 +149,11 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
         setIsDeleting(true);
         try {
             await api.post('bread/bulk-delete', { uuids: Array.from(selectedOrders) });
-            toast.success("Commandes purgées du registre.");
+            toast.success("Suppressions effectuées.");
             setSelectedOrders(new Set());
             onOrdersChange();
         } catch (error: any) {
-            toast.error("Erreur de suppression souveraine.");
+            toast.error("Erreur de suppression.");
         } finally {
             setIsDeleting(false);
             setIsDeleteConfirmOpen(false);
@@ -177,15 +174,15 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                 checked={isAllSelected} 
                                 onCheckedChange={handleSelectAll} 
                                 disabled={!isManagerOrAdmin || unbilledOrdersCount === 0}
-                                className="h-7 w-7 rounded-xl border-primary/30 data-[state=checked]:bg-primary shadow-lg transition-all" 
+                                className="h-7 w-7 rounded-xl border-primary/30 shadow-lg" 
                             />
                             <div className="flex flex-col gap-1.5">
-                                <label htmlFor="select-all-bread" className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground cursor-pointer select-none">
-                                    {selectedOrders.size > 0 ? `${selectedOrders.size} flux sélectionné(s)` : 'Sélection Collective'}
+                                <label htmlFor="select-all-bread" className="text-[11px] font-black uppercase tracking-[0.3em] text-muted-foreground cursor-pointer">
+                                    {selectedOrders.size > 0 ? `${selectedOrders.size} sélection(s)` : 'Collective'}
                                 </label>
                                 {breadPrice === 0 && (
-                                    <Badge variant="destructive" className="h-5 text-[8px] font-black uppercase animate-pulse gap-1.5 px-3 rounded-lg">
-                                        <AlertCircle className="h-2.5 w-2.5" /> Prix unitaire non défini dans le profil
+                                    <Badge variant="destructive" className="h-5 text-[8px] font-black uppercase animate-pulse gap-1.5 px-3">
+                                        <AlertCircle className="h-2.5 w-2.5" /> P.U. NON DÉFINI
                                     </Badge>
                                 )}
                             </div>
@@ -198,32 +195,30 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                         size="sm" 
                                         onClick={() => setIsDeleteConfirmOpen(true)} 
                                         disabled={isDeleting} 
-                                        className="h-14 px-8 bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive/10 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95"
+                                        className="h-14 px-8 bg-destructive/5 text-destructive border-destructive/20 hover:bg-destructive/10 rounded-2xl font-black uppercase text-[10px] tracking-widest"
                                     >
-                                        <Trash2 className="h-4 w-4 mr-2.5" />
-                                        Révoker
+                                        <Trash2 className="h-4 w-4 mr-2.5" /> Révoker
                                     </Button>
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
                                         onClick={handleMarkDelivered} 
-                                        className="h-14 px-8 rounded-2xl border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95"
+                                        className="h-14 px-8 rounded-2xl border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 font-black uppercase text-[10px] tracking-widest"
                                     >
-                                        <PackageCheck className="h-4 w-4 mr-2.5" />
-                                        Livré
+                                        <PackageCheck className="h-4 w-4 mr-2.5" /> Livré
                                     </Button>
                                     <Button 
                                         size="sm" 
                                         onClick={handleConvertToSales} 
                                         disabled={isConverting || breadPrice <= 0} 
-                                        className="h-14 px-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl shadow-2xl shadow-primary/30 font-black uppercase text-[10px] tracking-[0.3em] gap-3 transition-all active:scale-95"
+                                        className="h-14 px-10 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl shadow-2xl font-black uppercase text-[10px] tracking-[0.3em] gap-3"
                                     >
                                         {isConverting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-                                        Facturer {selectedOrders.size} Bons
+                                        Facturer ({selectedOrders.size})
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <div className="flex items-center gap-3 w-full xl:w-auto">
                                     {isManagerOrAdmin && (
                                         <>
                                             <Button 
@@ -231,10 +226,10 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                                                 size="sm" 
                                                 onClick={handleGenerate} 
                                                 disabled={isGenerating} 
-                                                className="h-14 px-8 rounded-2xl border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95"
+                                                className="h-14 px-8 rounded-2xl border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 font-black uppercase text-[10px] tracking-widest"
                                             >
-                                                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2.5" /> : <Sparkles className="h-4 w-4 mr-2.5 text-primary/60" />}
-                                                Génération Auto
+                                                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2.5" /> : <Sparkles className="h-4 w-4 mr-2.5" />}
+                                                Auto-Génération
                                             </Button>
                                             <ManualAddDialog currentDate={currentDate} onSuccess={onOrdersChange} />
                                         </>
@@ -247,44 +242,31 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
 
                     <div className="flex flex-col sm:flex-row gap-6 items-center">
                         <div className="relative flex-grow group w-full">
-                            <div className="absolute inset-0 bg-primary/5 blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity rounded-full" />
-                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40 group-focus-within:opacity-100 transition-opacity" />
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary opacity-40" />
                             <Input 
-                                placeholder="Rechercher par identité client ou point de chute..."
-                                className="pl-14 h-14 luxury-glass rounded-2xl bg-background/40 border-white/10 focus:border-primary/40 focus:ring-0 font-bold text-sm relative z-10 shadow-inner"
+                                placeholder="Rechercher un flux..."
+                                className="pl-14 h-14 luxury-glass rounded-2xl bg-background/40 border-white/10 font-bold"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
-                            {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-20">
-                                    <X className="h-4 w-4" />
-                                </button>
-                            )}
                         </div>
 
-                        <div className="flex items-center gap-2 w-full sm:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shrink-0 shadow-inner">
+                        <div className="flex items-center gap-2 w-full sm:w-auto luxury-glass p-2 bg-muted/20 border-white/5 shadow-inner">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="h-10 rounded-xl border-white/5 font-black text-[10px] gap-3 px-6 uppercase tracking-[0.2em] hover:bg-white/5 transition-all">
+                                    <Button variant="outline" className="h-10 rounded-xl border-white/5 font-black text-[10px] gap-3 px-6 uppercase">
                                         <ListFilter className="h-3.5 w-3.5 text-primary" />
-                                        État: {statusFilter === 'all' ? 'Tous les flux' : statusFilter === 'pending' ? 'Attente' : statusFilter === 'delivered' ? 'Livré' : 'Facturé'}
-                                        <X className="h-3 w-3 opacity-20 ml-1" />
+                                        Audit État
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="luxury-glass min-w-[220px] p-2 border-white/10 shadow-2xl">
-                                    <DropdownMenuLabel className="text-[9px] uppercase font-black opacity-50 px-3 py-2 tracking-[0.3em]">Audit des États</DropdownMenuLabel>
-                                    <DropdownMenuSeparator className="bg-white/5" />
+                                <DropdownMenuContent align="end" className="luxury-glass min-w-[220px]">
+                                    <DropdownMenuLabel className="text-[9px] uppercase font-black opacity-50 px-3 py-2">Filtre Souverain</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuRadioGroup value={statusFilter} onValueChange={(v) => setStatusFilter(v as OrderStatusFilter)}>
-                                        <DropdownMenuRadioItem value="all" className="font-bold py-3 px-4 rounded-xl text-xs cursor-pointer focus:bg-primary/5">Vue Globale</DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="pending" className="font-bold py-3 px-4 rounded-xl text-xs flex items-center gap-3 cursor-pointer focus:bg-primary/5">
-                                            <Clock className="h-3.5 w-3.5 text-orange-400" /> Flux en attente
-                                        </DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="delivered" className="font-bold py-3 px-4 rounded-xl text-xs flex items-center gap-3 cursor-pointer focus:bg-primary/5">
-                                            <PackageCheck className="h-3.5 w-3.5 text-blue-400" /> Livré • Non M.A.C
-                                        </DropdownMenuRadioItem>
-                                        <DropdownMenuRadioItem value="billed" className="font-bold py-3 px-4 rounded-xl text-xs flex items-center gap-3 cursor-pointer focus:bg-primary/5">
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-chart-quaternary" /> Archivé • Facturé
-                                        </DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="all" className="font-bold py-3">Tout</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="pending" className="font-bold py-3">Attente</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="delivered" className="font-bold py-3">Livré</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="billed" className="font-bold py-3">Facturé</DropdownMenuRadioItem>
                                     </DropdownMenuRadioGroup>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -296,21 +278,10 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
                         {filteredOrders.length === 0 ? (
                             <EmptyState
                                 icon={Wheat}
-                                title={searchQuery || statusFilter !== 'all' ? "Aucun flux détecté" : "Registre Vierge"}
-                                description={searchQuery || statusFilter !== 'all' ? "Ajustez vos filtres souverains ou votre recherche." : "Aucune commande n'est programmée. Lancez la génération automatique."}
+                                title="Aucun flux"
+                                description="Lancez une génération ou ajustez vos filtres."
                                 className="py-40 opacity-30 grayscale"
-                            >
-                                {isManagerOrAdmin && !searchQuery && statusFilter === 'all' && (
-                                    <Button 
-                                        onClick={handleGenerate} 
-                                        disabled={isGenerating} 
-                                        className="rounded-2xl px-12 h-16 font-black uppercase text-[11px] tracking-[0.3em] shadow-2xl shadow-primary/30 bg-primary hover:bg-primary/90 transition-all hover:scale-105 active:scale-95 mt-6"
-                                    >
-                                        {isGenerating ? <Loader2 className="mr-3 h-5 w-5 animate-spin" /> : <Sparkles className="mr-3 h-5 w-5" />}
-                                        Initialiser le cycle
-                                    </Button>
-                                )}
-                            </EmptyState>
+                            />
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8 p-10 pb-24">
                                 {filteredOrders.map(order => (
@@ -331,10 +302,10 @@ export function BreadDayView({ orders, currentDate, onOrdersChange }: BreadDayVi
             <ConfirmAlertDialog 
                 isOpen={isDeleteConfirmOpen} 
                 onOpenChange={setIsDeleteConfirmOpen} 
-                title="Révocation de Flux" 
-                description={`Êtes-vous absolument sûr de vouloir supprimer ces ${selectedOrders.size} bon(s) de distribution ? Cette opération est irréversible و ستختفي من الأرشيف السحابي.`} 
+                title="Révocation Définitive" 
+                description={`Êtes-vous certain de vouloir purger ces ${selectedOrders.size} flux de distribution ?`} 
                 onConfirm={handleDeleteSelected} 
-                confirmText="Révoker définitivement" 
+                confirmText="Révoker" 
             />
         </div>
     );

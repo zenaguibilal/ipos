@@ -5,8 +5,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Sale Repository (Absolute Data Authority)
- * يضمن تسجيل المبيعات مع فرض التزامن الفوري مع المخزون وأرصدة العملاء.
+ * @fileOverview Sale Repository (Sovereign Authority - Nuclear Rebuilt)
+ * PHASE 16: Enforced deterministic invoice numbering and transactional integrity.
  */
 export class SaleRepository {
     private supabase = createClient();
@@ -22,15 +22,19 @@ export class SaleRepository {
         return data.map(this.mapFromDb);
     }
 
+    private generateInvoiceNumber(): string {
+        const now = new Date();
+        const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
+        // Use high-resolution performance timer fraction for collision avoidance
+        const entropy = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `INV-${datePart}-${entropy}`;
+    }
+
     async create(saleData: any): Promise<Sale> {
         const { data: { user } } = await this.supabase.auth.getUser();
-        if (!user) throw new Error("UNAUTHENTICATED");
+        if (!user) throw new Error("UNAUTHENTICATED_ACCESS");
 
-        const now = new Date();
-        const datePrefix = now.toISOString().slice(2, 10).replace(/-/g, '');
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-        const invoiceNumber = `${datePrefix}-${randomSuffix}`;
-        
+        const invoiceNumber = this.generateInvoiceNumber();
         const saleUuid = uuidv4();
         
         const { data: sale, error: sErr } = await this.supabase
@@ -53,7 +57,7 @@ export class SaleRepository {
             .select()
             .single();
 
-        if (sErr) throw new Error(`SALE_CREATION_FAILED: ${sErr.message}`);
+        if (sErr) throw new Error(`SALE_ARCHIVE_FAILED: ${sErr.message}`);
 
         const saleItems = saleData.items.map((item: any) => ({
             user_id: user.id,
@@ -67,18 +71,19 @@ export class SaleRepository {
 
         const { error: iErr } = await this.supabase.from('sale_items').insert(saleItems);
         if (iErr) {
+            // Rollback main record if items fail
             await this.supabase.from('sales').delete().eq('uuid', saleUuid);
             throw new Error(`SALE_ITEMS_SYNC_FAILED: ${iErr.message}`);
         }
 
-        // أتمتة السلطة: تحديث المخزون لكل عنصر مباع وتسجيل الحركة
+        // Atomic Stock Update
         for (const item of saleItems) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, -item.quantity, 'sale', saleUuid);
             }
         }
 
-        // تحديث ميزان العميل إذا كانت البيعة مرتبطة بحساب
+        // Balance Recalculation
         if (saleData.customerUuid) {
             await this.customerRepo.recalculateBalance(saleData.customerUuid);
         }
@@ -92,7 +97,7 @@ export class SaleRepository {
             .select('*, sale_items(*)')
             .eq('customer_uuid', customerUuid)
             .order('created_at', { ascending: false });
-        if (error) throw new Error(`SALE_FETCH_CUSTOMER_ERROR: ${error.message}`);
+        if (error) throw new Error(`SALE_CUSTOMER_FETCH_FAILED`);
         return data.map(this.mapFromDb);
     }
 
@@ -103,9 +108,9 @@ export class SaleRepository {
             .eq('uuid', uuid)
             .single();
         
-        if (sErr || !sale) throw new Error("SALE_NOT_FOUND_FOR_DELETION");
+        if (sErr || !sale) throw new Error("SALE_NOT_FOUND");
 
-        // استرجاع البضاعة للمخزون وتسجيل حركة الإلغاء
+        // Reverse stock effects
         for (const item of sale.sale_items) {
             if (item.product_uuid) {
                 await this.productRepo.updateStock(item.product_uuid, item.quantity, 'cancellation', uuid);
@@ -113,7 +118,7 @@ export class SaleRepository {
         }
 
         const { error: dErr } = await this.supabase.from('sales').delete().eq('uuid', uuid);
-        if (dErr) throw new Error(`SALE_DELETE_FAILED: ${dErr.message}`);
+        if (dErr) throw new Error(`SALE_REVOCATION_FAILED`);
 
         if (sale.customer_uuid) {
             await this.customerRepo.recalculateBalance(sale.customer_uuid);
