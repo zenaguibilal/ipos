@@ -4,8 +4,8 @@ import { ProductRepository } from "./product.repository";
 import { CustomerRepository } from "./customer.repository";
 
 /**
- * @fileOverview Return Repository (Absolute Authority - NUCLEAR REBUILT)
- * PHASE 18: Enforces transactional reliability for stock reversals and ledger sync.
+ * @fileOverview Return Repository (Autonomous Authority)
+ * Enforces transactional reliability for stock reversals and ledger sync.
  */
 export class ReturnRepository {
     private supabase = createClient();
@@ -68,7 +68,6 @@ export class ReturnRepository {
             throw new Error("RETURN_ITEMS_PERSISTENCE_FAILED");
         }
 
-        // Atomic Item-by-Item Stock Adjustment
         for (const item of returnItems) {
             if (item.was_restocked && item.product_uuid) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);
@@ -94,7 +93,6 @@ export class ReturnRepository {
         
         if (fErr || !ret) throw new Error("RETURN_NOT_FOUND");
 
-        // Precise Reversal: Only deduct from stock if it was added during the return process
         for (const item of ret.return_items) {
             if (item.was_restocked && item.product_uuid) {
                 const productExists = await this.productRepo.findByUuid(item.product_uuid);

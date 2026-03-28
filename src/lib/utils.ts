@@ -23,7 +23,7 @@ export function formatDateToYYYYMMDD(date: Date): string {
 
 /**
  * Global Currency Formatter (Absolute SSR Guarded)
- * NUCLEAR RECONSTRUCTION: Eliminates all hydration mismatches by strictly checking window context and store availability.
+ * NUCLEAR RECONSTRUCTION: Prevents hydration mismatch by strictly isolating state access.
  */
 export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   const v = (typeof value !== 'number' || isNaN(value)) ? 0 : value;
@@ -31,8 +31,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
   let currency = fallbackCurrency;
   let decimals = 1;
 
-  // STRICT HYDRATION SHIELD: Only access state if client-side and store is ready.
-  // This prevents the dreaded "Text content does not match" error during SSR.
+  // SSR SHIELD: Do not attempt to access state on the server.
   if (typeof window !== 'undefined') {
     try {
         const state = useAppStore.getState();
@@ -41,7 +40,7 @@ export function formatCurrency(value: number, fallbackCurrency = 'DA') {
             decimals = state.profile.decimalPlaces ?? 1;
         }
     } catch {
-        // Fallback during initialization if store is not yet accessible
+        // Silent fallback during boot
     }
   }
 
