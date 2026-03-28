@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDebounce } from '@/hooks/useDebounce';
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Activity, Filter, Calendar, FileUp, Building } from 'lucide-react';
+import { Search, Plus, Archive, LayoutGrid, List, RefreshCw, ShieldAlert, Filter, Building, FileUp, Trash2 } from 'lucide-react';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { useDateRange } from '@/hooks/useDateRange';
 import { StockIntakeCard } from '@/components/stock/stock-intake-card';
@@ -22,6 +22,7 @@ import { api } from '@/lib/api-client';
 import { useAppStore, useIsManagerOrAdmin, useAppActions } from '@/stores/appStore';
 import { CancelIntakeDialog } from '@/components/stock/CancelIntakeDialog';
 import { StockIntakeStats } from '@/components/stock/StockIntakeStats';
+import { DeleteMultipleIntakesDialog } from '@/components/stock/DeleteMultipleIntakesDialog';
 import { cn } from '@/lib/utils';
 import { CsvImporter } from '@/lib/csv-utils';
 import {
@@ -35,8 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * @fileOverview Sovereign Stock & Intake Ledger
- * المركز القيادي لإدارة تدفقات المخزون وأصول المنشأة.
+ * @fileOverview Sovereign Stock & Intake Ledger (Finalized)
  */
 
 export default function StockPage() {
@@ -55,11 +55,13 @@ export default function StockPage() {
     const [selectedIntake, setSelectedIntake] = useState<StockIntake | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [isCancelOpen, setIsCancelOpen] = useState(false);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
     const [stockIntakes, setStockIntakes] = useState<StockIntake[] | undefined>(undefined);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [supplierMap, setSupplierMap] = useState<Map<string, Supplier>>(new Map());
     const [selectedSupplierUuid, setSelectedSupplierUuid] = useState<string>('all');
+    const [selectedIntakes, setSelectedIntakes] = useState<Set<string>>(new Set());
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Role Guard
@@ -92,6 +94,7 @@ export default function StockPage() {
             setStockIntakes(intakesData);
             setSuppliers(suppliersData);
             setSupplierMap(new Map(suppliersData.map(s => [s.uuid, s])));
+            setSelectedIntakes(new Set()); // Reset selection on refresh
         } catch (error: any) {
             toast.error("Impossible de synchroniser le registre des réceptions.");
             setStockIntakes([]);
@@ -103,6 +106,24 @@ export default function StockPage() {
     useEffect(() => {
         fetchStockIntakesAndSuppliers();
     }, [fetchStockIntakesAndSuppliers]);
+
+    const handleToggleSelection = (uuid: string) => {
+        setSelectedIntakes(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(uuid)) newSet.delete(uuid);
+            else newSet.add(uuid);
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (!stockIntakes) return;
+        if (selectedIntakes.size === stockIntakes.length) {
+            setSelectedIntakes(new Set());
+        } else {
+            setSelectedIntakes(new Set(stockIntakes.map(i => i.uuid)));
+        }
+    };
 
     const handleViewDetails = useCallback((intake: StockIntake) => {
         setSelectedIntake(intake);
@@ -214,6 +235,18 @@ export default function StockPage() {
                     </Button>
                 </div>
             </div>
+
+            {selectedIntakes.size > 0 && (
+                <div className="flex justify-between items-center bg-destructive/10 border border-destructive/20 rounded-2xl p-4 animate-in slide-in-from-top-4 duration-500">
+                    <span className="text-xs font-black uppercase text-destructive tracking-widest">
+                        {selectedIntakes.size} réception(s) sélectionnée(s)
+                    </span>
+                    <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteOpen(true)} className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+                        <Trash2 className="h-4 w-4" />
+                        Annuler la sélection
+                    </Button>
+                </div>
+            )}
             
             <div className="min-h-[500px]">
                 {isLoading ? (
@@ -241,6 +274,9 @@ export default function StockPage() {
                                 supplierMap={supplierMap}
                                 onViewDetails={handleViewDetails}
                                 onCancelIntake={handleCancelIntake}
+                                selectedIntakes={selectedIntakes}
+                                onToggleSelection={handleToggleSelection}
+                                onToggleAll={handleSelectAll}
                             />
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
@@ -251,6 +287,8 @@ export default function StockPage() {
                                         supplierName={s.supplierUuid ? supplierMap.get(s.supplierUuid)?.name : undefined}
                                         onViewDetails={handleViewDetails}
                                         onCancelIntake={handleCancelIntake}
+                                        isSelected={selectedIntakes.has(s.uuid)}
+                                        onToggleSelection={() => handleToggleSelection(s.uuid)}
                                     />
                                 ))}
                             </div>
@@ -270,6 +308,13 @@ export default function StockPage() {
                 isOpen={isCancelOpen}
                 onOpenChange={setIsCancelOpen}
                 intake={selectedIntake}
+                onSuccess={() => fetchStockIntakesAndSuppliers(true)}
+            />
+
+            <DeleteMultipleIntakesDialog
+                isOpen={isBulkDeleteOpen}
+                onOpenChange={setIsBulkDeleteOpen}
+                intakeUuids={Array.from(selectedIntakes)}
                 onSuccess={() => fetchStockIntakesAndSuppliers(true)}
             />
         </div>

@@ -1,24 +1,37 @@
+
 'use client';
 
 import type { StockIntake, Supplier } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, FileText, Trash2, Calendar, Truck, User } from 'lucide-react';
+import { MoreHorizontal, FileText, Trash2, Calendar, User, Hash } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { formatCurrency, safeToDate, cn } from '@/lib/utils';
 import { useIsManagerOrAdmin } from '@/stores/appStore';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface StockIntakeTableProps {
     intakes: StockIntake[];
     supplierMap: Map<string, Supplier>;
     onViewDetails: (intake: StockIntake) => void;
     onCancelIntake: (intake: StockIntake) => void;
+    selectedIntakes: Set<string>;
+    onToggleSelection: (uuid: string) => void;
+    onToggleAll: () => void;
 }
 
-export function StockIntakeTable({ intakes, supplierMap, onViewDetails, onCancelIntake }: StockIntakeTableProps) {
+export function StockIntakeTable({ 
+    intakes, 
+    supplierMap, 
+    onViewDetails, 
+    onCancelIntake,
+    selectedIntakes,
+    onToggleSelection,
+    onToggleAll
+}: StockIntakeTableProps) {
     const isManagerOrAdmin = useIsManagerOrAdmin();
 
     return (
@@ -26,7 +39,13 @@ export function StockIntakeTable({ intakes, supplierMap, onViewDetails, onCancel
             <Table>
                 <TableHeader className="bg-white/5">
                     <TableRow className="hover:bg-transparent border-white/5">
-                        <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground px-6 py-5">Identité Partenaire</TableHead>
+                        <TableHead className="w-12 px-4">
+                            <Checkbox 
+                                checked={intakes.length > 0 && selectedIntakes.size === intakes.length} 
+                                onCheckedChange={onToggleAll} 
+                            />
+                        </TableHead>
+                        <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground py-5">Identité Partenaire</TableHead>
                         <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">N° Référence</TableHead>
                         <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Date Réception</TableHead>
                         <TableHead className="text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">Items</TableHead>
@@ -38,15 +57,26 @@ export function StockIntakeTable({ intakes, supplierMap, onViewDetails, onCancel
                 <TableBody>
                     {intakes.map(intake => {
                         const supplierName = intake.supplierUuid ? supplierMap.get(intake.supplierUuid)?.name : 'Fournisseur inconnu';
+                        const isSelected = selectedIntakes.has(intake.uuid);
+
                         return (
-                            <TableRow key={intake.uuid} className="hover:bg-primary/5 transition-colors border-white/5 group">
-                                <TableCell className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center font-black text-xs text-primary shadow-inner">
+                            <TableRow key={intake.uuid} className={cn(
+                                "hover:bg-primary/5 transition-colors border-white/5 group",
+                                isSelected && "bg-primary/10"
+                            )}>
+                                <TableCell className="px-4">
+                                    <Checkbox 
+                                        checked={isSelected} 
+                                        onCheckedChange={() => onToggleSelection(intake.uuid)} 
+                                    />
+                                </TableCell>
+                                <TableCell className="py-4">
+                                    <button onClick={() => onViewDetails(intake)} className="flex items-center gap-3 text-left">
+                                        <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center font-black text-xs text-primary shadow-inner group-hover:scale-110 transition-transform">
                                             {supplierName?.substring(0, 1).toUpperCase()}
                                         </div>
                                         <span className="font-bold text-sm tracking-tight">{supplierName}</span>
-                                    </div>
+                                    </button>
                                 </TableCell>
                                 <TableCell className="font-mono text-[11px] font-bold text-muted-foreground group-hover:text-foreground transition-colors">
                                     {intake.invoiceNumber || 'SANS_REF'}

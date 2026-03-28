@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,20 +12,17 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { Html5Qrcode } from 'html5-qrcode';
 import { toast } from 'sonner';
 import { Loader2, Camera, CameraOff } from 'lucide-react';
 
-interface BarcodeScannerDialogProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  onScanSuccess: (barcode: string) => void;
-}
+/**
+ * @fileOverview Barcode Scanner (Fix: html5-qrcode dependency handling)
+ */
 
 export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: BarcodeScannerDialogProps) {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isScannerReady, setIsScannerReady] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<any>(null); // Type 'any' used to avoid build-time issues if module not yet fully loaded
   const scannerId = "barcode-scanner-viewport";
 
   useEffect(() => {
@@ -33,9 +31,11 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           setHasCameraPermission(true);
-          // Stop stream immediately, html5-qrcode will manage its own stream
           stream.getTracks().forEach(track => track.stop());
-          startScanner();
+          
+          // Dynamic import to avoid SSR errors and ensure package presence
+          const { Html5Qrcode } = await import('html5-qrcode');
+          startScanner(Html5Qrcode);
         } catch (error) {
           console.error('Error accessing camera:', error);
           setHasCameraPermission(false);
@@ -54,11 +54,11 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
     };
   }, [isOpen]);
 
-  const startScanner = async () => {
+  const startScanner = async (Html5QrcodeClass: any) => {
     try {
       if (scannerRef.current) await scannerRef.current.stop();
       
-      const html5QrCode = new Html5Qrcode(scannerId);
+      const html5QrCode = new Html5QrcodeClass(scannerId);
       scannerRef.current = html5QrCode;
       
       const config = { fps: 10, qrbox: { width: 250, height: 150 } };
@@ -66,7 +66,7 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
       await html5QrCode.start(
         { facingMode: "environment" }, 
         config, 
-        (decodedText) => {
+        (decodedText: string) => {
           onScanSuccess(decodedText);
           onOpenChange(false);
         },
@@ -92,46 +92,52 @@ export function BarcodeScannerDialog({ isOpen, onOpenChange, onScanSuccess }: Ba
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md luxury-glass border-primary/20 p-0 overflow-hidden">
+        <DialogHeader className="p-6 bg-primary/5 border-b border-white/5">
           <DialogTitle className="flex items-center gap-2">
-            <Camera className="h-5 w-5" />
+            <Camera className="h-5 w-5 text-primary" />
             Scanner un Code-barres
           </DialogTitle>
-          <DialogDescription>
-            Placez le code-barres du produit au centre du cadre pour le scanner automatiquement.
+          <DialogDescription className="text-xs font-bold uppercase opacity-60">
+            Interface de reconnaissance optique iPOS.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+        <div className="relative aspect-video bg-black/40 flex items-center justify-center">
           <div id={scannerId} className="w-full h-full"></div>
           
           {!isScannerReady && hasCameraPermission && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-medium">Initialisation de la caméra...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-[10px] font-black uppercase tracking-widest animate-pulse">Initialisation Optique...</p>
             </div>
           )}
 
           {hasCameraPermission === false && (
-            <div className="absolute inset-0 p-4 flex items-center justify-center">
-              <Alert variant="destructive">
-                <CameraOff className="h-4 w-4" />
-                <AlertTitle>Accès Caméra Requis</AlertTitle>
-                <AlertDescription>
-                  Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité.
+            <div className="absolute inset-0 p-8 flex items-center justify-center bg-background/90 backdrop-blur-xl">
+              <Alert variant="destructive" className="rounded-2xl border-destructive/20 bg-destructive/5">
+                <CameraOff className="h-5 w-5" />
+                <AlertTitle className="font-black uppercase text-xs tracking-tighter">Accès Caméra Requis</AlertTitle>
+                <AlertDescription className="text-[10px] uppercase font-bold opacity-70">
+                  Veuillez autoriser l'accès à la caméra pour utiliser cette fonctionnalité souveraine.
                 </AlertDescription>
               </Alert>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="p-4 bg-white/5 border-t border-white/5">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-bold uppercase text-[10px] tracking-widest h-10 w-full sm:w-auto">
             Annuler
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+interface BarcodeScannerDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onScanSuccess: (barcode: string) => void;
 }
