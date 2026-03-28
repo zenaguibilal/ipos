@@ -210,7 +210,7 @@ export default function CustomerDetailPage() {
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button variant="outline" size="sm" className="rounded-2xl h-12 px-8 text-[10px] font-black uppercase tracking-widest luxury-glass border-white/10 hover:bg-primary/10 transition-all gap-3 shadow-md">
-                                        Filtre: {filterType}
+                                        Filtre: {filterType === 'all' ? 'Tout les flux' : filterType}
                                         <History className="h-3.5 w-3.5 opacity-40" />
                                     </Button>
                                 </DropdownMenuTrigger>

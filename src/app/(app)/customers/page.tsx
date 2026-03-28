@@ -39,6 +39,10 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 
+/**
+ * @fileOverview Customers Sovereign Ledger (Finalized Perfection)
+ */
+
 const sortOptions = {
     'name_asc': 'Nom (A-Z)',
     'name_desc': 'Nom (Z-A)',
@@ -87,7 +91,8 @@ export default function CustomersPage() {
 
     const filteredAndSortedCustomers = useMemo(() => {
         let result = customers.filter(c => {
-            const matchesSearch = `${c.firstName} ${c.lastName}`.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+            const fullName = `${c.firstName} ${c.lastName}`.toLowerCase();
+            const matchesSearch = fullName.includes(debouncedSearch.toLowerCase()) ||
                                  (c.phone && c.phone.includes(debouncedSearch));
             
             const matchesDebt = debtFilter === 'all' ? true :
@@ -173,7 +178,7 @@ export default function CustomersPage() {
         <div className="p-4 sm:p-6 space-y-8 animate-in fade-in duration-700 max-w-screen-2xl mx-auto pb-24 md:pb-10">
             <PageHeader 
                 title="Souveraineté de la Clientèle" 
-                description="Contrôle absolو des comptes, gestion des créances و historique des flux clients."
+                description="Contrôle absolu des comptes, gestion des créances و historique des flux clients."
             >
                 <div className="flex gap-2 w-full sm:w-auto">
                     <PrintCustomerListDialog customers={filteredAndSortedCustomers} />
@@ -261,7 +266,7 @@ export default function CustomersPage() {
 
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[160px] justify-between">
+                            <Button variant="outline" className="h-10 rounded-xl border-white/5 font-bold text-xs gap-2 min-w-[200px] justify-between">
                                 <span className="flex items-center gap-2">
                                     <SortAsc className="h-3.5 w-3.5 text-primary" />
                                     {sortOptions[sortBy as keyof typeof sortOptions]}
